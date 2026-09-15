@@ -111,6 +111,11 @@
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
     .grid-inputs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -226,7 +231,7 @@
           <input type="password" id="loginPassword" placeholder="Masukkan password" required>
         </div>
         <div class="form-group hidden" id="groupTokenSiswa">
-          <label>Token Ujian (Dapatkan dari Guru)</label>
+          <label>Token Ujian (Dapatkan dari Guru/Admin)</label>
           <input type="text" id="loginToken" placeholder="Masukkan token ujian" style="text-transform: uppercase;">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Masuk Aplikasi</button>
@@ -271,7 +276,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
             <h3>Pengaturan Ujian & Token Masuk</h3>
-            <p style="font-size: 13px; color: #64748b;">Kelola token akses, durasi pengerjaan, dan status ujian siswa secara terpusat.</p>
+            <p style="font-size: 13px; color: #64748b;">Pilih mata pelajaran, durasi pengerjaan, dan token masuk ujian secara terpusat.</p>
           </div>
           <div>
             <span class="token-display" id="displayActiveToken">------</span>
@@ -280,13 +285,19 @@
         </div>
 
         <form id="formExamSettings" onsubmit="saveExamSettings(event)">
-          <div class="grid-2">
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Mata Pelajaran yang Diujikan</label>
+              <select id="settingActiveMapel" required>
+                <option value="">-- Pilih Mapel Ujian --</option>
+              </select>
+            </div>
             <div class="form-group">
               <label>Durasi Ujian (Menit)</label>
               <input type="number" id="settingDuration" min="1" max="180" value="60" required>
             </div>
             <div class="form-group">
-              <label>Status Ujian</label>
+              <label>Status Sesi Ujian</label>
               <select id="settingStatus">
                 <option value="active">Aktif (Siswa Boleh Masuk)</option>
                 <option value="disabled">Ditutup (Siswa Ditolak)</option>
@@ -304,7 +315,7 @@
         <!-- 1. MANAJEMEN MATA PELAJARAN -->
         <div class="card">
           <h3>Manajemen Mata Pelajaran</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Tambah dan kelola mata pelajaran ujian.</p>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Tambah dan kelola daftar mata pelajaran.</p>
           
           <form id="formMapel" onsubmit="saveMapel(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
             <input type="hidden" id="mapelIndex" value="">
@@ -422,10 +433,8 @@
               </div>
               <div class="form-group">
                 <label>Bentuk / Tipe Soal</label>
-                <select id="inputTypeSoal" onchange="handleTypeChange()" required>
+                <select id="inputTypeSoal" required>
                   <option value="pg_biasa">Pilihan Ganda Biasa</option>
-                  <option value="pg_kompleks">Pilihan Ganda Kompleks (Centang Banyak)</option>
-                  <option value="menjodohkan">Menjodohkan / Pasangan</option>
                 </select>
               </div>
             </div>
@@ -440,19 +449,19 @@
               <div class="grid-inputs">
                 <div class="form-group">
                   <label>Pilihan A</label>
-                  <input type="text" id="inputOpsiA" placeholder="Opsi A">
+                  <input type="text" id="inputOpsiA" placeholder="Opsi A" required>
                 </div>
                 <div class="form-group">
                   <label>Pilihan B</label>
-                  <input type="text" id="inputOpsiB" placeholder="Opsi B">
+                  <input type="text" id="inputOpsiB" placeholder="Opsi B" required>
                 </div>
                 <div class="form-group">
                   <label>Pilihan C</label>
-                  <input type="text" id="inputOpsiC" placeholder="Opsi C">
+                  <input type="text" id="inputOpsiC" placeholder="Opsi C" required>
                 </div>
                 <div class="form-group">
                   <label>Pilihan D</label>
-                  <input type="text" id="inputOpsiD" placeholder="Opsi D">
+                  <input type="text" id="inputOpsiD" placeholder="Opsi D" required>
                 </div>
               </div>
 
@@ -599,7 +608,7 @@
     <div class="exam-header">
       <div>
         <h4 id="studentNameDisplay">Siswa: -</h4>
-        <small id="examTitleDisplay">Mata Pelajaran: Ujian Akhir Semester</small>
+        <small id="examTitleDisplay" style="color: #2563eb; font-weight: bold;">Mata Pelajaran: -</small>
       </div>
       <div>
         <span style="font-size: 14px; font-weight: bold;">Sisa Waktu: </span>
@@ -643,7 +652,7 @@
 
     const defaultGuruList = [
       { username: "admin", password: "adminpassword", nama: "Administrator Utama", mapel: "TIK-IX", role: "admin" },
-      { username: "idas, S.Pd.", password: "123", nama: "Idas Mukodas, S.Pd.", mapel: "TIK-IX", role: "guru" }
+      { username: "idas", password: "123", nama: "Idas Mukodas, S.Pd.", mapel: "TIK-IX", role: "guru" }
     ];
 
     const defaultSiswaList = [
@@ -671,12 +680,14 @@
     let rekapHasilSemuaSiswa = JSON.parse(localStorage.getItem("rekapHasilSiswa")) || [];
     
     let examSettings = JSON.parse(localStorage.getItem("examSettings")) || {
-      token: "UAS2026",
+      token: "LGERJY",
+      activeMapel: "TIK-IX",
       duration: 60,
       status: "active"
     };
 
     let currentUser = null;
+    let activeStudentQuestions = [];
     let currentQuestionIndex = 0;
     let studentAnswers = {};
     let violationCount = 0;
@@ -732,7 +743,7 @@
 
       if (role === 'siswa') {
         if (examSettings.status !== "active") {
-          alert("Sesi Ujian Ditutup oleh Pengawas/Guru!");
+          alert("Sesi Ujian Ditutup oleh Pengawas/Admin!");
           return;
         }
 
@@ -748,10 +759,21 @@
           return;
         }
 
+        // Ambil soal yang sesuai dengan mapel yang sedang diujikan oleh Admin
+        activeStudentQuestions = examQuestions.filter(q => q.mapel === examSettings.activeMapel);
+        if (activeStudentQuestions.length === 0) {
+          alert(`Belum ada soal yang tersedia untuk mata pelajaran [${examSettings.activeMapel}]. Silakan hubungi pengawas.`);
+          return;
+        }
+
+        const mapelObj = mapelList.find(m => m.kode === examSettings.activeMapel);
+        const namaMapelAktif = mapelObj ? mapelObj.nama : examSettings.activeMapel;
+
         currentUser = { username: siswaFound.nama || siswaFound.username, role: 'siswa' };
         document.getElementById('viewLogin').classList.add('hidden');
         document.getElementById('viewExam').classList.remove('hidden');
         document.getElementById('studentNameDisplay').textContent = `Siswa: ${siswaFound.nama || siswaFound.username}`;
+        document.getElementById('examTitleDisplay').textContent = `Mata Pelajaran: ${namaMapelAktif} (${examSettings.activeMapel})`;
         
         currentQuestionIndex = 0;
         studentAnswers = {};
@@ -772,13 +794,11 @@
       const panelHasilUjian = document.getElementById('panelHasilUjian');
 
       if (currentUser.role === 'admin') {
-        // Tampilkan Semua Panel Khusus Admin
         panelAdminSettings.classList.remove('hidden');
         panelAdminMaster.classList.remove('hidden');
         panelAdminSiswa.classList.remove('hidden');
         panelGuruSelector.classList.add('hidden');
 
-        // Layout Grid Normal
         panelHasilUjian.style.gridColumn = "span 1";
 
         renderSettingsData();
@@ -786,13 +806,11 @@
         renderGuruTable();
         renderTabelSiswa();
       } else {
-        // Mode Guru Ringkas (Sembunyikan Pengaturan, Master Mapel/Guru, & Manajemen Siswa)
         panelAdminSettings.classList.add('hidden');
         panelAdminMaster.classList.add('hidden');
         panelAdminSiswa.classList.add('hidden');
         panelGuruSelector.classList.remove('hidden');
 
-        // Hasil Ujian Mengisi Lebar Penuh (Full Width)
         panelHasilUjian.style.gridColumn = "span 2";
 
         renderGuruMapelSelector();
@@ -825,6 +843,7 @@
     =========================================== */
     function renderSettingsData() {
       document.getElementById("displayActiveToken").textContent = examSettings.token;
+      document.getElementById("settingActiveMapel").value = examSettings.activeMapel || "";
       document.getElementById("settingDuration").value = examSettings.duration;
       document.getElementById("settingStatus").value = examSettings.status;
     }
@@ -842,10 +861,12 @@
 
     function saveExamSettings(e) {
       e.preventDefault();
+      examSettings.activeMapel = document.getElementById("settingActiveMapel").value;
       examSettings.duration = parseInt(document.getElementById("settingDuration").value) || 60;
       examSettings.status = document.getElementById("settingStatus").value;
+      
       saveExamSettingsState();
-      alert("Pengaturan Ujian Disimpan!");
+      alert("Pengaturan Sesi Ujian Berhasil Disimpan!");
     }
 
     function saveExamSettingsState() {
@@ -871,14 +892,20 @@
     function renderMapelDropdowns() {
       const guruSelect = document.getElementById("inputGuruMapel");
       const soalSelect = document.getElementById("inputSoalMapel");
+      const adminSettingMapelSelect = document.getElementById("settingActiveMapel");
 
       let optionsHtml = `<option value="">-- Pilih Mapel --</option>`;
       mapelList.forEach(m => {
         optionsHtml += `<option value="${m.kode}">${m.nama} (${m.kode})</option>`;
       });
 
-      guruSelect.innerHTML = optionsHtml;
-      soalSelect.innerHTML = optionsHtml;
+      if (guruSelect) guruSelect.innerHTML = optionsHtml;
+      if (soalSelect) soalSelect.innerHTML = optionsHtml;
+      if (adminSettingMapelSelect) adminSettingMapelSelect.innerHTML = optionsHtml;
+
+      if (examSettings.activeMapel && adminSettingMapelSelect) {
+        adminSettingMapelSelect.value = examSettings.activeMapel;
+      }
     }
 
     function saveMapel(e) {
@@ -964,7 +991,7 @@
       filteredQuestions.forEach((item, idx) => {
         const tr = document.createElement("tr");
         let detailText = "";
-        if (item.type === "pg_biasa" || item.type === "pg_kompleks") {
+        if (item.type === "pg_biasa" || !item.type) {
           detailText = `<b>A:</b> ${item.options[0]} | <b>B:</b> ${item.options[1]}<br><b>C:</b> ${item.options[2]} | <b>D:</b> ${item.options[3]}`;
         }
 
@@ -1083,12 +1110,12 @@
           LOGIKA UJIAN SISWA
     =========================================== */
     function renderQuestion(index) {
-      const q = examQuestions[index];
+      const q = activeStudentQuestions[index];
       const container = document.getElementById('questionContainer');
       const savedAnswer = studentAnswers[q.id];
 
       let html = `<span class="badge-type">${getQuestionTypeName(q.type)}</span>`;
-      html += `<h4 style="margin-bottom: 12px;">Soal No. ${index + 1} dari ${examQuestions.length}</h4>`;
+      html += `<h4 style="margin-bottom: 12px;">Soal No. ${index + 1} dari ${activeStudentQuestions.length}</h4>`;
       html += `<p style="margin-bottom: 20px; font-weight: 500;">${q.question || q.pertanyaan}</p>`;
 
       if (q.type === 'pg_biasa' || !q.type) {
@@ -1106,7 +1133,21 @@
 
       container.innerHTML = html;
       document.getElementById('btnPrev').disabled = (index === 0);
-      document.getElementById('btnNext').disabled = (index === examQuestions.length - 1);
+      document.getElementById('btnNext').disabled = (index === activeStudentQuestions.length - 1);
+    }
+
+    function nextQuestion() {
+      if (currentQuestionIndex < activeStudentQuestions.length - 1) {
+        currentQuestionIndex++;
+        renderQuestion(currentQuestionIndex);
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        renderQuestion(currentQuestionIndex);
+      }
     }
 
     function saveAnswer(qId, value) { studentAnswers[qId] = value; }
