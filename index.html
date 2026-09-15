@@ -218,7 +218,7 @@
         </div>
         <div class="form-group">
           <label>Username / NISN</label>
-          <input type="text" id="loginUsername" placeholder="Masukkan username" required>
+          <input type="text" id="loginUsername" placeholder="Masukkan username / NISN" required>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -374,15 +374,15 @@
       <div class="grid-2">
         <div class="card">
           <h3>Manajemen Akun Siswa</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Data akun yang digunakan siswa untuk login ujian.</p>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Data akun resmi siswa untuk login ujian.</p>
           <button class="btn btn-success" onclick="exportSiswaTemplate()">Download Template Akun (.xlsx)</button>
           <table id="tableSiswa">
             <thead>
-              <tr><th>NISN/User</th><th>Nama Siswa</th><th>Kelas</th></tr>
+              <tr><th>NISN/User</th><th>Password</th><th>Nama Siswa</th><th>Kelas</th></tr>
             </thead>
             <tbody>
-              <tr><td>1001</td><td>Ahmad Rivaldi</td><td>IX-A</td></tr>
-              <tr><td>1002</td><td>Siti Rahmawati</td><td>IX-A</td></tr>
+              <tr><td>1001</td><td>123</td><td>Ahmad Rivaldi</td><td>IX-A</td></tr>
+              <tr><td>1002</td><td>123</td><td>Siti Rahmawati</td><td>IX-A</td></tr>
             </tbody>
           </table>
         </div>
@@ -448,7 +448,17 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Initial Data Default Bank Soal Multi-Bentuk
+    // Data Akun Resmi (Siswa & Admin)
+    const dataSiswaValid = [
+      { username: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
+      { username: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" }
+    ];
+
+    const dataAdminValid = [
+      { username: "admin", password: "adminpassword" }
+    ];
+
+    // Bank Soal Default Multi-Bentuk
     const defaultQuestions = [
       {
         id: 1,
@@ -488,6 +498,58 @@
     document.addEventListener("DOMContentLoaded", () => {
       renderTabelBankSoal();
     });
+
+    // Handle Login & Validasi Akun
+    function handleLogin(e) {
+      e.preventDefault();
+      const role = document.getElementById('loginRole').value;
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+
+      // 1. Validasi Login Admin / Guru
+      if (role === 'admin') {
+        const adminFound = dataAdminValid.find(a => a.username === username && a.password === password);
+        if (!adminFound) {
+          alert("Akses Admin Gagal! Username atau password Admin salah.");
+          return;
+        }
+        
+        currentUser = { username: adminFound.username, role: 'admin' };
+        document.getElementById('viewLogin').classList.add('hidden');
+        document.getElementById('viewAdmin').classList.remove('hidden');
+        renderTabelBankSoal();
+        return;
+      }
+
+      // 2. Validasi Login Siswa
+      if (role === 'siswa') {
+        const listSiswa = JSON.parse(localStorage.getItem("dataSiswaActive")) || dataSiswaValid;
+        const siswaFound = listSiswa.find(s => s.username === username && s.password === password);
+
+        if (!siswaFound) {
+          alert("Login Gagal! NISN/Username atau Password tidak terdaftar.");
+          return;
+        }
+
+        if (examQuestions.length === 0) {
+          alert("Soal ujian belum tersedia! Silakan hubungi guru/admin.");
+          return;
+        }
+
+        currentUser = { username: siswaFound.nama || siswaFound.username, role: 'siswa' };
+        document.getElementById('viewLogin').classList.add('hidden');
+        document.getElementById('viewExam').classList.remove('hidden');
+        document.getElementById('studentNameDisplay').textContent = `Siswa: ${siswaFound.nama || siswaFound.username}`;
+        
+        currentQuestionIndex = 0;
+        studentAnswers = {};
+        violationCount = 0;
+
+        renderQuestion(currentQuestionIndex);
+        requestExamFullscreen();
+        initSecurityListeners();
+      }
+    }
 
     // Handle Perubahan Dropdown Tipe Soal di Admin
     function handleTypeChange() {
@@ -773,38 +835,6 @@
       localStorage.setItem("bankSoalUjian", JSON.stringify(examQuestions));
     }
 
-    // LOGIKA LOGIN & UJIAN SISWA
-    function handleLogin(e) {
-      e.preventDefault();
-      const role = document.getElementById('loginRole').value;
-      const username = document.getElementById('loginUsername').value;
-
-      currentUser = { username, role };
-      document.getElementById('viewLogin').classList.add('hidden');
-
-      if (role === 'admin') {
-        document.getElementById('viewAdmin').classList.remove('hidden');
-        renderTabelBankSoal();
-      } else {
-        if (examQuestions.length === 0) {
-          alert("Soal ujian belum tersedia!");
-          logout();
-          return;
-        }
-
-        document.getElementById('viewExam').classList.remove('hidden');
-        document.getElementById('studentNameDisplay').textContent = `Siswa: ${username}`;
-        
-        currentQuestionIndex = 0;
-        studentAnswers = {};
-        violationCount = 0;
-
-        renderQuestion(currentQuestionIndex);
-        requestExamFullscreen();
-        initSecurityListeners();
-      }
-    }
-
     function logout() {
       currentUser = null;
       document.getElementById('viewAdmin').classList.add('hidden');
@@ -1025,7 +1055,8 @@
     function exportSiswaTemplate() {
       const template = [
         ["Username", "Password", "Nama_Siswa", "Kelas"],
-        ["siswa01", "pass123", "Ahmad Rivaldi", "IX-A"]
+        ["1001", "123", "Ahmad Rivaldi", "IX-A"],
+        ["1002", "123", "Siti Rahmawati", "IX-A"]
       ];
       const worksheet = XLSX.utils.aoa_to_sheet(template);
       const workbook = XLSX.utils.book_new();
