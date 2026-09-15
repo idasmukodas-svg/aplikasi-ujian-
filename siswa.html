@@ -42,7 +42,7 @@
             <label class="form-label fw-bold">Token Ujian</label>
             <input type="text" id="loginToken" class="form-control text-uppercase fw-bold" placeholder="Contoh: X7K9P" required>
           </div>
-          <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+          <button type="submit" id="btnSubmitLogin" class="btn btn-primary w-100 fw-bold py-2">
             <i class="bi bi-box-arrow-in-right me-1"></i> Mulai Kerjakan Ujian
           </button>
         </form>
@@ -77,13 +77,13 @@
       <div class="col-md-8">
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 id="infoJudulUjian" class="fw-bold text-primary mb-0">Ujian Informatika</h5>
+            <h5 id="infoJudulUjian" class="fw-bold text-primary mb-0">Ujian</h5>
           </div>
           <div class="card-body p-4" id="containerLembarSoal">
             <!-- Soal-soal di-render secara dinamis via JavaScript -->
           </div>
           <div class="card-footer bg-white text-end py-3">
-            <button class="btn btn-success fw-bold px-4" onclick="submitJawabanSiswa()">
+            <button id="btnSubmitJawaban" class="btn btn-success fw-bold px-4" onclick="submitJawabanSiswa()">
               <i class="bi bi-check-circle me-1"></i> Kirim Jawaban Saya
             </button>
           </div>
@@ -93,59 +93,100 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS & App Logic -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="app.js"></script>
 
-  <!-- Script Logika Khusus Halaman Siswa -->
-  <script>
+  <!-- SDK Firebase Modular v9/v10 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Konfigurasi Firebase Milik Anda
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
+      authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+      projectId: "aplikasi-ujian-8e501",
+      storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
+      messagingSenderId: "945781407027",
+      appId: "1:945781407027:web:4672d4c894e143c9b05246",
+      measurementId: "G-CBH4C0BVXD"
+    };
+
+    // Inisialisasi Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     let activeSiswaData = null;
     let activeUjianData = null;
     let timerInterval = null;
 
-    function handleLoginSiswa(e) {
+    // Login Siswa dengan Ambil Data dari Firestore
+    window.handleLoginSiswa = async function(e) {
       e.preventDefault();
+      const btnSubmit = document.getElementById("btnSubmitLogin");
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memeriksa...`;
+
       const nisnInput = document.getElementById("loginNisn").value.trim();
       const tokenInput = document.getElementById("loginToken").value.trim().toUpperCase();
 
-      const daftarSiswa = JSON.parse(localStorage.getItem("daftarSiswa")) || [];
-      const daftarUjian = JSON.parse(localStorage.getItem("daftarUjian")) || [];
+      try {
+        // 1. Cek Data Siswa di Collection 'siswa'
+        const qSiswa = query(collection(db, "siswa"), where("nisn", "==", nisnInput));
+        const snapSiswa = await getDocs(qSiswa);
 
-      // Validasi NISN Siswa
-      const siswaFound = daftarSiswa.find(s => String(s.nisn).trim() === nisnInput);
-      if (!siswaFound) {
-        alert("NISN tidak ditemukan! Silakan hubungi Guru/Admin.");
-        return;
+        if (snapSiswa.empty) {
+          alert("NISN tidak ditemukan! Silakan hubungi Guru/Admin.");
+          resetBtnLogin();
+          return;
+        }
+
+        const siswaFound = { id: snapSiswa.docs[0].id, ...snapSiswa.docs[0].data() };
+
+        // 2. Cek Data Ujian berdasarkan Token di Collection 'ujian'
+        const qUjian = query(collection(db, "ujian"), where("token", "==", tokenInput));
+        const snapUjian = await getDocs(qUjian);
+
+        if (snapUjian.empty) {
+          alert("Token Ujian tidak valid atau salah!");
+          resetBtnLogin();
+          return;
+        }
+
+        const ujianFound = { id: snapUjian.docs[0].id, ...snapUjian.docs[0].data() };
+
+        if (!ujianFound.soal || ujianFound.soal.length === 0) {
+          alert("Ujian ini belum memiliki soal.");
+          resetBtnLogin();
+          return;
+        }
+
+        activeSiswaData = siswaFound;
+        activeUjianData = ujianFound;
+
+        // Tampilkan Tampilan Ujian
+        document.getElementById("sectionLogin").classList.add("d-none");
+        document.getElementById("sectionUjian").classList.remove("d-none");
+
+        document.getElementById("infoSiswaNama").textContent = siswaFound.nama;
+        document.getElementById("infoSiswaNisn").textContent = siswaFound.nisn;
+        document.getElementById("infoSiswaKelas").textContent = siswaFound.kelas;
+        document.getElementById("infoJudulUjian").textContent = `${ujianFound.mapel} - ${ujianFound.judul}`;
+
+        renderSoalUjian(ujianFound.soal);
+        startTimer(parseInt(ujianFound.durasi) * 60);
+
+      } catch (err) {
+        console.error("Error Login Firebase:", err);
+        alert("Gagal menghubungkan ke server Firebase. Pastikan database Firestore sudah disetup!");
+        resetBtnLogin();
       }
+    };
 
-      // Validasi Token Ujian
-      const ujianFound = daftarUjian.find(u => String(u.token).trim().toUpperCase() === tokenInput);
-      if (!ujianFound) {
-        alert("Token Ujian tidak valid atau salah!");
-        return;
-      }
-
-      if (!ujianFound.soal || ujianFound.soal.length === 0) {
-        alert("Ujian ini belum memiliki soal.");
-        return;
-      }
-
-      activeSiswaData = siswaFound;
-      activeUjianData = ujianFound;
-
-      // Sembunyikan Form Login, Tampilkan Lembar Ujian
-      document.getElementById("sectionLogin").classList.add("d-none");
-      document.getElementById("sectionUjian").classList.remove("d-none");
-
-      // Set Info Siswa & Ujian
-      document.getElementById("infoSiswaNama").textContent = siswaFound.nama;
-      document.getElementById("infoSiswaNisn").textContent = siswaFound.nisn;
-      document.getElementById("infoSiswaKelas").textContent = siswaFound.kelas;
-      document.getElementById("infoJudulUjian").textContent = `${ujianFound.mapel} - ${ujianFound.judul}`;
-
-      // Tampilkan Soal & Jalankan Timer Ujian
-      renderSoalUjian(ujianFound.soal);
-      startTimer(parseInt(ujianFound.durasi) * 60);
+    function resetBtnLogin() {
+      const btnSubmit = document.getElementById("btnSubmitLogin");
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i> Mulai Kerjakan Ujian`;
     }
 
     // Render Soal Ujian (3 Tipe)
@@ -224,7 +265,7 @@
       });
     }
 
-    // Timer Penghitung Waktu Ujian
+    // Timer Ujian
     function startTimer(durationInSeconds) {
       let timer = durationInSeconds;
       const display = document.getElementById("timerDisplay");
@@ -246,9 +287,13 @@
       }, 1000);
     }
 
-    // Penilaian Otomatis & Submit Jawaban
-    function submitJawabanSiswa() {
+    // Penilaian & Simpan Hasil ke Firestore Collection 'hasil'
+    window.submitJawabanSiswa = async function() {
       if (!confirm("Apakah Anda yakin ingin menyelesaikan ujian ini?")) return;
+
+      const btnSubmit = document.getElementById("btnSubmitJawaban");
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
 
       clearInterval(timerInterval);
 
@@ -280,29 +325,31 @@
         }
       });
 
-      // Kalkulasi Nilai Akhir Skala 100
       const nilaiAkhir = Math.round((totalPoin / poinMaksimal) * 100);
 
-      // Simpan Hasil Ujian ke LocalStorage
-      const hasilUjian = JSON.parse(localStorage.getItem("hasilUjian")) || [];
-      const newHasil = {
-        id: "HSL-" + Date.now(),
-        ujianId: activeUjianData.id,
-        nisn: activeSiswaData.nisn,
-        nama: activeSiswaData.nama,
-        kelas: activeSiswaData.kelas,
-        mapel: activeUjianData.mapel,
-        judul: activeUjianData.judul,
-        nilai: nilaiAkhir,
-        waktuSelesai: new Date().toLocaleString("id-ID")
-      };
+      try {
+        // Kirim hasil ke Firestore
+        await addDoc(collection(db, "hasil"), {
+          ujianId: activeUjianData.id,
+          nisn: activeSiswaData.nisn,
+          nama: activeSiswaData.nama,
+          kelas: activeSiswaData.kelas,
+          mapel: activeUjianData.mapel,
+          judul: activeUjianData.judul,
+          nilai: nilaiAkhir,
+          waktuSelesai: new Date().toLocaleString("id-ID")
+        });
 
-      hasilUjian.push(newHasil);
-      localStorage.setItem("hasilUjian", JSON.stringify(hasilUjian));
+        alert(`Ujian Selesai!\n\nNama: ${activeSiswaData.nama}\nNilai Anda: ${nilaiAkhir}`);
+        window.location.reload();
 
-      alert(`Ujian Selesai!\n\nNama: ${activeSiswaData.nama}\nNilai Anda: ${nilaiAkhir}`);
-      window.location.reload();
-    }
+      } catch (err) {
+        console.error("Error Simpan Hasil Firestore:", err);
+        alert("Gagal mengirim hasil ke server. Silakan coba klik Kirim Jawaban lagi.");
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `<i class="bi bi-check-circle me-1"></i> Kirim Jawaban Saya`;
+      }
+    };
   </script>
 
 </body>
