@@ -1,3 +1,10 @@
+/* ===================================================
+   APP.JS - LMS & CBT INFORMATIKA (FIREBASE INTEGRATED)
+   =================================================== */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
   authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
@@ -8,30 +15,71 @@ const firebaseConfig = {
   appId: "1:945781407027:web:4672d4c894e143c9b05246",
   measurementId: "G-CBH4C0BVXD"
 };
-/* ===================================================
-   APP.JS - LMS & CBT INFORMATIKA
-   =================================================== */
 
-// --- INISIALISASI DATA LOCALSTORAGE ---
-let daftarUjian = JSON.parse(localStorage.getItem("daftarUjian")) || [];
-let daftarSiswa = JSON.parse(localStorage.getItem("daftarSiswa")) || [];
-let hasilUjian  = JSON.parse(localStorage.getItem("hasilUjian"))  || [];
+// --- INISIALISASI FIREBASE ---
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Variabel penampung data lokal di memori
+let daftarUjian = [];
+let daftarSiswa = [];
+let hasilUjian = [];
 let activeUjianId = null;
 
+// --- SINKRONISASI REALTIME DARI FIREBASE ---
 document.addEventListener("DOMContentLoaded", () => {
-  renderStats();
-  renderTabelUjian();
-  renderTabelSiswa();
-  renderTabelNilai();
-  updateFilterUjianDropdown();
+  // Listen Data Ujian
+  onValue(ref(db, "daftarUjian"), (snapshot) => {
+    const data = snapshot.val();
+    daftarUjian = data ? Object.values(data) : [];
+    renderStats();
+    renderTabelUjian();
+    updateFilterUjianDropdown();
+  });
+
+  // Listen Data Siswa
+  onValue(ref(db, "daftarSiswa"), (snapshot) => {
+    const data = snapshot.val();
+    daftarSiswa = data ? Object.values(data) : [];
+    renderStats();
+    renderTabelSiswa();
+  });
+
+  // Listen Hasil Ujian
+  onValue(ref(db, "hasilUjian"), (snapshot) => {
+    const data = snapshot.val();
+    hasilUjian = data ? Object.values(data) : [];
+    renderTabelNilai();
+  });
+
+  // Event Listener Forms & Inputs
+  const formUjian = document.getElementById("formUjian");
+  if (formUjian) formUjian.addEventListener("submit", handleSimpanUjian);
+
+  const formSoal = document.getElementById("formTambahSoal");
+  if (formSoal) formSoal.addEventListener("submit", handleTambahSoal);
+
+  const formSiswa = document.getElementById("formSiswa");
+  if (formSiswa) formSiswa.addEventListener("submit", handleSimpanSiswa);
+
+  const fileInputSiswa = document.getElementById("fileExcelSiswa");
+  if (fileInputSiswa) fileInputSiswa.addEventListener("change", importSiswaExcel);
+
+  const fileInputSoal = document.getElementById("fileExcelSoal");
+  if (fileInputSoal) fileInputSoal.addEventListener("change", importExcelSoal);
 });
 
-// --- HELPER UNTUK SIMPAN DATA ---
-function simpanData() {
-  localStorage.setItem("daftarUjian", JSON.stringify(daftarUjian));
-  localStorage.setItem("daftarSiswa", JSON.stringify(daftarSiswa));
-  localStorage.setItem("hasilUjian", JSON.stringify(hasilUjian));
-  renderStats();
+// --- HELPER UNTUK SIMPAN DATA KE FIREBASE ---
+function simpanDataUjian() {
+  const dataObj = {};
+  daftarUjian.forEach(u => dataObj[u.id] = u);
+  set(ref(db, "daftarUjian"), dataObj);
+}
+
+function simpanDataSiswa() {
+  const dataObj = {};
+  daftarSiswa.forEach(s => dataObj[s.nisn] = s);
+  set(ref(db, "daftarSiswa"), dataObj);
 }
 
 function renderStats() {
@@ -77,14 +125,13 @@ function renderTabelUjian() {
   });
 }
 
-function openModalTambahUjian() {
+window.openModalTambahUjian = function() {
   document.getElementById("formUjian").reset();
   document.getElementById("ujianId").value = "";
-  // Generate Random Token 5 Karakter
   document.getElementById("ujianToken").value = Math.random().toString(36).substring(2, 7).toUpperCase();
   const modal = new bootstrap.Modal(document.getElementById("modalUjian"));
   modal.show();
-}
+};
 
 function handleSimpanUjian(e) {
   e.preventDefault();
@@ -93,8 +140,9 @@ function handleSimpanUjian(e) {
   const durasi = document.getElementById("ujianDurasi").value;
   const token  = document.getElementById("ujianToken").value;
 
+  const id = "UJN-" + Date.now();
   const newUjian = {
-    id: "UJN-" + Date.now(),
+    id,
     mapel,
     judul,
     durasi,
@@ -102,25 +150,22 @@ function handleSimpanUjian(e) {
     soal: []
   };
 
-  daftarUjian.push(newUjian);
-  simpanData();
-  renderTabelUjian();
-  updateFilterUjianDropdown();
-
-  bootstrap.Modal.getInstance(document.getElementById("modalUjian")).hide();
+  set(ref(db, "daftarUjian/" + id), newUjian)
+    .then(() => {
+      const modalEl = document.getElementById("modalUjian");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    });
 }
 
-function hapusUjian(id) {
+window.hapusUjian = function(id) {
   if (confirm("Apakah Anda yakin ingin menghapus ujian ini beserta seluruh soalnya?")) {
-    daftarUjian = daftarUjian.filter(u => u.id !== id);
-    simpanData();
-    renderTabelUjian();
-    updateFilterUjianDropdown();
+    remove(ref(db, "daftarUjian/" + id));
   }
-}
+};
 
-// --- MODAL KELOLA SOAL (3 TIPE) ---
-function openModalSoal(ujianId) {
+// --- MODAL KELOLA SOAL ---
+window.openModalSoal = function(ujianId) {
   activeUjianId = ujianId;
   const u = daftarUjian.find(item => item.id === ujianId);
   if (!u) return;
@@ -131,9 +176,9 @@ function openModalSoal(ujianId) {
 
   const modal = new bootstrap.Modal(document.getElementById("modalKelolaSoal"));
   modal.show();
-}
+};
 
-function switchTipeSoal(tipe) {
+window.switchTipeSoal = function(tipe) {
   const containerPG = document.getElementById("containerPG");
   const containerMencocokkan = document.getElementById("containerMencocokkan");
   const boxKunciPG = document.getElementById("boxKunciPG");
@@ -155,7 +200,7 @@ function switchTipeSoal(tipe) {
     containerPG.classList.add("d-none");
     containerMencocokkan.classList.remove("d-none");
   }
-}
+};
 
 function handleTambahSoal(e) {
   e.preventDefault();
@@ -206,9 +251,8 @@ function handleTambahSoal(e) {
 
   if (!u.soal) u.soal = [];
   u.soal.push(newSoal);
-  simpanData();
-  renderTabelUjian();
-
+  
+  simpanDataUjian();
   alert("Soal berhasil ditambahkan!");
   document.getElementById("formTambahSoal").reset();
   switchTipeSoal("pg");
@@ -244,11 +288,11 @@ function renderTabelSiswa() {
   });
 }
 
-function openModalTambahSiswa() {
+window.openModalTambahSiswa = function() {
   document.getElementById("formSiswa").reset();
   const modal = new bootstrap.Modal(document.getElementById("modalSiswa"));
   modal.show();
-}
+};
 
 function handleSimpanSiswa(e) {
   e.preventDefault();
@@ -261,22 +305,23 @@ function handleSimpanSiswa(e) {
     return;
   }
 
-  daftarSiswa.push({ nisn, nama, kelas });
-  simpanData();
-  renderTabelSiswa();
-  bootstrap.Modal.getInstance(document.getElementById("modalSiswa")).hide();
+  const newSiswa = { nisn, nama, kelas };
+  set(ref(db, "daftarSiswa/" + nisn), newSiswa)
+    .then(() => {
+      const modalEl = document.getElementById("modalSiswa");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    });
 }
 
-function hapusSiswa(nisn) {
+window.hapusSiswa = function(nisn) {
   if (confirm("Hapus data siswa ini?")) {
-    daftarSiswa = daftarSiswa.filter(s => s.nisn !== nisn);
-    simpanData();
-    renderTabelSiswa();
+    remove(ref(db, "daftarSiswa/" + nisn));
   }
-}
+};
 
 // Download Template Excel Siswa
-function downloadTemplateSiswa() {
+window.downloadTemplateSiswa = function() {
   const data = [
     { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A" },
     { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B" }
@@ -285,7 +330,7 @@ function downloadTemplateSiswa() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Template Siswa");
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
-}
+};
 
 // Import Excel Siswa
 function importSiswaExcel(event) {
@@ -312,8 +357,7 @@ function importSiswaExcel(event) {
       }
     });
 
-    simpanData();
-    renderTabelSiswa();
+    simpanDataSiswa();
     alert(`Berhasil mengimpor ${countAdded} data siswa!`);
     event.target.value = "";
   };
@@ -321,7 +365,7 @@ function importSiswaExcel(event) {
 }
 
 // Export Data Siswa Ke Excel
-function exportSiswaExcel() {
+window.exportSiswaExcel = function() {
   if (daftarSiswa.length === 0) {
     alert("Tidak ada data siswa untuk diekspor.");
     return;
@@ -330,10 +374,10 @@ function exportSiswaExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Data Siswa");
   XLSX.writeFile(wb, "Data_Siswa_CBT.xlsx");
-}
+};
 
-// Download Template Soal Excel (Mendukung 3 Tipe Soal)
-function downloadTemplateSoal() {
+// Download Template Soal Excel
+window.downloadTemplateSoal = function() {
   const data = [
     { Tipe: "pg", Pertanyaan: "Perangkat keras input komputer adalah?", A: "Keyboard", B: "Printer", C: "Speaker", D: "Proyektor", Kunci: "A", Pasangan: "" },
     { Tipe: "pg_kompleks", Pertanyaan: "Pilih yang termasuk perangkat lunak sistem operasi!", A: "Windows", B: "Linux", C: "Microsoft Word", D: "Google Chrome", Kunci: "A,B", Pasangan: "" },
@@ -343,9 +387,9 @@ function downloadTemplateSoal() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
   XLSX.writeFile(wb, "Template_Soal_3_Tipe.xlsx");
-}
+};
 
-// Import Soal dari Excel (Multi-Tipe: PG, PG Kompleks, Mencocokkan)
+// Import Soal dari Excel
 function importExcelSoal(event) {
   const file = event.target.files[0];
   if (!file || !activeUjianId) return;
@@ -409,8 +453,7 @@ function importExcelSoal(event) {
       u.soal.push(itemSoal);
     });
 
-    simpanData();
-    renderTabelUjian();
+    simpanDataUjian();
     alert(`Berhasil mengimpor ${countAdded} soal!`);
     event.target.value = "";
   };
@@ -456,8 +499,7 @@ function updateFilterUjianDropdown() {
   });
 }
 
-// FUNGSI UTAMA DOWNLOAD REKAP NILAI (DENGAN FILTER KELAS & UJIAN)
-function downloadRekapNilaiPerKelas(kelasFilter, ujianIdFilter) {
+window.downloadRekapNilaiPerKelas = function(kelasFilter, ujianIdFilter) {
   if (hasilUjian.length === 0) {
     alert("Belum ada data nilai yang tersimpan untuk diunduh!");
     return;
@@ -503,4 +545,4 @@ function downloadRekapNilaiPerKelas(kelasFilter, ujianIdFilter) {
   fileName += ".xlsx";
 
   XLSX.writeFile(wb, fileName);
-}
+};
