@@ -250,11 +250,11 @@
 
       <!-- MODUL SELEKSI MAPEL & KELAS GURU (KHUSUS ROLE GURU) -->
       <div id="panelGuruSelector" class="card hidden" style="border-left: 5px solid #2563eb; background: #eff6ff;">
-        <h3>Mata Pelajaran & Kelas Diampu</h3>
-        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Pilih mata pelajaran yang ingin Anda kelola saat ini untuk memfilter bank soal dan hasil ujian.</p>
+        <h3>Mata Pelajaran Diampu</h3>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Pilih mata pelajaran yang ingin Anda kelola saat ini:</p>
         <div class="grid-2">
           <div class="form-group" style="margin-bottom: 0;">
-            <label>Pilih Mata Pelajaran Aktif</label>
+            <label>Mata Pelajaran Aktif</label>
             <select id="selectGuruMapelAktif" onchange="handleGuruMapelChange()">
               <!-- Options diisi JS -->
             </select>
@@ -435,7 +435,7 @@
               <textarea id="inputPertanyaan" rows="2" placeholder="Tuliskan pertanyaan di sini..." required></textarea>
             </div>
 
-            <!-- CONTAINER PILIHAN GANDA (Biasa & Kompleks) -->
+            <!-- CONTAINER PILIHAN GANDA -->
             <div id="sectionPG">
               <div class="grid-inputs">
                 <div class="form-group">
@@ -466,36 +466,6 @@
                   <option value="D">D</option>
                 </select>
               </div>
-
-              <!-- Kunci PG Kompleks -->
-              <div id="kunciPGKompleksGroup" class="form-group hidden">
-                <label>Kunci Jawaban (Pilih lebih dari 1):</label>
-                <div style="display: flex; gap: 16px; align-items: center; padding: 8px 0;">
-                  <label><input type="checkbox" id="kunciKompleksA" value="A"> Opsi A</label>
-                  <label><input type="checkbox" id="kunciKompleksB" value="B"> Opsi B</label>
-                  <label><input type="checkbox" id="kunciKompleksC" value="C"> Opsi C</label>
-                  <label><input type="checkbox" id="kunciKompleksD" value="D"> Opsi D</label>
-                </div>
-              </div>
-            </div>
-
-            <!-- CONTAINER MENJODOHKAN -->
-            <div id="sectionMenjodohkan" class="hidden">
-              <p style="font-size:13px; color:#64748b; margin-bottom:8px;">Isi item kiri, item kanan, serta pemetaan kunci.</p>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label>Item Sisi Kiri (Pisahkan koma ,)</label>
-                  <input type="text" id="inputLeftItems" placeholder="Contoh: CPU, RAM, SSD">
-                </div>
-                <div class="form-group">
-                  <label>Item Sisi Kanan (Pisahkan koma ,)</label>
-                  <input type="text" id="inputRightItems" placeholder="Contoh: Penyimpanan, Otak Komputer, Memori Sementara">
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Pemetaan Kunci (JSON / Pasangan Indeks Kiri->Kanan)</label>
-                <input type="text" id="inputKunciMenjodohkan" placeholder='Contoh: {"0":1, "1":2, "2":0}'>
-              </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
@@ -524,10 +494,11 @@
         </div>
       </div>
 
-      <!-- MODUL SISWA & HASIL UJIAN -->
-      <div class="grid-2">
-        <!-- MANAJEMEN AKUN SISWA -->
-        <div class="card">
+      <!-- SEKSI DATA SISWA & HASIL UJIAN -->
+      <div id="wrapperSiswaHasil" class="grid-2">
+        
+        <!-- MANAJEMEN AKUN SISWA (KHUSUS ROLE ADMIN) -->
+        <div id="panelAdminSiswa" class="card hidden">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
             <div>
               <h3>Manajemen Akun Siswa</h3>
@@ -591,12 +562,17 @@
           </div>
         </div>
 
-        <!-- HASIL UJIAN & RESET SISWA -->
-        <div class="card">
-          <h3>Hasil Ujian & Ekspor Data</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Unduh rekapitulasi nilai akhir atau reset sesi siswa terkendala.</p>
-          <button class="btn btn-primary" onclick="exportHasilToExcel()">Ekspor Rekap Hasil Ujian (.xlsx)</button>
-          <table id="tableHasil" style="margin-top: 16px;">
+        <!-- HASIL UJIAN & REKAP DATA (GURU & ADMIN) -->
+        <div id="panelHasilUjian" class="card" style="grid-column: span 2;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <h3>Hasil Ujian & Ekspor Data</h3>
+              <p style="font-size: 13px; color: #64748b;">Unduh rekapitulasi nilai akhir atau reset sesi siswa yang terkendala.</p>
+            </div>
+            <button class="btn btn-primary" onclick="exportHasilToExcel()">Ekspor Rekap Hasil Ujian (.xlsx)</button>
+          </div>
+          
+          <table id="tableHasil">
             <thead>
               <tr>
                 <th>Nama Siswa</th>
@@ -610,6 +586,7 @@
             </tbody>
           </table>
         </div>
+
       </div>
 
     </div>
@@ -622,7 +599,7 @@
     <div class="exam-header">
       <div>
         <h4 id="studentNameDisplay">Siswa: -</h4>
-        <small id="examTitleDisplay">Mata Pelajaran: Informatika TKA</small>
+        <small id="examTitleDisplay">Mata Pelajaran: Ujian Akhir Semester</small>
       </div>
       <div>
         <span style="font-size: 14px; font-weight: bold;">Sisa Waktu: </span>
@@ -658,7 +635,7 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Default System
+    // Data Default
     const defaultMapelList = [
       { kode: "TIK-IX", nama: "Informatika Kelas IX" },
       { kode: "BIN-IX", nama: "Bahasa Indonesia IX" }
@@ -683,19 +660,10 @@
         options: ["RAM", "Central Processing Unit (CPU)", "Harddisk", "Power Supply"],
         answerKey: "Central Processing Unit (CPU)",
         kunci: "B"
-      },
-      {
-        id: 2,
-        mapel: "TIK-IX",
-        type: "pg_kompleks",
-        question: "Manakah di antara perangkat berikut yang merupakan perangkat keras penyimpanan sekunder (secondary storage)? (Pilih lebih dari satu)",
-        options: ["Harddisk Drive (HDD)", "Solid State Drive (SSD)", "Random Access Memory (RAM)", "Flashdisk"],
-        answerKey: ["Harddisk Drive (HDD)", "Solid State Drive (SSD)", "Flashdisk"],
-        kunci: "A, B, D"
       }
     ];
 
-    // State Aplikasi
+    // State Application
     let mapelList = JSON.parse(localStorage.getItem("dataMapelActive")) || defaultMapelList;
     let guruList = JSON.parse(localStorage.getItem("dataGuruActive")) || defaultGuruList;
     let dataSiswaList = JSON.parse(localStorage.getItem("dataSiswaActive")) || defaultSiswaList;
@@ -731,7 +699,7 @@
     }
 
     /* ==========================================
-          LOGIKA LOGIN & HAK AKSES PERAN (RBAC)
+          LOGIKA LOGIN & CONTROL PERAN (RBAC)
     =========================================== */
     function handleLogin(e) {
       e.preventDefault();
@@ -758,7 +726,6 @@
         document.getElementById('viewAdmin').classList.remove('hidden');
         document.getElementById('displayUserRole').textContent = `Pengguna: ${userFound.nama} (${currentUser.role.toUpperCase()})`;
 
-        // Terapkan Tampilan Sesuai Peran (RBAC)
         applyRoleAccessUI();
         return;
       }
@@ -771,19 +738,13 @@
 
         const tokenInput = document.getElementById('loginToken').value.trim().toUpperCase();
         if (tokenInput !== examSettings.token) {
-          alert("Token Ujian Salah atau Kadaluarsa!");
+          alert("Token Ujian Salah!");
           return;
         }
 
         const siswaFound = dataSiswaList.find(s => String(s.username).trim() === username && String(s.password).trim() === password);
         if (!siswaFound) {
           alert("Login Siswa Gagal! NISN atau Password salah.");
-          return;
-        }
-
-        const alreadyExamined = rekapHasilSemuaSiswa.find(r => r.username === (siswaFound.nama || siswaFound.username));
-        if (alreadyExamined) {
-          alert(`Anda sudah menyelesaikan ujian ini.`);
           return;
         }
 
@@ -807,28 +768,38 @@
       const panelAdminSettings = document.getElementById('panelAdminSettings');
       const panelAdminMaster = document.getElementById('panelAdminMaster');
       const panelGuruSelector = document.getElementById('panelGuruSelector');
+      const panelAdminSiswa = document.getElementById('panelAdminSiswa');
+      const panelHasilUjian = document.getElementById('panelHasilUjian');
 
       if (currentUser.role === 'admin') {
-        // Tampilkan Semua Panel Admin
+        // Tampilkan Semua Panel Khusus Admin
         panelAdminSettings.classList.remove('hidden');
         panelAdminMaster.classList.remove('hidden');
+        panelAdminSiswa.classList.remove('hidden');
         panelGuruSelector.classList.add('hidden');
+
+        // Layout Grid Normal
+        panelHasilUjian.style.gridColumn = "span 1";
 
         renderSettingsData();
         renderMapelTable();
         renderGuruTable();
+        renderTabelSiswa();
       } else {
-        // Mode Guru Ringkas: Sembunyikan Pengaturan Sistem & Master Admin
+        // Mode Guru Ringkas (Sembunyikan Pengaturan, Master Mapel/Guru, & Manajemen Siswa)
         panelAdminSettings.classList.add('hidden');
         panelAdminMaster.classList.add('hidden');
+        panelAdminSiswa.classList.add('hidden');
         panelGuruSelector.classList.remove('hidden');
+
+        // Hasil Ujian Mengisi Lebar Penuh (Full Width)
+        panelHasilUjian.style.gridColumn = "span 2";
 
         renderGuruMapelSelector();
       }
 
       renderMapelDropdowns();
       renderTabelBankSoal();
-      renderTabelSiswa();
       renderTabelHasil();
     }
 
@@ -850,7 +821,7 @@
     }
 
     /* ==========================================
-          PENGATURAN UJIAN & TOKEN (ADMIN)
+          PENGATURAN & MASTER SYSTEM (ADMIN)
     =========================================== */
     function renderSettingsData() {
       document.getElementById("displayActiveToken").textContent = examSettings.token;
@@ -874,16 +845,13 @@
       examSettings.duration = parseInt(document.getElementById("settingDuration").value) || 60;
       examSettings.status = document.getElementById("settingStatus").value;
       saveExamSettingsState();
-      alert("Pengaturan Ujian Berhasil Disimpan!");
+      alert("Pengaturan Ujian Disimpan!");
     }
 
     function saveExamSettingsState() {
       localStorage.setItem("examSettings", JSON.stringify(examSettings));
     }
 
-    /* ==========================================
-          MANAJEMEN MATA PELAJARAN (ADMIN)
-    =========================================== */
     function renderMapelTable() {
       const tbody = document.getElementById("tbodyMapel");
       tbody.innerHTML = "";
@@ -929,32 +897,12 @@
       renderMapelDropdowns();
     }
 
-    function editMapel(idx) {
-      const m = mapelList[idx];
-      document.getElementById("mapelIndex").value = idx;
-      document.getElementById("inputKodeMapel").value = m.kode;
-      document.getElementById("inputNamaMapel").value = m.nama;
-      document.getElementById("btnSubmitMapel").innerText = "Update Mapel";
-    }
-
-    function deleteMapel(idx) {
-      if (confirm(`Hapus mapel ${mapelList[idx].nama}?`)) {
-        mapelList.splice(idx, 1);
-        localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
-        renderMapelTable();
-        renderMapelDropdowns();
-      }
-    }
-
     function resetFormMapel() {
       document.getElementById("mapelIndex").value = "";
       document.getElementById("formMapel").reset();
       document.getElementById("btnSubmitMapel").innerText = "Simpan Mapel";
     }
 
-    /* ==========================================
-          MANAJEMEN AKUN GURU (ADMIN)
-    =========================================== */
     function renderGuruTable() {
       const tbody = document.getElementById("tbodyGuru");
       tbody.innerHTML = "";
@@ -989,24 +937,6 @@
       renderGuruTable();
     }
 
-    function editGuru(idx) {
-      const g = guruList[idx];
-      document.getElementById("guruIndex").value = idx;
-      document.getElementById("inputGuruUser").value = g.username;
-      document.getElementById("inputGuruPass").value = g.password;
-      document.getElementById("inputGuruNama").value = g.nama;
-      document.getElementById("inputGuruMapel").value = g.mapel || "";
-      document.getElementById("btnSubmitGuru").innerText = "Update Guru";
-    }
-
-    function deleteGuru(idx) {
-      if (confirm(`Hapus akun guru ${guruList[idx].nama}?`)) {
-        guruList.splice(idx, 1);
-        localStorage.setItem("dataGuruActive", JSON.stringify(guruList));
-        renderGuruTable();
-      }
-    }
-
     function resetFormGuru() {
       document.getElementById("guruIndex").value = "";
       document.getElementById("formGuru").reset();
@@ -1014,7 +944,7 @@
     }
 
     /* ==========================================
-          BANK SOAL & MANAGEMENT SISWA
+          BANK SOAL & HASIL UJIAN
     =========================================== */
     function renderTabelBankSoal() {
       const tbody = document.getElementById("tabelBankSoalBody");
@@ -1052,20 +982,6 @@
         `;
         tbody.appendChild(tr);
       });
-    }
-
-    function handleTypeChange() {
-      const type = document.getElementById("inputTypeSoal").value;
-      const secPG = document.getElementById("sectionPG");
-      const secMenjodohkan = document.getElementById("sectionMenjodohkan");
-
-      if (type === "pg_biasa" || type === "pg_kompleks") {
-        secPG.classList.remove("hidden");
-        secMenjodohkan.classList.add("hidden");
-      } else {
-        secPG.classList.add("hidden");
-        secMenjodohkan.classList.remove("hidden");
-      }
     }
 
     function saveSoalManual(e) {
@@ -1119,6 +1035,7 @@
 
     function renderTabelSiswa() {
       const tbody = document.getElementById("tbodySiswa");
+      if (!tbody) return;
       tbody.innerHTML = "";
       dataSiswaList.forEach((siswa, idx) => {
         tbody.innerHTML += `
