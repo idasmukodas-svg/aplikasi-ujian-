@@ -92,7 +92,7 @@
       border-color: #2563eb;
     }
 
-    /* 2. ADMIN PANEL VIEW */
+    /* 2. ADMIN & GURU PANEL VIEW */
     .navbar {
       background: #1e293b;
       color: #fff;
@@ -186,17 +186,18 @@
       color: #334155;
       margin-bottom: 12px;
     }
-    
-    .checkbox-group {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      padding: 8px 0;
-    }
-    .checkbox-group label {
-      margin: 0;
-      font-weight: normal;
-      cursor: pointer;
+
+    .token-display {
+      font-family: monospace;
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px dashed #3b82f6;
+      display: inline-block;
     }
   </style>
 </head>
@@ -211,9 +212,9 @@
       <form id="formLogin" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label>Role Pengguna</label>
-          <select id="loginRole">
-            <option value="siswa">Siswa</option>
+          <select id="loginRole" onchange="toggleTokenInput()">
             <option value="guru">Guru / Admin</option>
+            <option value="siswa">Siswa</option>
           </select>
         </div>
         <div class="form-group">
@@ -224,13 +225,17 @@
           <label>Password</label>
           <input type="password" id="loginPassword" placeholder="Masukkan password" required>
         </div>
+        <div class="form-group hidden" id="groupTokenSiswa">
+          <label>Token Ujian (Dapatkan dari Guru)</label>
+          <input type="text" id="loginToken" placeholder="Masukkan token ujian" style="text-transform: uppercase;">
+        </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Masuk Aplikasi</button>
       </form>
     </div>
   </div>
 
   <!-- ==========================================
-        VIEW 2: PANEL ADMIN / GURU
+        VIEW 2: PANEL UTAMA (ADMIN / GURU)
   =========================================== -->
   <div id="viewAdmin" class="hidden">
     <div class="navbar">
@@ -243,8 +248,59 @@
     
     <div class="admin-container">
 
-      <!-- MODUL MASTER: MATA PELAJARAN & AKUN GURU -->
-      <div class="grid-2">
+      <!-- MODUL SELEKSI MAPEL & KELAS GURU (KHUSUS ROLE GURU) -->
+      <div id="panelGuruSelector" class="card hidden" style="border-left: 5px solid #2563eb; background: #eff6ff;">
+        <h3>Mata Pelajaran & Kelas Diampu</h3>
+        <p style="font-size: 13px; color: #475569; margin-bottom: 12px;">Pilih mata pelajaran yang ingin Anda kelola saat ini untuk memfilter bank soal dan hasil ujian.</p>
+        <div class="grid-2">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Pilih Mata Pelajaran Aktif</label>
+            <select id="selectGuruMapelAktif" onchange="handleGuruMapelChange()">
+              <!-- Options diisi JS -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Filter Kelas (Opsional)</label>
+            <input type="text" id="inputGuruFilterKelas" placeholder="Misal: IX-A" oninput="renderTabelHasil()">
+          </div>
+        </div>
+      </div>
+
+      <!-- MODUL PENGATURAN UJIAN & TOKEN (KHUSUS ROLE ADMIN) -->
+      <div id="panelAdminSettings" class="card hidden" style="border-left: 5px solid #2563eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h3>Pengaturan Ujian & Token Masuk</h3>
+            <p style="font-size: 13px; color: #64748b;">Kelola token akses, durasi pengerjaan, dan status ujian siswa secara terpusat.</p>
+          </div>
+          <div>
+            <span class="token-display" id="displayActiveToken">------</span>
+            <button class="btn btn-warning" style="margin-left: 10px;" onclick="generateNewToken()">Acak Token</button>
+          </div>
+        </div>
+
+        <form id="formExamSettings" onsubmit="saveExamSettings(event)">
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Durasi Ujian (Menit)</label>
+              <input type="number" id="settingDuration" min="1" max="180" value="60" required>
+            </div>
+            <div class="form-group">
+              <label>Status Ujian</label>
+              <select id="settingStatus">
+                <option value="active">Aktif (Siswa Boleh Masuk)</option>
+                <option value="disabled">Ditutup (Siswa Ditolak)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-success">Simpan Pengaturan Ujian</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- MODUL MASTER: MATA PELAJARAN & AKUN GURU (KHUSUS ROLE ADMIN) -->
+      <div id="panelAdminMaster" class="grid-2 hidden">
         <!-- 1. MANAJEMEN MATA PELAJARAN -->
         <div class="card">
           <h3>Manajemen Mata Pelajaran</h3>
@@ -333,7 +389,7 @@
         </div>
       </div>
 
-      <!-- FITUR MANAJEMEN BANK SOAL UJIAN -->
+      <!-- FITUR MANAJEMEN BANK SOAL UJIAN (BISA DIAKSES GURU & ADMIN) -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
@@ -414,7 +470,7 @@
               <!-- Kunci PG Kompleks -->
               <div id="kunciPGKompleksGroup" class="form-group hidden">
                 <label>Kunci Jawaban (Pilih lebih dari 1):</label>
-                <div class="checkbox-group">
+                <div style="display: flex; gap: 16px; align-items: center; padding: 8px 0;">
                   <label><input type="checkbox" id="kunciKompleksA" value="A"> Opsi A</label>
                   <label><input type="checkbox" id="kunciKompleksB" value="B"> Opsi B</label>
                   <label><input type="checkbox" id="kunciKompleksC" value="C"> Opsi C</label>
@@ -535,17 +591,22 @@
           </div>
         </div>
 
-        <!-- HASIL UJIAN & EKSPOR DATA -->
+        <!-- HASIL UJIAN & RESET SISWA -->
         <div class="card">
           <h3>Hasil Ujian & Ekspor Data</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Unduh rekapitulasi nilai akhir seluruh siswa ke format Excel.</p>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Unduh rekapitulasi nilai akhir atau reset sesi siswa terkendala.</p>
           <button class="btn btn-primary" onclick="exportHasilToExcel()">Ekspor Rekap Hasil Ujian (.xlsx)</button>
           <table id="tableHasil" style="margin-top: 16px;">
             <thead>
-              <tr><th>Nama Siswa</th><th>Nilai Akhir</th><th>Status</th></tr>
+              <tr>
+                <th>Nama Siswa</th>
+                <th>Nilai Akhir</th>
+                <th>Status</th>
+                <th style="text-align: center; width: 90px;">Aksi</th>
+              </tr>
             </thead>
             <tbody id="tbodyHasil">
-              <tr><td colspan="3" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>
+              <tr><td colspan="4" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>
             </tbody>
           </table>
         </div>
@@ -561,11 +622,11 @@
     <div class="exam-header">
       <div>
         <h4 id="studentNameDisplay">Siswa: -</h4>
-        <small id="examTitleDisplay">Mata Pelajaran: Informatics TKA</small>
+        <small id="examTitleDisplay">Mata Pelajaran: Informatika TKA</small>
       </div>
       <div>
         <span style="font-size: 14px; font-weight: bold;">Sisa Waktu: </span>
-        <span id="timerDisplay" style="color: #dc2626; font-weight: bold;">60:00</span>
+        <span id="timerDisplay" style="color: #dc2626; font-weight: bold;">--:--</span>
       </div>
     </div>
 
@@ -597,15 +658,15 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Default Master
+    // Data Default System
     const defaultMapelList = [
       { kode: "TIK-IX", nama: "Informatika Kelas IX" },
       { kode: "BIN-IX", nama: "Bahasa Indonesia IX" }
     ];
 
     const defaultGuruList = [
-      { username: "admin", password: "adminpassword", nama: "Administrator Utama", mapel: "TIK-IX" },
-      { username: "idas_guru", password: "123", nama: "Idas, S.Pd.", mapel: "TIK-IX" }
+      { username: "admin", password: "adminpassword", nama: "Administrator Utama", mapel: "TIK-IX", role: "admin" },
+      { username: "idas, S.Pd.", password: "123", nama: "Idas Mukodas, S.Pd.", mapel: "TIK-IX", role: "guru" }
     ];
 
     const defaultSiswaList = [
@@ -631,16 +692,6 @@
         options: ["Harddisk Drive (HDD)", "Solid State Drive (SSD)", "Random Access Memory (RAM)", "Flashdisk"],
         answerKey: ["Harddisk Drive (HDD)", "Solid State Drive (SSD)", "Flashdisk"],
         kunci: "A, B, D"
-      },
-      {
-        id: 3,
-        mapel: "TIK-IX",
-        type: "menjodohkan",
-        question: "Jodohkanlah perangkat komputer di sebelah kiri dengan fungsinya di sebelah kanan!",
-        leftItems: ["CPU", "RAM", "SSD"],
-        rightItems: ["Penyimpanan Permanen", "Pemroses Utama", "Memori Sementara"],
-        answerKey: { 0: 1, 1: 2, 2: 0 },
-        kunci: "0->1, 1->2, 2->0"
       }
     ];
 
@@ -649,23 +700,39 @@
     let guruList = JSON.parse(localStorage.getItem("dataGuruActive")) || defaultGuruList;
     let dataSiswaList = JSON.parse(localStorage.getItem("dataSiswaActive")) || defaultSiswaList;
     let examQuestions = JSON.parse(localStorage.getItem("bankSoalUjian")) || defaultQuestions;
+    let rekapHasilSemuaSiswa = JSON.parse(localStorage.getItem("rekapHasilSiswa")) || [];
+    
+    let examSettings = JSON.parse(localStorage.getItem("examSettings")) || {
+      token: "UAS2026",
+      duration: 60,
+      status: "active"
+    };
 
     let currentUser = null;
     let currentQuestionIndex = 0;
     let studentAnswers = {};
-    let rekapHasilSemuaSiswa = [];
     let violationCount = 0;
     const MAX_VIOLATIONS = 3;
+    let timerInterval = null;
+    let remainingTimeSeconds = 0;
 
     document.addEventListener("DOMContentLoaded", () => {
-      renderMapelTable();
-      renderGuruTable();
       renderMapelDropdowns();
-      renderTabelBankSoal();
-      renderTabelSiswa();
     });
 
-    // Handle Login Role Guru / Admin / Siswa
+    function toggleTokenInput() {
+      const role = document.getElementById("loginRole").value;
+      const groupToken = document.getElementById("groupTokenSiswa");
+      if (role === "siswa") {
+        groupToken.classList.remove("hidden");
+      } else {
+        groupToken.classList.add("hidden");
+      }
+    }
+
+    /* ==========================================
+          LOGIKA LOGIN & HAK AKSES PERAN (RBAC)
+    =========================================== */
     function handleLogin(e) {
       e.preventDefault();
       const role = document.getElementById('loginRole').value;
@@ -673,35 +740,50 @@
       const password = document.getElementById('loginPassword').value.trim();
 
       if (role === 'guru') {
-        const guruFound = guruList.find(g => g.username === username && g.password === password);
-        if (!guruFound) {
-          alert("Login Guru/Admin Gagal! Username atau password salah.");
+        const userFound = guruList.find(g => g.username === username && g.password === password);
+        if (!userFound) {
+          alert("Login Gagal! Username atau password salah.");
           return;
         }
 
-        currentUser = { username: guruFound.username, nama: guruFound.nama, role: 'guru', mapel: guruFound.mapel };
+        const isUserAdmin = userFound.role === 'admin' || userFound.username === 'admin';
+        currentUser = { 
+          username: userFound.username, 
+          nama: userFound.nama, 
+          role: isUserAdmin ? 'admin' : 'guru', 
+          mapel: userFound.mapel 
+        };
+
         document.getElementById('viewLogin').classList.add('hidden');
         document.getElementById('viewAdmin').classList.remove('hidden');
-        document.getElementById('displayUserRole').textContent = `Pengguna: ${guruFound.nama} (${guruFound.mapel || 'Admin'})`;
+        document.getElementById('displayUserRole').textContent = `Pengguna: ${userFound.nama} (${currentUser.role.toUpperCase()})`;
 
-        renderMapelTable();
-        renderGuruTable();
-        renderMapelDropdowns();
-        renderTabelBankSoal();
-        renderTabelSiswa();
+        // Terapkan Tampilan Sesuai Peran (RBAC)
+        applyRoleAccessUI();
         return;
       }
 
       if (role === 'siswa') {
-        const siswaFound = dataSiswaList.find(s => String(s.username).trim() === username && String(s.password).trim() === password);
-
-        if (!siswaFound) {
-          alert("Login Siswa Gagal! NISN/Username atau Password tidak terdaftar.");
+        if (examSettings.status !== "active") {
+          alert("Sesi Ujian Ditutup oleh Pengawas/Guru!");
           return;
         }
 
-        if (examQuestions.length === 0) {
-          alert("Soal ujian belum tersedia! Silakan hubungi guru/admin.");
+        const tokenInput = document.getElementById('loginToken').value.trim().toUpperCase();
+        if (tokenInput !== examSettings.token) {
+          alert("Token Ujian Salah atau Kadaluarsa!");
+          return;
+        }
+
+        const siswaFound = dataSiswaList.find(s => String(s.username).trim() === username && String(s.password).trim() === password);
+        if (!siswaFound) {
+          alert("Login Siswa Gagal! NISN atau Password salah.");
+          return;
+        }
+
+        const alreadyExamined = rekapHasilSemuaSiswa.find(r => r.username === (siswaFound.nama || siswaFound.username));
+        if (alreadyExamined) {
+          alert(`Anda sudah menyelesaikan ujian ini.`);
           return;
         }
 
@@ -714,22 +796,97 @@
         studentAnswers = {};
         violationCount = 0;
 
+        startExamTimer(examSettings.duration);
         renderQuestion(currentQuestionIndex);
         requestExamFullscreen();
         initSecurityListeners();
       }
     }
 
+    function applyRoleAccessUI() {
+      const panelAdminSettings = document.getElementById('panelAdminSettings');
+      const panelAdminMaster = document.getElementById('panelAdminMaster');
+      const panelGuruSelector = document.getElementById('panelGuruSelector');
+
+      if (currentUser.role === 'admin') {
+        // Tampilkan Semua Panel Admin
+        panelAdminSettings.classList.remove('hidden');
+        panelAdminMaster.classList.remove('hidden');
+        panelGuruSelector.classList.add('hidden');
+
+        renderSettingsData();
+        renderMapelTable();
+        renderGuruTable();
+      } else {
+        // Mode Guru Ringkas: Sembunyikan Pengaturan Sistem & Master Admin
+        panelAdminSettings.classList.add('hidden');
+        panelAdminMaster.classList.add('hidden');
+        panelGuruSelector.classList.remove('hidden');
+
+        renderGuruMapelSelector();
+      }
+
+      renderMapelDropdowns();
+      renderTabelBankSoal();
+      renderTabelSiswa();
+      renderTabelHasil();
+    }
+
+    function renderGuruMapelSelector() {
+      const selectMapel = document.getElementById('selectGuruMapelAktif');
+      let html = '';
+      mapelList.forEach(m => {
+        const selected = m.kode === currentUser.mapel ? 'selected' : '';
+        html += `<option value="${m.kode}" ${selected}>${m.nama} (${m.kode})</option>`;
+      });
+      selectMapel.innerHTML = html;
+      handleGuruMapelChange();
+    }
+
+    function handleGuruMapelChange() {
+      const selectedMapel = document.getElementById('selectGuruMapelAktif').value;
+      document.getElementById('inputSoalMapel').value = selectedMapel;
+      renderTabelBankSoal();
+    }
+
     /* ==========================================
-          MANAJEMEN MATA PELAJARAN (MAPEL)
+          PENGATURAN UJIAN & TOKEN (ADMIN)
+    =========================================== */
+    function renderSettingsData() {
+      document.getElementById("displayActiveToken").textContent = examSettings.token;
+      document.getElementById("settingDuration").value = examSettings.duration;
+      document.getElementById("settingStatus").value = examSettings.status;
+    }
+
+    function generateNewToken() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let newToken = "";
+      for (let i = 0; i < 6; i++) {
+        newToken += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      examSettings.token = newToken;
+      saveExamSettingsState();
+      renderSettingsData();
+    }
+
+    function saveExamSettings(e) {
+      e.preventDefault();
+      examSettings.duration = parseInt(document.getElementById("settingDuration").value) || 60;
+      examSettings.status = document.getElementById("settingStatus").value;
+      saveExamSettingsState();
+      alert("Pengaturan Ujian Berhasil Disimpan!");
+    }
+
+    function saveExamSettingsState() {
+      localStorage.setItem("examSettings", JSON.stringify(examSettings));
+    }
+
+    /* ==========================================
+          MANAJEMEN MATA PELAJARAN (ADMIN)
     =========================================== */
     function renderMapelTable() {
       const tbody = document.getElementById("tbodyMapel");
       tbody.innerHTML = "";
-      if (mapelList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Belum ada mapel.</td></tr>`;
-        return;
-      }
       mapelList.forEach((m, idx) => {
         tbody.innerHTML += `
           <tr>
@@ -763,11 +920,8 @@
       const nama = document.getElementById("inputNamaMapel").value.trim();
 
       const mapelObj = { kode, nama };
-      if (idx === "") {
-        mapelList.push(mapelObj);
-      } else {
-        mapelList[idx] = mapelObj;
-      }
+      if (idx === "") mapelList.push(mapelObj);
+      else mapelList[idx] = mapelObj;
 
       localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
       resetFormMapel();
@@ -799,15 +953,11 @@
     }
 
     /* ==========================================
-          MANAJEMEN AKUN GURU
+          MANAJEMEN AKUN GURU (ADMIN)
     =========================================== */
     function renderGuruTable() {
       const tbody = document.getElementById("tbodyGuru");
       tbody.innerHTML = "";
-      if (guruList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Belum ada data guru.</td></tr>`;
-        return;
-      }
       guruList.forEach((g, idx) => {
         tbody.innerHTML += `
           <tr>
@@ -830,12 +980,9 @@
       const nama = document.getElementById("inputGuruNama").value.trim();
       const mapel = document.getElementById("inputGuruMapel").value;
 
-      const guruObj = { username, password, nama, mapel };
-      if (idx === "") {
-        guruList.push(guruObj);
-      } else {
-        guruList[idx] = guruObj;
-      }
+      const guruObj = { username, password, nama, mapel, role: 'guru' };
+      if (idx === "") guruList.push(guruObj);
+      else guruList[idx] = guruObj;
 
       localStorage.setItem("dataGuruActive", JSON.stringify(guruList));
       resetFormGuru();
@@ -867,183 +1014,28 @@
     }
 
     /* ==========================================
-          MANAJEMEN AKUN SISWA (CRUD & IMPORT)
+          BANK SOAL & MANAGEMENT SISWA
     =========================================== */
-    function renderTabelSiswa() {
-      const tbody = document.getElementById("tbodySiswa");
-      tbody.innerHTML = "";
-
-      if (dataSiswaList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 12px;">Belum ada akun siswa.</td></tr>`;
-        return;
-      }
-
-      dataSiswaList.forEach((siswa, idx) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><strong>${siswa.username}</strong></td>
-          <td>${siswa.password}</td>
-          <td>${siswa.nama}</td>
-          <td>${siswa.kelas}</td>
-          <td style="text-align: center;">
-            <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="editSiswa(${idx})">Edit</button>
-            <button class="btn btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteSiswa(${idx})">Hapus</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function saveSiswaManual(e) {
-      e.preventDefault();
-      const index = document.getElementById("siswaIndex").value;
-      const user = document.getElementById("inputSiswaUser").value.trim();
-      const pass = document.getElementById("inputSiswaPass").value.trim();
-      const nama = document.getElementById("inputSiswaNama").value.trim();
-      const kelas = document.getElementById("inputSiswaKelas").value.trim();
-
-      const newSiswa = { username: user, password: pass, nama: nama, kelas: kelas };
-
-      if (index === "") {
-        if (dataSiswaList.some(s => String(s.username).trim() === user)) {
-          alert("Username/NISN sudah digunakan!");
-          return;
-        }
-        dataSiswaList.push(newSiswa);
-      } else {
-        dataSiswaList[index] = newSiswa;
-      }
-
-      saveSiswaToStorage();
-      resetFormSiswa();
-      renderTabelSiswa();
-    }
-
-    function editSiswa(idx) {
-      const s = dataSiswaList[idx];
-      document.getElementById("siswaIndex").value = idx;
-      document.getElementById("inputSiswaUser").value = s.username;
-      document.getElementById("inputSiswaPass").value = s.password;
-      document.getElementById("inputSiswaNama").value = s.nama;
-      document.getElementById("inputSiswaKelas").value = s.kelas;
-
-      document.getElementById("siswaFormTitle").innerText = "Edit Akun Siswa";
-      document.getElementById("btnSubmitSiswa").innerText = "Update Siswa";
-    }
-
-    function deleteSiswa(idx) {
-      if (confirm(`Hapus akun siswa ${dataSiswaList[idx].nama}?`)) {
-        dataSiswaList.splice(idx, 1);
-        saveSiswaToStorage();
-        renderTabelSiswa();
-      }
-    }
-
-    function resetFormSiswa() {
-      document.getElementById("siswaIndex").value = "";
-      document.getElementById("siswaForm").reset();
-      document.getElementById("siswaFormTitle").innerText = "Tambah Siswa Manual";
-      document.getElementById("btnSubmitSiswa").innerText = "Simpan Siswa";
-    }
-
-    function saveSiswaToStorage() {
-      localStorage.setItem("dataSiswaActive", JSON.stringify(dataSiswaList));
-    }
-
-    function exportSiswaTemplate() {
-      const template = [
-        ["Username", "Password", "Nama_Siswa", "Kelas"],
-        ["1001", "123", "Ahmad Rivaldi", "IX-A"],
-        ["1002", "123", "Siti Rahmawati", "IX-A"]
-      ];
-      const worksheet = XLSX.utils.aoa_to_sheet(template);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-      XLSX.writeFile(workbook, "Template_Import_Siswa.xlsx");
-    }
-
-    function importSiswaFromExcel(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-        let countImport = 0;
-        jsonData.forEach(row => {
-          const u = String(row["Username"] || row["NISN"] || "").trim();
-          const p = String(row["Password"] || "").trim();
-          const n = String(row["Nama_Siswa"] || row["Nama"] || "").trim();
-          const k = String(row["Kelas"] || "").trim();
-
-          if (u && p) {
-            const existingIdx = dataSiswaList.findIndex(s => String(s.username).trim() === u);
-            const objSiswa = { username: u, password: p, nama: n || u, kelas: k || "-" };
-
-            if (existingIdx >= 0) {
-              dataSiswaList[existingIdx] = objSiswa;
-            } else {
-              dataSiswaList.push(objSiswa);
-            }
-            countImport++;
-          }
-        });
-
-        saveSiswaToStorage();
-        renderTabelSiswa();
-        alert(`Berhasil mengimpor ${countImport} data akun siswa!`);
-        event.target.value = "";
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    /* ==========================================
-          MANAJEMEN BANK SOAL UJIAN
-    =========================================== */
-    function handleTypeChange() {
-      const type = document.getElementById("inputTypeSoal").value;
-      const secPG = document.getElementById("sectionPG");
-      const secMenjodohkan = document.getElementById("sectionMenjodohkan");
-      const kunciPGBiasa = document.getElementById("kunciPGBiasaGroup");
-      const kunciPGKompleks = document.getElementById("kunciPGKompleksGroup");
-
-      if (type === "pg_biasa") {
-        secPG.classList.remove("hidden");
-        secMenjodohkan.classList.add("hidden");
-        kunciPGBiasa.classList.remove("hidden");
-        kunciPGKompleks.classList.add("hidden");
-      } else if (type === "pg_kompleks") {
-        secPG.classList.remove("hidden");
-        secMenjodohkan.classList.add("hidden");
-        kunciPGBiasa.classList.add("hidden");
-        kunciPGKompleks.classList.remove("hidden");
-      } else if (type === "menjodohkan") {
-        secPG.classList.add("hidden");
-        secMenjodohkan.classList.remove("hidden");
-      }
-    }
-
     function renderTabelBankSoal() {
       const tbody = document.getElementById("tabelBankSoalBody");
       tbody.innerHTML = "";
 
-      if (examQuestions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">Belum ada soal. Silakan impor dari Excel atau tambah baru.</td></tr>`;
+      let filteredQuestions = examQuestions;
+      if (currentUser?.role === 'guru') {
+        const activeMapel = document.getElementById('selectGuruMapelAktif').value;
+        filteredQuestions = examQuestions.filter(q => q.mapel === activeMapel);
+      }
+
+      if (filteredQuestions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">Belum ada soal untuk mata pelajaran ini.</td></tr>`;
         return;
       }
 
-      examQuestions.forEach((item, idx) => {
+      filteredQuestions.forEach((item, idx) => {
         const tr = document.createElement("tr");
-        
         let detailText = "";
         if (item.type === "pg_biasa" || item.type === "pg_kompleks") {
           detailText = `<b>A:</b> ${item.options[0]} | <b>B:</b> ${item.options[1]}<br><b>C:</b> ${item.options[2]} | <b>D:</b> ${item.options[3]}`;
-        } else if (item.type === "menjodohkan") {
-          detailText = `<b>Kiri:</b> ${item.leftItems ? item.leftItems.join(', ') : ''}<br><b>Kanan:</b> ${item.rightItems ? item.rightItems.join(', ') : ''}`;
         }
 
         tr.innerHTML = `
@@ -1062,9 +1054,22 @@
       });
     }
 
+    function handleTypeChange() {
+      const type = document.getElementById("inputTypeSoal").value;
+      const secPG = document.getElementById("sectionPG");
+      const secMenjodohkan = document.getElementById("sectionMenjodohkan");
+
+      if (type === "pg_biasa" || type === "pg_kompleks") {
+        secPG.classList.remove("hidden");
+        secMenjodohkan.classList.add("hidden");
+      } else {
+        secPG.classList.add("hidden");
+        secMenjodohkan.classList.remove("hidden");
+      }
+    }
+
     function saveSoalManual(e) {
       e.preventDefault();
-
       const id = document.getElementById("soalId").value;
       const mapel = document.getElementById("inputSoalMapel").value;
       const type = document.getElementById("inputTypeSoal").value;
@@ -1092,213 +1097,73 @@
         soalObj.options = [opsiA, opsiB, opsiC, opsiD];
         soalObj.answerKey = kunciVal;
         soalObj.kunci = kunciChar;
-
-      } else if (type === "pg_kompleks") {
-        const opsiA = document.getElementById("inputOpsiA").value;
-        const opsiB = document.getElementById("inputOpsiB").value;
-        const opsiC = document.getElementById("inputOpsiC").value;
-        const opsiD = document.getElementById("inputOpsiD").value;
-
-        const isA = document.getElementById("kunciKompleksA").checked;
-        const isB = document.getElementById("kunciKompleksB").checked;
-        const isC = document.getElementById("kunciKompleksC").checked;
-        const isD = document.getElementById("kunciKompleksD").checked;
-
-        let keysArray = [];
-        let keysChar = [];
-        if (isA) { keysArray.push(opsiA); keysChar.push("A"); }
-        if (isB) { keysArray.push(opsiB); keysChar.push("B"); }
-        if (isC) { keysArray.push(opsiC); keysChar.push("C"); }
-        if (isD) { keysArray.push(opsiD); keysChar.push("D"); }
-
-        soalObj.options = [opsiA, opsiB, opsiC, opsiD];
-        soalObj.answerKey = keysArray;
-        soalObj.kunci = keysChar.join(", ");
-
-      } else if (type === "menjodohkan") {
-        const leftArr = document.getElementById("inputLeftItems").value.split(",").map(s => s.trim());
-        const rightArr = document.getElementById("inputRightItems").value.split(",").map(s => s.trim());
-        const jsonKunci = document.getElementById("inputKunciMenjodohkan").value;
-
-        soalObj.leftItems = leftArr;
-        soalObj.rightItems = rightArr;
-        try {
-          soalObj.answerKey = JSON.parse(jsonKunci);
-        } catch(err) {
-          soalObj.answerKey = {0:0};
-        }
-        soalObj.kunci = jsonKunci;
       }
 
-      if (id === "") {
-        examQuestions.push(soalObj);
-      } else {
-        examQuestions[id] = soalObj;
-      }
+      if (id === "") examQuestions.push(soalObj);
+      else examQuestions[id] = soalObj;
 
-      saveBankSoalToStorage();
+      localStorage.setItem("bankSoalUjian", JSON.stringify(examQuestions));
       resetFormSoal();
       renderTabelBankSoal();
-    }
-
-    function editSoal(index) {
-      const item = examQuestions[index];
-      document.getElementById("soalId").value = index;
-      document.getElementById("inputSoalMapel").value = item.mapel || "";
-      document.getElementById("inputTypeSoal").value = item.type || "pg_biasa";
-      handleTypeChange();
-
-      document.getElementById("inputPertanyaan").value = item.question || item.pertanyaan;
-
-      if (item.type === "pg_biasa" || item.type === "pg_kompleks") {
-        document.getElementById("inputOpsiA").value = item.options ? item.options[0] : "";
-        document.getElementById("inputOpsiB").value = item.options ? item.options[1] : "";
-        document.getElementById("inputOpsiC").value = item.options ? item.options[2] : "";
-        document.getElementById("inputOpsiD").value = item.options ? item.options[3] : "";
-
-        if (item.type === "pg_biasa") {
-          document.getElementById("inputKunciPG").value = item.kunci || "A";
-        } else {
-          const kStr = item.kunci || "";
-          document.getElementById("kunciKompleksA").checked = kStr.includes("A");
-          document.getElementById("kunciKompleksB").checked = kStr.includes("B");
-          document.getElementById("kunciKompleksC").checked = kStr.includes("C");
-          document.getElementById("kunciKompleksD").checked = kStr.includes("D");
-        }
-      } else if (item.type === "menjodohkan") {
-        document.getElementById("inputLeftItems").value = item.leftItems ? item.leftItems.join(", ") : "";
-        document.getElementById("inputRightItems").value = item.rightItems ? item.rightItems.join(", ") : "";
-        document.getElementById("inputKunciMenjodohkan").value = typeof item.answerKey === 'object' ? JSON.stringify(item.answerKey) : item.kunci;
-      }
-
-      document.getElementById("formTitle").innerText = `Edit Soal No. ${index + 1}`;
-      document.getElementById("btnSubmitSoal").innerText = "Update Soal";
-    }
-
-    function deleteSoal(index) {
-      if (confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
-        examQuestions.splice(index, 1);
-        saveBankSoalToStorage();
-        renderTabelBankSoal();
-      }
     }
 
     function resetFormSoal() {
       document.getElementById("soalId").value = "";
       document.getElementById("soalForm").reset();
-      handleTypeChange();
+      if (currentUser?.role === 'guru') {
+        document.getElementById('inputSoalMapel').value = document.getElementById('selectGuruMapelAktif').value;
+      }
       document.getElementById("formTitle").innerText = "Tambah Soal Baru";
       document.getElementById("btnSubmitSoal").innerText = "Simpan Soal";
     }
 
-    function exportSoalToExcel() {
-      if (examQuestions.length === 0) {
-        alert("Belum ada data soal untuk diekspor!");
+    function renderTabelSiswa() {
+      const tbody = document.getElementById("tbodySiswa");
+      tbody.innerHTML = "";
+      dataSiswaList.forEach((siswa, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${siswa.username}</strong></td>
+            <td>${siswa.password}</td>
+            <td>${siswa.nama}</td>
+            <td>${siswa.kelas}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="editSiswa(${idx})">Edit</button>
+              <button class="btn btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteSiswa(${idx})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function renderTabelHasil() {
+      const tbody = document.getElementById('tbodyHasil');
+      if (rekapHasilSemuaSiswa.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>`;
         return;
       }
 
-      const exportData = examQuestions.map((item, idx) => ({
-        "No": idx + 1,
-        "Kode_Mapel": item.mapel || "TIK-IX",
-        "Tipe": item.type || "pg_biasa",
-        "Pertanyaan": item.question || item.pertanyaan,
-        "Opsi A / Item Kiri": item.options ? item.options[0] : (item.leftItems ? item.leftItems.join(",") : ""),
-        "Opsi B / Item Kanan": item.options ? item.options[1] : (item.rightItems ? item.rightItems.join(",") : ""),
-        "Opsi C": item.options ? item.options[2] : "",
-        "Opsi D": item.options ? item.options[3] : "",
-        "Kunci": item.kunci || ""
-      }));
-
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Bank Soal");
-      XLSX.writeFile(workbook, "Bank_Soal_Multi_Bentuk.xlsx");
+      tbody.innerHTML = rekapHasilSemuaSiswa.map(item => `
+        <tr>
+          <td><strong>${item.username}</strong></td>
+          <td><strong>${item.score}</strong></td>
+          <td><span style="color:${item.status === 'Lulus' ? 'green' : 'red'}; font-weight:bold;">${item.status}</span></td>
+          <td style="text-align: center;">
+            <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="resetHasilSiswa('${item.username}')">Reset</button>
+          </td>
+        </tr>
+      `).join('');
     }
 
-    function importSoalFromExcel(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-        const newQuestions = jsonData.map((row, idx) => {
-          const mapel = row["Kode_Mapel"] || "TIK-IX";
-          const type = row["Tipe"] || "pg_biasa";
-          const question = row["Pertanyaan"] || "";
-          
-          if (type === "pg_biasa" || type === "pg_kompleks") {
-            const opsiA = String(row["Opsi A / Item Kiri"] || row["Opsi A"] || "");
-            const opsiB = String(row["Opsi B / Item Kanan"] || row["Opsi B"] || "");
-            const opsiC = String(row["Opsi C"] || "");
-            const opsiD = String(row["Opsi D"] || "");
-            const kunciStr = String(row["Kunci"] || "A");
-
-            if (type === "pg_biasa") {
-              let kunciVal = opsiA;
-              if (kunciStr === "B") kunciVal = opsiB;
-              if (kunciStr === "C") kunciVal = opsiC;
-              if (kunciStr === "D") kunciVal = opsiD;
-
-              return { id: Date.now() + idx, mapel, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: kunciVal, kunci: kunciStr };
-            } else {
-              let keysArr = [];
-              if (kunciStr.includes("A")) keysArr.push(opsiA);
-              if (kunciStr.includes("B")) keysArr.push(opsiB);
-              if (kunciStr.includes("C")) keysArr.push(opsiC);
-              if (kunciStr.includes("D")) keysArr.push(opsiD);
-
-              return { id: Date.now() + idx, mapel, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: keysArr, kunci: kunciStr };
-            }
-          } else if (type === "menjodohkan") {
-            const leftItems = String(row["Opsi A / Item Kiri"] || "").split(",");
-            const rightItems = String(row["Opsi B / Item Kanan"] || "").split(",");
-            const kunciStr = String(row["Kunci"] || "{}");
-            let answerKey = {};
-            try { answerKey = JSON.parse(kunciStr); } catch(e){}
-
-            return { id: Date.now() + idx, mapel, type, question, leftItems, rightItems, answerKey, kunci: kunciStr };
-          }
-        });
-
-        examQuestions = examQuestions.concat(newQuestions);
-        saveBankSoalToStorage();
-        renderTabelBankSoal();
-        alert(`Berhasil mengimpor ${newQuestions.length} soal!`);
-        event.target.value = "";
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function downloadTemplateSoal() {
-      const templateData = [
-        { "No": 1, "Kode_Mapel": "TIK-IX", "Tipe": "pg_biasa", "Pertanyaan": "Otak pemrosesan data adalah?", "Opsi A / Item Kiri": "RAM", "Opsi B / Item Kanan": "CPU", "Opsi C": "Harddisk", "Opsi D": "PSU", "Kunci": "B" },
-        { "No": 2, "Kode_Mapel": "TIK-IX", "Tipe": "pg_kompleks", "Pertanyaan": "Pilih memori non-volatile!", "Opsi A / Item Kiri": "HDD", "Opsi B / Item Kanan": "SSD", "Opsi C": "RAM", "Opsi D": "Cache", "Kunci": "A, B" },
-        { "No": 3, "Kode_Mapel": "TIK-IX", "Tipe": "menjodohkan", "Pertanyaan": "Jodohkan perangkat berikut!", "Opsi A / Item Kiri": "CPU,RAM", "Opsi B / Item Kanan": "Otak,Memori", "Opsi C": "", "Opsi D": "", "Kunci": '{"0":0, "1":1}' }
-      ];
-      const worksheet = XLSX.utils.json_to_sheet(templateData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-      XLSX.writeFile(workbook, "Template_Soal_Multi_Bentuk.xlsx");
-    }
-
-    function saveBankSoalToStorage() {
-      localStorage.setItem("bankSoalUjian", JSON.stringify(examQuestions));
-    }
-
-    function logout() {
-      currentUser = null;
-      document.getElementById('viewAdmin').classList.add('hidden');
-      document.getElementById('viewExam').classList.add('hidden');
-      document.getElementById('viewLogin').classList.remove('hidden');
+    function resetHasilSiswa(username) {
+      if (confirm(`Reset sesi ujian untuk siswa "${username}"?`)) {
+        rekapHasilSemuaSiswa = rekapHasilSemuaSiswa.filter(item => item.username !== username);
+        localStorage.setItem("rekapHasilSiswa", JSON.stringify(rekapHasilSemuaSiswa));
+        renderTabelHasil();
+      }
     }
 
     /* ==========================================
-          MODUL EXAM SISWA & PENILAIAN
+          LOGIKA UJIAN SISWA
     =========================================== */
     function renderQuestion(index) {
       const q = examQuestions[index];
@@ -1307,7 +1172,7 @@
 
       let html = `<span class="badge-type">${getQuestionTypeName(q.type)}</span>`;
       html += `<h4 style="margin-bottom: 12px;">Soal No. ${index + 1} dari ${examQuestions.length}</h4>`;
-      html += `<p style="margin-bottom: 20px; font-weight: 500; line-height: 1.5;">${q.question || q.pertanyaan}</p>`;
+      html += `<p style="margin-bottom: 20px; font-weight: 500;">${q.question || q.pertanyaan}</p>`;
 
       if (q.type === 'pg_biasa' || !q.type) {
         html += '<div style="display: flex; flex-direction: column; gap: 12px;">';
@@ -1320,160 +1185,46 @@
             </label>`;
         });
         html += '</div>';
-
-      } else if (q.type === 'pg_kompleks') {
-        const selectedOptions = Array.isArray(savedAnswer) ? savedAnswer : [];
-        html += '<div style="display: flex; flex-direction: column; gap: 12px;">';
-        q.options.forEach(opt => {
-          const checked = selectedOptions.includes(opt) ? 'checked' : '';
-          html += `
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-              <input type="checkbox" name="q_${q.id}" value="${opt}" ${checked} onchange="savePgKompleksAnswer(${q.id}, '${opt}', this.checked)">
-              <span>${opt}</span>
-            </label>`;
-        });
-        html += '</div>';
-
-      } else if (q.type === 'menjodohkan') {
-        const savedMatching = savedAnswer || {};
-        html += '<table style="width:100%; border-collapse: collapse; margin-top:10px;">';
-        html += '<thead><tr style="background:#f8fafc;"><th>Pernyataan / Item Kiri</th><th>Pasangan Kanan</th></tr></thead><tbody>';
-        
-        q.leftItems.forEach((left, lIdx) => {
-          html += `<tr>
-            <td style="padding:10px; border:1px solid #cbd5e1; font-weight:600;">${left}</td>
-            <td style="padding:10px; border:1px solid #cbd5e1;">
-              <select style="width:100%; padding:8px; border-radius:4px;" onchange="saveMatchingAnswer(${q.id}, ${lIdx}, this.value)">
-                <option value="">-- Pilih Pasangan --</option>`;
-          
-          q.rightItems.forEach((right, rIdx) => {
-            const selected = savedMatching[lIdx] == rIdx ? 'selected' : '';
-            html += `<option value="${rIdx}" ${selected}>${right}</option>`;
-          });
-          
-          html += `</select></td></tr>`;
-        });
-        html += '</tbody></table>';
       }
 
       container.innerHTML = html;
-      updateNavButtons();
+      document.getElementById('btnPrev').disabled = (index === 0);
+      document.getElementById('btnNext').disabled = (index === examQuestions.length - 1);
     }
 
     function saveAnswer(qId, value) { studentAnswers[qId] = value; }
-    function savePgKompleksAnswer(qId, option, isChecked) {
-      if (!studentAnswers[qId] || !Array.isArray(studentAnswers[qId])) studentAnswers[qId] = [];
-      if (isChecked) {
-        studentAnswers[qId].push(option);
-      } else {
-        studentAnswers[qId] = studentAnswers[qId].filter(item => item !== option);
-      }
-    }
-    function saveMatchingAnswer(qId, leftIndex, selectedRightIndex) {
-      if (!studentAnswers[qId] || typeof studentAnswers[qId] !== 'object') studentAnswers[qId] = {};
-      if (selectedRightIndex === "") {
-        delete studentAnswers[qId][leftIndex];
-      } else {
-        studentAnswers[qId][leftIndex] = selectedRightIndex;
-      }
-    }
+    function getQuestionTypeName(type) { return type === 'pg_biasa' ? 'Pilihan Ganda' : 'Soal Ujian'; }
 
-    function getQuestionTypeName(type) {
-      switch (type) {
-        case 'pg_biasa': return 'Pilihan Ganda';
-        case 'pg_kompleks': return 'Pilihan Ganda Kompleks';
-        case 'menjodohkan': return 'Menjodohkan';
-        default: return 'Pilihan Ganda';
-      }
-    }
-
-    function nextQuestion() {
-      if (currentQuestionIndex < examQuestions.length - 1) {
-        currentQuestionIndex++;
-        renderQuestion(currentQuestionIndex);
-      }
-    }
-    function prevQuestion() {
-      if (currentQuestionIndex > 0) {
-        currentQuestionIndex--;
-        renderQuestion(currentQuestionIndex);
-      }
-    }
-    function updateNavButtons() {
-      document.getElementById('btnPrev').disabled = (currentQuestionIndex === 0);
-      document.getElementById('btnNext').disabled = (currentQuestionIndex === examQuestions.length - 1);
-    }
-
-    function calculateScore() {
-      if (examQuestions.length === 0) return 0;
-      let totalCorrect = 0;
-
-      examQuestions.forEach(q => {
-        const studentAns = studentAnswers[q.id];
-
-        if (q.type === 'pg_biasa' || !q.type) {
-          if (studentAns === q.answerKey) totalCorrect++;
-        } 
-        else if (q.type === 'pg_kompleks') {
-          if (Array.isArray(studentAns)) {
-            const isMatch = studentAns.length === q.answerKey.length &&
-              studentAns.every(val => q.answerKey.includes(val));
-            if (isMatch) totalCorrect++;
-          }
-        } 
-        else if (q.type === 'menjodohkan') {
-          if (studentAns && typeof studentAns === 'object') {
-            let matchingCorrect = true;
-            Object.keys(q.answerKey).forEach(leftKey => {
-              if (studentAns[leftKey] != q.answerKey[leftKey]) {
-                matchingCorrect = false;
-              }
-            });
-            if (matchingCorrect) totalCorrect++;
-          }
+    function startExamTimer(minutes) {
+      clearInterval(timerInterval);
+      remainingTimeSeconds = minutes * 60;
+      timerInterval = setInterval(() => {
+        remainingTimeSeconds--;
+        const mins = Math.floor(remainingTimeSeconds / 60);
+        const secs = remainingTimeSeconds % 60;
+        document.getElementById("timerDisplay").textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        if (remainingTimeSeconds <= 0) {
+          clearInterval(timerInterval);
+          finishExam();
         }
-      });
-
-      return Math.round((totalCorrect / examQuestions.length) * 100);
+      }, 1000);
     }
 
     function finishExam() {
-      const finalScore = calculateScore();
-      alert(`Ujian Selesai!\nNama: ${currentUser.username}\nNilai Akhir: ${finalScore}`);
-      
-      rekapHasilSemuaSiswa.push({
-        username: currentUser.username,
-        score: finalScore,
-        status: finalScore >= 75 ? 'Lulus' : 'Remidi'
-      });
-
-      updateAdminTable();
+      clearInterval(timerInterval);
+      alert(`Ujian Selesai! Terima kasih.`);
       if (document.exitFullscreen) document.exitFullscreen();
       logout();
-    }
-
-    function updateAdminTable() {
-      const tbody = document.getElementById('tbodyHasil');
-      if (rekapHasilSemuaSiswa.length === 0) return;
-
-      tbody.innerHTML = rekapHasilSemuaSiswa.map(item => `
-        <tr>
-          <td>${item.username}</td>
-          <td><strong>${item.score}</strong></td>
-          <td><span style="color:${item.status === 'Lulus' ? 'green' : 'red'}; font-weight:bold;">${item.status}</span></td>
-        </tr>
-      `).join('');
     }
 
     function requestExamFullscreen() {
       const el = document.documentElement;
       if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     }
 
     function initSecurityListeners() {
       document.addEventListener('fullscreenchange', () => {
-        const isFS = document.fullscreenElement || document.webkitFullscreenElement;
+        const isFS = document.fullscreenElement;
         const overlay = document.getElementById('secOverlay');
         const examBody = document.getElementById('examBody');
 
@@ -1482,11 +1233,6 @@
           document.getElementById('violationText').textContent = `Pelanggaran: ${violationCount} / ${MAX_VIOLATIONS}`;
           overlay.classList.remove('hidden');
           examBody.classList.add('blurred');
-
-          if (violationCount >= MAX_VIOLATIONS) {
-            alert('Batas pelanggaran tercapai! Jawaban Anda akan dikirim otomatis.');
-            finishExam();
-          }
         } else {
           overlay.classList.add('hidden');
           examBody.classList.remove('blurred');
@@ -1494,19 +1240,12 @@
       });
     }
 
-    function exportHasilToExcel() {
-      if (rekapHasilSemuaSiswa.length === 0) {
-        alert("Belum ada data hasil ujian!");
-        return;
-      }
-      const dataExcel = [
-        ["Username/NISN", "Nilai Akhir", "Status"],
-        ...rekapHasilSemuaSiswa.map(item => [item.username, item.score, item.status])
-      ];
-      const worksheet = XLSX.utils.aoa_to_sheet(dataExcel);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Ujian");
-      XLSX.writeFile(workbook, "Rekap_Nilai_UAS_TKA.xlsx");
+    function logout() {
+      clearInterval(timerInterval);
+      currentUser = null;
+      document.getElementById('viewAdmin').classList.add('hidden');
+      document.getElementById('viewExam').classList.add('hidden');
+      document.getElementById('viewLogin').classList.remove('hidden');
     }
   </script>
 </body>
