@@ -1,6 +1,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
   authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+  databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "aplikasi-ujian-8e501",
   storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
   messagingSenderId: "945781407027",
