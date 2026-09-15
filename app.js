@@ -1,3 +1,12 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
+  authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+  projectId: "aplikasi-ujian-8e501",
+  storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
+  messagingSenderId: "945781407027",
+  appId: "1:945781407027:web:4672d4c894e143c9b05246",
+  measurementId: "G-CBH4C0BVXD"
+};
 /* ===================================================
    APP.JS - LMS & CBT INFORMATIKA
    =================================================== */
