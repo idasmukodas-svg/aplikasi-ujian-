@@ -562,14 +562,6 @@
               <p style="font-size: 13px; color: #64748b;">Kelola akun siswa secara terstruktur per kelas.</p>
             </div>
           </div>
-          
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-            <button class="btn btn-secondary" style="font-size:12px;" onclick="exportSiswaTemplate()">Download Template (.xlsx)</button>
-            <label class="btn btn-primary" style="font-size:12px; cursor: pointer;">
-              Import Siswa (.xlsx)
-              <input type="file" id="inputImportSiswa" accept=".xlsx, .xls" class="hidden" onchange="importSiswaFromExcel(event)">
-            </label>
-          </div>
 
           <!-- Form Tambah / Edit Siswa Manual -->
           <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
@@ -594,7 +586,7 @@
                 <div class="form-group" style="margin-bottom: 8px;">
                   <label style="font-size: 12px;">Kelas / Rombel</label>
                   <select id="inputSiswaKelas" required>
-                    <!-- Options diisi dari Master Kelas -->
+                    <!-- Options diisi otomatis dari Master Kelas -->
                   </select>
                 </div>
               </div>
@@ -710,7 +702,6 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Default Kelas & Rombel (Jenjang VII, VIII, IX masing-masing A s.d. E)
     const defaultKelasList = [
       { jenjang: "VII", nama: "VII-A" }, { jenjang: "VII", nama: "VII-B" }, { jenjang: "VII", nama: "VII-C" }, { jenjang: "VII", nama: "VII-D" }, { jenjang: "VII", nama: "VII-E" },
       { jenjang: "VIII", nama: "VIII-A" }, { jenjang: "VIII", nama: "VIII-B" }, { jenjang: "VIII", nama: "VIII-C" }, { jenjang: "VIII", nama: "VIII-D" }, { jenjang: "VIII", nama: "VIII-E" },
@@ -745,7 +736,7 @@
       }
     ];
 
-    // State Application
+    // Application State
     let kelasList = JSON.parse(localStorage.getItem("dataKelasActive")) || defaultKelasList;
     let mapelList = JSON.parse(localStorage.getItem("dataMapelActive")) || defaultMapelList;
     let guruList = JSON.parse(localStorage.getItem("dataGuruActive")) || defaultGuruList;
@@ -866,6 +857,8 @@
       const panelAdminSiswa = document.getElementById('panelAdminSiswa');
       const panelHasilUjian = document.getElementById('panelHasilUjian');
 
+      renderAllDropdowns();
+
       if (currentUser.role === 'admin') {
         panelAdminSettings.classList.remove('hidden');
         panelAdminMaster.classList.remove('hidden');
@@ -890,9 +883,55 @@
         renderGuruMapelSelector();
       }
 
-      renderAllDropdowns();
       renderTabelBankSoal();
       renderTabelHasil();
+    }
+
+    /* ==========================================
+          PENYERAGAMAN MASTER & DROPDOWNS
+    =========================================== */
+    function renderAllDropdowns() {
+      renderMapelDropdowns();
+      renderKelasDropdowns();
+    }
+
+    function renderKelasDropdowns() {
+      const siswaKelasSelect = document.getElementById("inputSiswaKelas");
+      const filterSiswaKelasSelect = document.getElementById("filterTabelSiswaKelas");
+      const filterHasilKelasSelect = document.getElementById("filterHasilUjianKelas");
+      const filterGuruKelasSelect = document.getElementById("inputGuruFilterKelas");
+
+      let optionsSiswa = `<option value="">-- Pilih Kelas --</option>`;
+      let optionsFilter = `<option value="">-- Semua Kelas --</option>`;
+
+      kelasList.forEach(k => {
+        optionsSiswa += `<option value="${k.nama}">${k.nama}</option>`;
+        optionsFilter += `<option value="${k.nama}">${k.nama}</option>`;
+      });
+
+      if (siswaKelasSelect) siswaKelasSelect.innerHTML = optionsSiswa;
+      if (filterSiswaKelasSelect) filterSiswaKelasSelect.innerHTML = optionsFilter;
+      if (filterHasilKelasSelect) filterHasilKelasSelect.innerHTML = optionsFilter;
+      if (filterGuruKelasSelect) filterGuruKelasSelect.innerHTML = optionsFilter;
+    }
+
+    function renderMapelDropdowns() {
+      const guruSelect = document.getElementById("inputGuruMapel");
+      const soalSelect = document.getElementById("inputSoalMapel");
+      const adminSettingMapelSelect = document.getElementById("settingActiveMapel");
+
+      let optionsHtml = `<option value="">-- Pilih Mapel --</option>`;
+      mapelList.forEach(m => {
+        optionsHtml += `<option value="${m.kode}">${m.nama} (${m.kode})</option>`;
+      });
+
+      if (guruSelect) guruSelect.innerHTML = optionsHtml;
+      if (soalSelect) soalSelect.innerHTML = optionsHtml;
+      if (adminSettingMapelSelect) adminSettingMapelSelect.innerHTML = optionsHtml;
+
+      if (examSettings.activeMapel && adminSettingMapelSelect) {
+        adminSettingMapelSelect.value = examSettings.activeMapel;
+      }
     }
 
     /* ==========================================
@@ -938,31 +977,6 @@
         renderKelasTable();
         renderAllDropdowns();
       }
-    }
-
-    function renderAllDropdowns() {
-      renderMapelDropdowns();
-      renderKelasDropdowns();
-    }
-
-    function renderKelasDropdowns() {
-      const siswaKelasSelect = document.getElementById("inputSiswaKelas");
-      const filterSiswaKelasSelect = document.getElementById("filterTabelSiswaKelas");
-      const filterHasilKelasSelect = document.getElementById("filterHasilUjianKelas");
-      const filterGuruKelasSelect = document.getElementById("inputGuruFilterKelas");
-
-      let optionsSiswa = `<option value="">-- Pilih Kelas --</option>`;
-      let optionsFilter = `<option value="">-- Semua Kelas --</option>`;
-
-      kelasList.forEach(k => {
-        optionsSiswa += `<option value="${k.nama}">${k.nama}</option>`;
-        optionsFilter += `<option value="${k.nama}">${k.nama}</option>`;
-      });
-
-      if (siswaKelasSelect) siswaKelasSelect.innerHTML = optionsSiswa;
-      if (filterSiswaKelasSelect) filterSiswaKelasSelect.innerHTML = optionsFilter;
-      if (filterHasilKelasSelect) filterHasilKelasSelect.innerHTML = optionsFilter;
-      if (filterGuruKelasSelect) filterGuruKelasSelect.innerHTML = optionsFilter;
     }
 
     function renderGuruMapelSelector() {
@@ -1033,25 +1047,6 @@
       });
     }
 
-    function renderMapelDropdowns() {
-      const guruSelect = document.getElementById("inputGuruMapel");
-      const soalSelect = document.getElementById("inputSoalMapel");
-      const adminSettingMapelSelect = document.getElementById("settingActiveMapel");
-
-      let optionsHtml = `<option value="">-- Pilih Mapel --</option>`;
-      mapelList.forEach(m => {
-        optionsHtml += `<option value="${m.kode}">${m.nama} (${m.kode})</option>`;
-      });
-
-      if (guruSelect) guruSelect.innerHTML = optionsHtml;
-      if (soalSelect) soalSelect.innerHTML = optionsHtml;
-      if (adminSettingMapelSelect) adminSettingMapelSelect.innerHTML = optionsHtml;
-
-      if (examSettings.activeMapel && adminSettingMapelSelect) {
-        adminSettingMapelSelect.value = examSettings.activeMapel;
-      }
-    }
-
     function saveMapel(e) {
       e.preventDefault();
       const idx = document.getElementById("mapelIndex").value;
@@ -1065,13 +1060,30 @@
       localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
       resetFormMapel();
       renderMapelTable();
-      renderMapelDropdowns();
+      renderAllDropdowns();
     }
 
     function resetFormMapel() {
       document.getElementById("mapelIndex").value = "";
       document.getElementById("formMapel").reset();
       document.getElementById("btnSubmitMapel").innerText = "Simpan Mapel";
+    }
+
+    function deleteMapel(idx) {
+      if (confirm(`Hapus Mata Pelajaran ${mapelList[idx].nama}?`)) {
+        mapelList.splice(idx, 1);
+        localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
+        renderMapelTable();
+        renderAllDropdowns();
+      }
+    }
+
+    function editMapel(idx) {
+      const mapel = mapelList[idx];
+      document.getElementById("mapelIndex").value = idx;
+      document.getElementById("inputKodeMapel").value = mapel.kode;
+      document.getElementById("inputNamaMapel").value = mapel.nama;
+      document.getElementById("btnSubmitMapel").innerText = "Update Mapel";
     }
 
     function renderGuruTable() {
@@ -1112,6 +1124,24 @@
       document.getElementById("guruIndex").value = "";
       document.getElementById("formGuru").reset();
       document.getElementById("btnSubmitGuru").innerText = "Simpan Guru";
+    }
+
+    function deleteGuru(idx) {
+      if (confirm(`Hapus Akun Guru ${guruList[idx].nama}?`)) {
+        guruList.splice(idx, 1);
+        localStorage.setItem("dataGuruActive", JSON.stringify(guruList));
+        renderGuruTable();
+      }
+    }
+
+    function editGuru(idx) {
+      const g = guruList[idx];
+      document.getElementById("guruIndex").value = idx;
+      document.getElementById("inputGuruUser").value = g.username;
+      document.getElementById("inputGuruPass").value = g.password;
+      document.getElementById("inputGuruNama").value = g.nama;
+      document.getElementById("inputGuruMapel").value = g.mapel;
+      document.getElementById("btnSubmitGuru").innerText = "Update Guru";
     }
 
     /* ==========================================
@@ -1170,6 +1200,24 @@
       document.getElementById("siswaIndex").value = "";
       document.getElementById("siswaForm").reset();
       document.getElementById("btnSubmitSiswa").innerText = "Simpan Siswa";
+    }
+
+    function deleteSiswa(idx) {
+      if (confirm(`Hapus siswa ${dataSiswaList[idx].nama}?`)) {
+        dataSiswaList.splice(idx, 1);
+        localStorage.setItem("dataSiswaActive", JSON.stringify(dataSiswaList));
+        renderTabelSiswa();
+      }
+    }
+
+    function editSiswa(idx) {
+      const s = dataSiswaList[idx];
+      document.getElementById("siswaIndex").value = idx;
+      document.getElementById("inputSiswaUser").value = s.username;
+      document.getElementById("inputSiswaPass").value = s.password;
+      document.getElementById("inputSiswaNama").value = s.nama;
+      document.getElementById("inputSiswaKelas").value = s.kelas;
+      document.getElementById("btnSubmitSiswa").innerText = "Update Siswa";
     }
 
     function renderTabelHasil() {
@@ -1331,6 +1379,33 @@
       renderTabelBankSoal();
     }
 
+    function editSoal(idx) {
+      const item = examQuestions[idx];
+      document.getElementById("soalId").value = idx;
+      document.getElementById("inputSoalMapel").value = item.mapel || "";
+      document.getElementById("inputTypeSoal").value = item.type || "pg_biasa";
+      document.getElementById("inputPertanyaan").value = item.question || item.pertanyaan;
+
+      if (item.type === "pg_biasa" || !item.type) {
+        document.getElementById("inputOpsiA").value = item.options[0];
+        document.getElementById("inputOpsiB").value = item.options[1];
+        document.getElementById("inputOpsiC").value = item.options[2];
+        document.getElementById("inputOpsiD").value = item.options[3];
+        document.getElementById("inputKunciPG").value = item.kunci || "A";
+      }
+
+      document.getElementById("formTitle").innerText = "Edit Soal Ujian";
+      document.getElementById("btnSubmitSoal").innerText = "Update Soal";
+    }
+
+    function deleteSoal(idx) {
+      if (confirm("Yakin ingin menghapus soal ini?")) {
+        examQuestions.splice(idx, 1);
+        localStorage.setItem("bankSoalUjian", JSON.stringify(examQuestions));
+        renderTabelBankSoal();
+      }
+    }
+
     function resetFormSoal() {
       document.getElementById("soalId").value = "";
       document.getElementById("soalForm").reset();
@@ -1406,7 +1481,6 @@
     function finishExam() {
       clearInterval(timerInterval);
 
-      // Hitung Nilai Ujian Siswa
       let correctCount = 0;
       activeStudentQuestions.forEach(q => {
         if (studentAnswers[q.id] === q.answerKey) {
@@ -1420,7 +1494,6 @@
       const siswaAktifObj = dataSiswaList.find(s => s.nama === currentUser.username || s.username === currentUser.username);
       const kelasSiswa = siswaAktifObj ? siswaAktifObj.kelas : (currentUser.kelas || "-");
 
-      // Simpan Rekap Hasil
       const hasilObj = {
         username: currentUser.username,
         nama: currentUser.username,
