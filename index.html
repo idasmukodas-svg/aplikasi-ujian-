@@ -372,21 +372,74 @@
 
       <!-- MODUL SISWA & HASIL UJIAN -->
       <div class="grid-2">
+        <!-- MANAJEMEN AKUN SISWA (CRUD + IMPORT EXCEL) -->
         <div class="card">
-          <h3>Manajemen Akun Siswa</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Data akun resmi siswa untuk login ujian.</p>
-          <button class="btn btn-success" onclick="exportSiswaTemplate()">Download Template Akun (.xlsx)</button>
-          <table id="tableSiswa">
-            <thead>
-              <tr><th>NISN/User</th><th>Password</th><th>Nama Siswa</th><th>Kelas</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>1001</td><td>123</td><td>Ahmad Rivaldi</td><td>IX-A</td></tr>
-              <tr><td>1002</td><td>123</td><td>Siti Rahmawati</td><td>IX-A</td></tr>
-            </tbody>
-          </table>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div>
+              <h3>Manajemen Akun Siswa</h3>
+              <p style="font-size: 13px; color: #64748b;">Kelola akun siswa secara manual atau lewat Excel.</p>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+            <button class="btn btn-secondary" style="font-size:12px;" onclick="exportSiswaTemplate()">Download Template (.xlsx)</button>
+            <label class="btn btn-primary" style="font-size:12px; cursor: pointer;">
+              Import Siswa (.xlsx)
+              <input type="file" id="inputImportSiswa" accept=".xlsx, .xls" class="hidden" onchange="importSiswaFromExcel(event)">
+            </label>
+          </div>
+
+          <!-- Form Tambah / Edit Siswa Manual -->
+          <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+            <h5 id="siswaFormTitle" style="margin-bottom: 8px; color: #334155;">Tambah Siswa Manual</h5>
+            <form id="siswaForm" onsubmit="saveSiswaManual(event)">
+              <input type="hidden" id="siswaIndex" value="">
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">NISN / Username</label>
+                  <input type="text" id="inputSiswaUser" placeholder="Misal: 1003" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Password</label>
+                  <input type="text" id="inputSiswaPass" placeholder="Misal: 123" required>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Nama Siswa</label>
+                  <input type="text" id="inputSiswaNama" placeholder="Misal: Budi Santoso" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Kelas</label>
+                  <input type="text" id="inputSiswaKelas" placeholder="Misal: IX-A" required>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormSiswa()">Batal</button>
+                <button type="submit" id="btnSubmitSiswa" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Siswa</button>
+              </div>
+            </form>
+          </div>
+
+          <div style="overflow-x: auto; max-height: 250px;">
+            <table id="tableSiswa">
+              <thead>
+                <tr>
+                  <th>NISN/User</th>
+                  <th>Password</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                  <th style="text-align: center;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodySiswa">
+                <!-- Data siswa di-render oleh JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        <!-- HASIL UJIAN & EKSPOR DATA -->
         <div class="card">
           <h3>Hasil Ujian & Ekspor Data</h3>
           <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Unduh rekapitulasi nilai akhir seluruh siswa ke format Excel.</p>
@@ -448,8 +501,8 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Akun Resmi (Siswa & Admin)
-    const dataSiswaValid = [
+    // Data Akun Default
+    const defaultSiswaList = [
       { username: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
       { username: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" }
     ];
@@ -488,6 +541,7 @@
     ];
 
     let examQuestions = JSON.parse(localStorage.getItem("bankSoalUjian")) || defaultQuestions;
+    let dataSiswaList = JSON.parse(localStorage.getItem("dataSiswaActive")) || defaultSiswaList;
     let currentUser = null;
     let currentQuestionIndex = 0;
     let studentAnswers = {};
@@ -497,6 +551,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       renderTabelBankSoal();
+      renderTabelSiswa();
     });
 
     // Handle Login & Validasi Akun
@@ -518,13 +573,13 @@
         document.getElementById('viewLogin').classList.add('hidden');
         document.getElementById('viewAdmin').classList.remove('hidden');
         renderTabelBankSoal();
+        renderTabelSiswa();
         return;
       }
 
       // 2. Validasi Login Siswa
       if (role === 'siswa') {
-        const listSiswa = JSON.parse(localStorage.getItem("dataSiswaActive")) || dataSiswaValid;
-        const siswaFound = listSiswa.find(s => s.username === username && s.password === password);
+        const siswaFound = dataSiswaList.find(s => String(s.username).trim() === username && String(s.password).trim() === password);
 
         if (!siswaFound) {
           alert("Login Gagal! NISN/Username atau Password tidak terdaftar.");
@@ -551,7 +606,146 @@
       }
     }
 
-    // Handle Perubahan Dropdown Tipe Soal di Admin
+    /* ==========================================
+          MANAJEMEN AKUN SISWA (CRUD & IMPORT)
+    =========================================== */
+    function renderTabelSiswa() {
+      const tbody = document.getElementById("tbodySiswa");
+      tbody.innerHTML = "";
+
+      if (dataSiswaList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 12px;">Belum ada akun siswa.</td></tr>`;
+        return;
+      }
+
+      dataSiswaList.forEach((siswa, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${siswa.username}</strong></td>
+          <td>${siswa.password}</td>
+          <td>${siswa.nama}</td>
+          <td>${siswa.kelas}</td>
+          <td style="text-align: center;">
+            <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="editSiswa(${idx})">Edit</button>
+            <button class="btn btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteSiswa(${idx})">Hapus</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function saveSiswaManual(e) {
+      e.preventDefault();
+      const index = document.getElementById("siswaIndex").value;
+      const user = document.getElementById("inputSiswaUser").value.trim();
+      const pass = document.getElementById("inputSiswaPass").value.trim();
+      const nama = document.getElementById("inputSiswaNama").value.trim();
+      const kelas = document.getElementById("inputSiswaKelas").value.trim();
+
+      const newSiswa = { username: user, password: pass, nama: nama, kelas: kelas };
+
+      if (index === "") {
+        // Cek duplikasi username
+        if (dataSiswaList.some(s => String(s.username).trim() === user)) {
+          alert("Username/NISN sudah digunakan!");
+          return;
+        }
+        dataSiswaList.push(newSiswa);
+      } else {
+        dataSiswaList[index] = newSiswa;
+      }
+
+      saveSiswaToStorage();
+      resetFormSiswa();
+      renderTabelSiswa();
+    }
+
+    function editSiswa(idx) {
+      const s = dataSiswaList[idx];
+      document.getElementById("siswaIndex").value = idx;
+      document.getElementById("inputSiswaUser").value = s.username;
+      document.getElementById("inputSiswaPass").value = s.password;
+      document.getElementById("inputSiswaNama").value = s.nama;
+      document.getElementById("inputSiswaKelas").value = s.kelas;
+
+      document.getElementById("siswaFormTitle").innerText = "Edit Akun Siswa";
+      document.getElementById("btnSubmitSiswa").innerText = "Update Siswa";
+    }
+
+    function deleteSiswa(idx) {
+      if (confirm(`Hapus akun siswa ${dataSiswaList[idx].nama}?`)) {
+        dataSiswaList.splice(idx, 1);
+        saveSiswaToStorage();
+        renderTabelSiswa();
+      }
+    }
+
+    function resetFormSiswa() {
+      document.getElementById("siswaIndex").value = "";
+      document.getElementById("siswaForm").reset();
+      document.getElementById("siswaFormTitle").innerText = "Tambah Siswa Manual";
+      document.getElementById("btnSubmitSiswa").innerText = "Simpan Siswa";
+    }
+
+    function saveSiswaToStorage() {
+      localStorage.setItem("dataSiswaActive", JSON.stringify(dataSiswaList));
+    }
+
+    function exportSiswaTemplate() {
+      const template = [
+        ["Username", "Password", "Nama_Siswa", "Kelas"],
+        ["1001", "123", "Ahmad Rivaldi", "IX-A"],
+        ["1002", "123", "Siti Rahmawati", "IX-A"]
+      ];
+      const worksheet = XLSX.utils.aoa_to_sheet(template);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+      XLSX.writeFile(workbook, "Template_Import_Siswa.xlsx");
+    }
+
+    function importSiswaFromExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+        let countImport = 0;
+        jsonData.forEach(row => {
+          const u = String(row["Username"] || row["NISN"] || "").trim();
+          const p = String(row["Password"] || "").trim();
+          const n = String(row["Nama_Siswa"] || row["Nama"] || "").trim();
+          const k = String(row["Kelas"] || "").trim();
+
+          if (u && p) {
+            // Update atau tambah baru
+            const existingIdx = dataSiswaList.findIndex(s => String(s.username).trim() === u);
+            const objSiswa = { username: u, password: p, nama: n || u, kelas: k || "-" };
+
+            if (existingIdx >= 0) {
+              dataSiswaList[existingIdx] = objSiswa;
+            } else {
+              dataSiswaList.push(objSiswa);
+            }
+            countImport++;
+          }
+        });
+
+        saveSiswaToStorage();
+        renderTabelSiswa();
+        alert(`Berhasil mengimpor ${countImport} data akun siswa!`);
+        event.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* ==========================================
+          MANAJEMEN BANK SOAL UJIAN
+    =========================================== */
     function handleTypeChange() {
       const type = document.getElementById("inputTypeSoal").value;
       const secPG = document.getElementById("sectionPG");
@@ -575,7 +769,6 @@
       }
     }
 
-    // Render Tabel Bank Soal di Admin
     function renderTabelBankSoal() {
       const tbody = document.getElementById("tabelBankSoalBody");
       tbody.innerHTML = "";
@@ -610,7 +803,6 @@
       });
     }
 
-    // Simpan Manual Soal (Baru / Edit)
     function saveSoalManual(e) {
       e.preventDefault();
 
@@ -737,7 +929,6 @@
       document.getElementById("btnSubmitSoal").innerText = "Simpan Soal";
     }
 
-    // Export & Import Excel
     function exportSoalToExcel() {
       if (examQuestions.length === 0) {
         alert("Belum ada data soal untuk diekspor!");
@@ -842,6 +1033,9 @@
       document.getElementById('viewLogin').classList.remove('hidden');
     }
 
+    /* ==========================================
+          MODUL EXAM SISWA & PENILAIAN
+    =========================================== */
     function renderQuestion(index) {
       const q = examQuestions[index];
       const container = document.getElementById('questionContainer');
@@ -946,7 +1140,6 @@
       document.getElementById('btnNext').disabled = (currentQuestionIndex === examQuestions.length - 1);
     }
 
-    // Perhitungan Nilai & Pengawasan
     function calculateScore() {
       if (examQuestions.length === 0) return 0;
       let totalCorrect = 0;
@@ -1050,18 +1243,6 @@
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil Ujian");
       XLSX.writeFile(workbook, "Rekap_Nilai_UAS_TKA.xlsx");
-    }
-
-    function exportSiswaTemplate() {
-      const template = [
-        ["Username", "Password", "Nama_Siswa", "Kelas"],
-        ["1001", "123", "Ahmad Rivaldi", "IX-A"],
-        ["1002", "123", "Siti Rahmawati", "IX-A"]
-      ];
-      const worksheet = XLSX.utils.aoa_to_sheet(template);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-      XLSX.writeFile(workbook, "Template_Import_Siswa.xlsx");
     }
   </script>
 </body>
