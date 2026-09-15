@@ -266,7 +266,9 @@
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label>Filter Kelas (Opsional)</label>
-            <input type="text" id="inputGuruFilterKelas" placeholder="Misal: IX-A" oninput="renderTabelHasil()">
+            <select id="inputGuruFilterKelas" onchange="renderTabelHasil()">
+              <option value="">-- Semua Kelas --</option>
+            </select>
           </div>
         </div>
       </div>
@@ -310,94 +312,140 @@
         </form>
       </div>
 
-      <!-- MODUL MASTER: MATA PELAJARAN & AKUN GURU (KHUSUS ROLE ADMIN) -->
-      <div id="panelAdminMaster" class="grid-2 hidden">
-        <!-- 1. MANAJEMEN MATA PELAJARAN -->
-        <div class="card">
-          <h3>Manajemen Mata Pelajaran</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Tambah dan kelola daftar mata pelajaran.</p>
+      <!-- MODUL MASTER: KELAS/ROMBEL, MAPEL, DAN AKUN GURU (KHUSUS ROLE ADMIN) -->
+      <div id="panelAdminMaster" class="hidden">
+        
+        <!-- BARIS 1: MASTER KELAS & ROMBEL -->
+        <div class="card" style="border-top: 4px solid #16a34a;">
+          <h3>Manajemen Master Kelas & Rombel</h3>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Daftarkan kelas/rombel resmi sekolah (misal: VII-A s.d. IX-E) untuk pengelompokan siswa & hasil ujian.</p>
           
-          <form id="formMapel" onsubmit="saveMapel(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
-            <input type="hidden" id="mapelIndex" value="">
-            <div class="grid-2">
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Kode Mapel</label>
-                <input type="text" id="inputKodeMapel" placeholder="Misal: TIK-IX" required>
+          <div class="grid-2">
+            <form id="formKelas" onsubmit="saveKelas(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Jenjang Kelas</label>
+                  <select id="inputJenjangKelas" required>
+                    <option value="VII">Kelas VII (7)</option>
+                    <option value="VIII">Kelas VIII (8)</option>
+                    <option value="IX">Kelas IX (9)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Nama Rombel / Kelas</label>
+                  <input type="text" id="inputNamaRombel" placeholder="Misal: IX-A" required>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Nama Mata Pelajaran</label>
-                <input type="text" id="inputNamaMapel" placeholder="Misal: Informatika Kelas IX" required>
+              <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px;">
+                <button type="submit" class="btn btn-success" style="font-size: 11px; padding: 6px 12px;">+ Tambah Kelas</button>
               </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 6px;">
-              <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormMapel()">Batal</button>
-              <button type="submit" id="btnSubmitMapel" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Mapel</button>
-            </div>
-          </form>
+            </form>
 
-          <div style="overflow-x: auto; max-height: 200px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Kode</th>
-                  <th>Nama Mata Pelajaran</th>
-                  <th style="text-align: center; width: 100px;">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyMapel"></tbody>
-            </table>
+            <div style="overflow-x: auto; max-height: 140px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Jenjang</th>
+                    <th>Nama Rombel</th>
+                    <th style="text-align: center; width: 80px;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyKelas"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- 2. MANAJEMEN AKUN GURU -->
-        <div class="card">
-          <h3>Manajemen Akun Guru / Pengajar</h3>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Kelola data guru serta mata pelajaran yang diampu.</p>
-          
-          <form id="formGuru" onsubmit="saveGuru(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
-            <input type="hidden" id="guruIndex" value="">
-            <div class="grid-2">
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Username / NIP</label>
-                <input type="text" id="inputGuruUser" placeholder="Misal: guru_tik" required>
+        <!-- BARIS 2: MAPEL & GURU -->
+        <div class="grid-2">
+          <!-- 1. MANAJEMEN MATA PELAJARAN -->
+          <div class="card">
+            <h3>Manajemen Mata Pelajaran</h3>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Tambah dan kelola daftar mata pelajaran.</p>
+            
+            <form id="formMapel" onsubmit="saveMapel(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+              <input type="hidden" id="mapelIndex" value="">
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Kode Mapel</label>
+                  <input type="text" id="inputKodeMapel" placeholder="Misal: TIK-IX" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Nama Mata Pelajaran</label>
+                  <input type="text" id="inputNamaMapel" placeholder="Misal: Informatika Kelas IX" required>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Password</label>
-                <input type="text" id="inputGuruPass" placeholder="Password login" required>
+              <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormMapel()">Batal</button>
+                <button type="submit" id="btnSubmitMapel" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Mapel</button>
               </div>
-            </div>
-            <div class="grid-2">
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Nama Guru</label>
-                <input type="text" id="inputGuruNama" placeholder="Misal: Idas, S.Pd." required>
-              </div>
-              <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 12px;">Mata Pelajaran Diampu</label>
-                <select id="inputGuruMapel" required>
-                  <option value="">-- Pilih Mapel --</option>
-                </select>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 6px;">
-              <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormGuru()">Batal</button>
-              <button type="submit" id="btnSubmitGuru" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Guru</button>
-            </div>
-          </form>
+            </form>
 
-          <div style="overflow-x: auto; max-height: 200px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>User / NIP</th>
-                  <th>Nama Guru</th>
-                  <th>Mapel Diampu</th>
-                  <th style="text-align: center; width: 100px;">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyGuru"></tbody>
-            </table>
+            <div style="overflow-x: auto; max-height: 180px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Nama Mata Pelajaran</th>
+                    <th style="text-align: center; width: 100px;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMapel"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 2. MANAJEMEN AKUN GURU -->
+          <div class="card">
+            <h3>Manajemen Akun Guru / Pengajar</h3>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Kelola data guru serta mata pelajaran yang diampu.</p>
+            
+            <form id="formGuru" onsubmit="saveGuru(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+              <input type="hidden" id="guruIndex" value="">
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Username / NIP</label>
+                  <input type="text" id="inputGuruUser" placeholder="Misal: guru_tik" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Password</label>
+                  <input type="text" id="inputGuruPass" placeholder="Password login" required>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Nama Guru</label>
+                  <input type="text" id="inputGuruNama" placeholder="Misal: Idas, S.Pd." required>
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label style="font-size: 12px;">Mata Pelajaran Diampu</label>
+                  <select id="inputGuruMapel" required>
+                    <option value="">-- Pilih Mapel --</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormGuru()">Batal</button>
+                <button type="submit" id="btnSubmitGuru" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Guru</button>
+              </div>
+            </form>
+
+            <div style="overflow-x: auto; max-height: 180px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>User / NIP</th>
+                    <th>Nama Guru</th>
+                    <th>Mapel Diampu</th>
+                    <th style="text-align: center; width: 100px;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyGuru"></tbody>
+              </table>
+            </div>
           </div>
         </div>
+
       </div>
 
       <!-- FITUR MANAJEMEN BANK SOAL UJIAN (BISA DIAKSES GURU & ADMIN) -->
@@ -405,7 +453,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
             <h3>Manajemen Bank Soal Ujian</h3>
-            <p style="font-size: 13px; color: #64748b;">Kelola soal PG Biasa, PG Kompleks, atau Menjodohkan per Mata Pelajaran.</p>
+            <p style="font-size: 13px; color: #64748b;">Kelola soal PG Biasa per Mata Pelajaran.</p>
           </div>
           
           <div style="display: flex; gap: 8px;">
@@ -511,7 +559,7 @@
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
             <div>
               <h3>Manajemen Akun Siswa</h3>
-              <p style="font-size: 13px; color: #64748b;">Kelola akun siswa secara manual atau lewat Excel.</p>
+              <p style="font-size: 13px; color: #64748b;">Kelola akun siswa secara terstruktur per kelas.</p>
             </div>
           </div>
           
@@ -544,8 +592,10 @@
                   <input type="text" id="inputSiswaNama" placeholder="Misal: Budi Santoso" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 8px;">
-                  <label style="font-size: 12px;">Kelas</label>
-                  <input type="text" id="inputSiswaKelas" placeholder="Misal: IX-A" required>
+                  <label style="font-size: 12px;">Kelas / Rombel</label>
+                  <select id="inputSiswaKelas" required>
+                    <!-- Options diisi dari Master Kelas -->
+                  </select>
                 </div>
               </div>
               <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;">
@@ -553,6 +603,14 @@
                 <button type="submit" id="btnSubmitSiswa" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Siswa</button>
               </div>
             </form>
+          </div>
+
+          <!-- Filter Tampilan Siswa Per Kelas -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: bold; color: #475569;">Daftar Siswa:</span>
+            <select id="filterTabelSiswaKelas" onchange="renderTabelSiswa()" style="padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #cbd5e1;">
+              <option value="">-- Semua Kelas --</option>
+            </select>
           </div>
 
           <div style="overflow-x: auto; max-height: 250px;">
@@ -571,27 +629,35 @@
           </div>
         </div>
 
-        <!-- HASIL UJIAN & REKAP DATA (GURU & ADMIN) -->
+        <!-- HASIL UJIAN & REKAP DATA PER KELAS (GURU & ADMIN) -->
         <div id="panelHasilUjian" class="card" style="grid-column: span 2;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <div>
               <h3>Hasil Ujian & Ekspor Data</h3>
-              <p style="font-size: 13px; color: #64748b;">Unduh rekapitulasi nilai akhir atau reset sesi siswa yang terkendala.</p>
+              <p style="font-size: 13px; color: #64748b;">Unduh rekapitulasi nilai per kelas atau reset sesi siswa yang terkendala.</p>
             </div>
-            <button class="btn btn-primary" onclick="exportHasilToExcel()">Ekspor Rekap Hasil Ujian (.xlsx)</button>
+            
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="filterHasilUjianKelas" onchange="renderTabelHasil()" style="padding: 8px; font-size: 13px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <option value="">-- Semua Kelas --</option>
+              </select>
+              <button class="btn btn-primary" onclick="exportHasilToExcel()">Ekspor Rekap Excel (.xlsx)</button>
+            </div>
           </div>
           
           <table id="tableHasil">
             <thead>
               <tr>
+                <th>NISN / Username</th>
                 <th>Nama Siswa</th>
+                <th>Kelas</th>
                 <th>Nilai Akhir</th>
                 <th>Status</th>
                 <th style="text-align: center; width: 90px;">Aksi</th>
               </tr>
             </thead>
             <tbody id="tbodyHasil">
-              <tr><td colspan="4" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>
+              <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>
             </tbody>
           </table>
         </div>
@@ -644,7 +710,13 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Default
+    // Data Default Kelas & Rombel (Jenjang VII, VIII, IX masing-masing A s.d. E)
+    const defaultKelasList = [
+      { jenjang: "VII", nama: "VII-A" }, { jenjang: "VII", nama: "VII-B" }, { jenjang: "VII", nama: "VII-C" }, { jenjang: "VII", nama: "VII-D" }, { jenjang: "VII", nama: "VII-E" },
+      { jenjang: "VIII", nama: "VIII-A" }, { jenjang: "VIII", nama: "VIII-B" }, { jenjang: "VIII", nama: "VIII-C" }, { jenjang: "VIII", nama: "VIII-D" }, { jenjang: "VIII", nama: "VIII-E" },
+      { jenjang: "IX", nama: "IX-A" }, { jenjang: "IX", nama: "IX-B" }, { jenjang: "IX", nama: "IX-C" }, { jenjang: "IX", nama: "IX-D" }, { jenjang: "IX", nama: "IX-E" }
+    ];
+
     const defaultMapelList = [
       { kode: "TIK-IX", nama: "Informatika Kelas IX" },
       { kode: "BIN-IX", nama: "Bahasa Indonesia IX" }
@@ -657,7 +729,8 @@
 
     const defaultSiswaList = [
       { username: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
-      { username: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" }
+      { username: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" },
+      { username: "1003", password: "123", nama: "Budi Santoso", kelas: "IX-B" }
     ];
 
     const defaultQuestions = [
@@ -673,6 +746,7 @@
     ];
 
     // State Application
+    let kelasList = JSON.parse(localStorage.getItem("dataKelasActive")) || defaultKelasList;
     let mapelList = JSON.parse(localStorage.getItem("dataMapelActive")) || defaultMapelList;
     let guruList = JSON.parse(localStorage.getItem("dataGuruActive")) || defaultGuruList;
     let dataSiswaList = JSON.parse(localStorage.getItem("dataSiswaActive")) || defaultSiswaList;
@@ -696,7 +770,7 @@
     let remainingTimeSeconds = 0;
 
     document.addEventListener("DOMContentLoaded", () => {
-      renderMapelDropdowns();
+      renderAllDropdowns();
     });
 
     function toggleTokenInput() {
@@ -759,7 +833,6 @@
           return;
         }
 
-        // Ambil soal yang sesuai dengan mapel yang sedang diujikan oleh Admin
         activeStudentQuestions = examQuestions.filter(q => q.mapel === examSettings.activeMapel);
         if (activeStudentQuestions.length === 0) {
           alert(`Belum ada soal yang tersedia untuk mata pelajaran [${examSettings.activeMapel}]. Silakan hubungi pengawas.`);
@@ -769,10 +842,10 @@
         const mapelObj = mapelList.find(m => m.kode === examSettings.activeMapel);
         const namaMapelAktif = mapelObj ? mapelObj.nama : examSettings.activeMapel;
 
-        currentUser = { username: siswaFound.nama || siswaFound.username, role: 'siswa' };
+        currentUser = { username: siswaFound.nama || siswaFound.username, role: 'siswa', kelas: siswaFound.kelas };
         document.getElementById('viewLogin').classList.add('hidden');
         document.getElementById('viewExam').classList.remove('hidden');
-        document.getElementById('studentNameDisplay').textContent = `Siswa: ${siswaFound.nama || siswaFound.username}`;
+        document.getElementById('studentNameDisplay').textContent = `Siswa: ${siswaFound.nama || siswaFound.username} (${siswaFound.kelas || '-'})`;
         document.getElementById('examTitleDisplay').textContent = `Mata Pelajaran: ${namaMapelAktif} (${examSettings.activeMapel})`;
         
         currentQuestionIndex = 0;
@@ -802,6 +875,7 @@
         panelHasilUjian.style.gridColumn = "span 1";
 
         renderSettingsData();
+        renderKelasTable();
         renderMapelTable();
         renderGuruTable();
         renderTabelSiswa();
@@ -816,9 +890,79 @@
         renderGuruMapelSelector();
       }
 
-      renderMapelDropdowns();
+      renderAllDropdowns();
       renderTabelBankSoal();
       renderTabelHasil();
+    }
+
+    /* ==========================================
+          MASTER KELAS & ROMBEL (ADMIN)
+    =========================================== */
+    function renderKelasTable() {
+      const tbody = document.getElementById("tbodyKelas");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      kelasList.forEach((k, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${k.jenjang}</strong></td>
+            <td>${k.nama}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deleteKelas(${idx})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function saveKelas(e) {
+      e.preventDefault();
+      const jenjang = document.getElementById("inputJenjangKelas").value;
+      const nama = document.getElementById("inputNamaRombel").value.trim().toUpperCase();
+
+      if (kelasList.some(k => k.nama === nama)) {
+        alert(`Kelas ${nama} sudah ada!`);
+        return;
+      }
+
+      kelasList.push({ jenjang, nama });
+      localStorage.setItem("dataKelasActive", JSON.stringify(kelasList));
+      document.getElementById("inputNamaRombel").value = "";
+      renderKelasTable();
+      renderAllDropdowns();
+    }
+
+    function deleteKelas(idx) {
+      if (confirm(`Hapus Kelas ${kelasList[idx].nama}?`)) {
+        kelasList.splice(idx, 1);
+        localStorage.setItem("dataKelasActive", JSON.stringify(kelasList));
+        renderKelasTable();
+        renderAllDropdowns();
+      }
+    }
+
+    function renderAllDropdowns() {
+      renderMapelDropdowns();
+      renderKelasDropdowns();
+    }
+
+    function renderKelasDropdowns() {
+      const siswaKelasSelect = document.getElementById("inputSiswaKelas");
+      const filterSiswaKelasSelect = document.getElementById("filterTabelSiswaKelas");
+      const filterHasilKelasSelect = document.getElementById("filterHasilUjianKelas");
+      const filterGuruKelasSelect = document.getElementById("inputGuruFilterKelas");
+
+      let optionsSiswa = `<option value="">-- Pilih Kelas --</option>`;
+      let optionsFilter = `<option value="">-- Semua Kelas --</option>`;
+
+      kelasList.forEach(k => {
+        optionsSiswa += `<option value="${k.nama}">${k.nama}</option>`;
+        optionsFilter += `<option value="${k.nama}">${k.nama}</option>`;
+      });
+
+      if (siswaKelasSelect) siswaKelasSelect.innerHTML = optionsSiswa;
+      if (filterSiswaKelasSelect) filterSiswaKelasSelect.innerHTML = optionsFilter;
+      if (filterHasilKelasSelect) filterHasilKelasSelect.innerHTML = optionsFilter;
+      if (filterGuruKelasSelect) filterGuruKelasSelect.innerHTML = optionsFilter;
     }
 
     function renderGuruMapelSelector() {
@@ -971,7 +1115,144 @@
     }
 
     /* ==========================================
-          BANK SOAL & HASIL UJIAN
+          MANAJEMEN SISWA & HASIL UJIAN
+    =========================================== */
+    function renderTabelSiswa() {
+      const tbody = document.getElementById("tbodySiswa");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      const selectedKelas = document.getElementById("filterTabelSiswaKelas") ? document.getElementById("filterTabelSiswaKelas").value : "";
+      
+      let filteredSiswa = dataSiswaList;
+      if (selectedKelas !== "") {
+        filteredSiswa = dataSiswaList.filter(s => s.kelas === selectedKelas);
+      }
+
+      if (filteredSiswa.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Tidak ada data siswa.</td></tr>`;
+        return;
+      }
+
+      filteredSiswa.forEach((siswa, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${siswa.username}</strong></td>
+            <td>${siswa.password}</td>
+            <td>${siswa.nama}</td>
+            <td><span class="badge-type" style="background:#f1f5f9; color:#0f172a; margin:0;">${siswa.kelas || '-'}</span></td>
+            <td style="text-align: center;">
+              <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="editSiswa(${idx})">Edit</button>
+              <button class="btn btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteSiswa(${idx})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function saveSiswaManual(e) {
+      e.preventDefault();
+      const idx = document.getElementById("siswaIndex").value;
+      const username = document.getElementById("inputSiswaUser").value.trim();
+      const password = document.getElementById("inputSiswaPass").value.trim();
+      const nama = document.getElementById("inputSiswaNama").value.trim();
+      const kelas = document.getElementById("inputSiswaKelas").value;
+
+      const siswaObj = { username, password, nama, kelas };
+      if (idx === "") dataSiswaList.push(siswaObj);
+      else dataSiswaList[idx] = siswaObj;
+
+      localStorage.setItem("dataSiswaActive", JSON.stringify(dataSiswaList));
+      resetFormSiswa();
+      renderTabelSiswa();
+    }
+
+    function resetFormSiswa() {
+      document.getElementById("siswaIndex").value = "";
+      document.getElementById("siswaForm").reset();
+      document.getElementById("btnSubmitSiswa").innerText = "Simpan Siswa";
+    }
+
+    function renderTabelHasil() {
+      const tbody = document.getElementById('tbodyHasil');
+      if (!tbody) return;
+
+      let selectedKelas = "";
+      if (currentUser?.role === 'admin') {
+        selectedKelas = document.getElementById('filterHasilUjianKelas').value;
+      } else {
+        selectedKelas = document.getElementById('inputGuruFilterKelas').value;
+      }
+
+      let filteredHasil = rekapHasilSemuaSiswa;
+      if (selectedKelas !== "") {
+        filteredHasil = rekapHasilSemuaSiswa.filter(item => item.kelas === selectedKelas);
+      }
+
+      if (filteredHasil.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filteredHasil.map(item => `
+        <tr>
+          <td><strong>${item.username}</strong></td>
+          <td>${item.nama || item.username}</td>
+          <td><span class="badge-type" style="margin:0;">${item.kelas || '-'}</span></td>
+          <td><strong>${item.score}</strong></td>
+          <td><span style="color:${item.status === 'Lulus' ? 'green' : 'red'}; font-weight:bold;">${item.status}</span></td>
+          <td style="text-align: center;">
+            <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="resetHasilSiswa('${item.username}')">Reset</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function exportHasilToExcel() {
+      let selectedKelas = "";
+      if (currentUser?.role === 'admin') {
+        selectedKelas = document.getElementById('filterHasilUjianKelas').value;
+      } else {
+        selectedKelas = document.getElementById('inputGuruFilterKelas').value;
+      }
+
+      let filteredHasil = rekapHasilSemuaSiswa;
+      if (selectedKelas !== "") {
+        filteredHasil = rekapHasilSemuaSiswa.filter(item => item.kelas === selectedKelas);
+      }
+
+      if (filteredHasil.length === 0) {
+        alert("Tidak ada data hasil ujian yang dapat diekspor!");
+        return;
+      }
+
+      const dataExport = filteredHasil.map((item, i) => ({
+        "No": i + 1,
+        "NISN/Username": item.username,
+        "Nama Siswa": item.nama || item.username,
+        "Kelas": item.kelas || "-",
+        "Mata Pelajaran": item.mapel || examSettings.activeMapel,
+        "Nilai Akhir": item.score,
+        "Status": item.status
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
+
+      const labelKelas = selectedKelas !== "" ? `Kelas_${selectedKelas}` : "Semua_Kelas";
+      XLSX.writeFile(wb, `Hasil_Ujian_${labelKelas}_${examSettings.activeMapel}.xlsx`);
+    }
+
+    function resetHasilSiswa(username) {
+      if (confirm(`Reset sesi ujian untuk siswa "${username}"?`)) {
+        rekapHasilSemuaSiswa = rekapHasilSemuaSiswa.filter(item => item.username !== username);
+        localStorage.setItem("rekapHasilSiswa", JSON.stringify(rekapHasilSemuaSiswa));
+        renderTabelHasil();
+      }
+    }
+
+    /* ==========================================
+          BANK SOAL SYSTEM
     =========================================== */
     function renderTabelBankSoal() {
       const tbody = document.getElementById("tabelBankSoalBody");
@@ -1060,52 +1341,6 @@
       document.getElementById("btnSubmitSoal").innerText = "Simpan Soal";
     }
 
-    function renderTabelSiswa() {
-      const tbody = document.getElementById("tbodySiswa");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      dataSiswaList.forEach((siswa, idx) => {
-        tbody.innerHTML += `
-          <tr>
-            <td><strong>${siswa.username}</strong></td>
-            <td>${siswa.password}</td>
-            <td>${siswa.nama}</td>
-            <td>${siswa.kelas}</td>
-            <td style="text-align: center;">
-              <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="editSiswa(${idx})">Edit</button>
-              <button class="btn btn-danger" style="padding: 2px 6px; font-size: 11px;" onclick="deleteSiswa(${idx})">Hapus</button>
-            </td>
-          </tr>`;
-      });
-    }
-
-    function renderTabelHasil() {
-      const tbody = document.getElementById('tbodyHasil');
-      if (rekapHasilSemuaSiswa.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #94a3b8;">Belum ada hasil ujian terekam.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = rekapHasilSemuaSiswa.map(item => `
-        <tr>
-          <td><strong>${item.username}</strong></td>
-          <td><strong>${item.score}</strong></td>
-          <td><span style="color:${item.status === 'Lulus' ? 'green' : 'red'}; font-weight:bold;">${item.status}</span></td>
-          <td style="text-align: center;">
-            <button class="btn btn-warning" style="padding: 2px 6px; font-size: 11px;" onclick="resetHasilSiswa('${item.username}')">Reset</button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function resetHasilSiswa(username) {
-      if (confirm(`Reset sesi ujian untuk siswa "${username}"?`)) {
-        rekapHasilSemuaSiswa = rekapHasilSemuaSiswa.filter(item => item.username !== username);
-        localStorage.setItem("rekapHasilSiswa", JSON.stringify(rekapHasilSemuaSiswa));
-        renderTabelHasil();
-      }
-    }
-
     /* ==========================================
           LOGIKA UJIAN SISWA
     =========================================== */
@@ -1170,7 +1405,36 @@
 
     function finishExam() {
       clearInterval(timerInterval);
-      alert(`Ujian Selesai! Terima kasih.`);
+
+      // Hitung Nilai Ujian Siswa
+      let correctCount = 0;
+      activeStudentQuestions.forEach(q => {
+        if (studentAnswers[q.id] === q.answerKey) {
+          correctCount++;
+        }
+      });
+
+      const score = Math.round((correctCount / activeStudentQuestions.length) * 100);
+      const status = score >= 75 ? "Lulus" : "Tidak Lulus";
+
+      const siswaAktifObj = dataSiswaList.find(s => s.nama === currentUser.username || s.username === currentUser.username);
+      const kelasSiswa = siswaAktifObj ? siswaAktifObj.kelas : (currentUser.kelas || "-");
+
+      // Simpan Rekap Hasil
+      const hasilObj = {
+        username: currentUser.username,
+        nama: currentUser.username,
+        kelas: kelasSiswa,
+        mapel: examSettings.activeMapel,
+        score: score,
+        status: status
+      };
+
+      rekapHasilSemuaSiswa = rekapHasilSemuaSiswa.filter(h => h.username !== currentUser.username);
+      rekapHasilSemuaSiswa.push(hasilObj);
+      localStorage.setItem("rekapHasilSiswa", JSON.stringify(rekapHasilSemuaSiswa));
+
+      alert(`Ujian Selesai!\nNilai Akhir Anda: ${score}\nStatus: ${status}`);
       if (document.exitFullscreen) document.exitFullscreen();
       logout();
     }
