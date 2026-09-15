@@ -1,505 +1,485 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aplikasi Ujian Akhir Semester</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- SheetJS CDN (Untuk Baca & Tulis Excel) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Firebase SDK (Modular v9+) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-      getFirestore, collection, addDoc, getDocs, writeBatch, doc 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // -------------------------------------------------------------
-    // SETUP FIREBASE (UNCOMMENT & ISI KONFIGURASI ANDA NANTI)
-    // -------------------------------------------------------------
-    /*
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "SENDER_ID",
-      appId: "APP_ID"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    window.db = getFirestore(app);
-    window.isFirebaseConnected = true;
-    */
-    window.isFirebaseConnected = false;
-  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin - LMS & CBT Informatika</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+<body class="bg-light">
 
-  <!-- ========================================================== -->
-  <!-- 1. HALAMAN LOGIN (TAMPILAN PERTAMA SAAT APILKASI DIBUKA)   -->
-  <!-- ========================================================== -->
-  <div id="pageLogin" class="min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200 w-full max-w-md space-y-6">
-      
-      <!-- Header Login -->
-      <div class="text-center space-y-1">
-        <h1 class="text-2xl font-bold text-slate-900">Aplikasi Ujian Sekolah</h1>
-        <p class="text-xs text-slate-500">Silakan pilih moda masuk dan masukkan akun Anda</p>
-      </div>
+  <!-- Navbar Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">
+        <i class="bi bi-laptop me-2"></i>CBT MKKS SINGAPARNA
+      </a>
+      <span class="navbar-text text-white font-monospace small">
+        Panel Guru / Admin
+      </span>
+    </div>
+  </nav>
 
-      <!-- TAB PILIH MODA LOGIN -->
-      <div class="flex border-b border-slate-200 text-sm font-semibold">
-        <button 
-          id="tabSiswa" 
-          onclick="switchLoginMode('siswa')" 
-          class="flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all">
-          👨‍🎓 Moda Siswa
-        </button>
-        <button 
-          id="tabAdmin" 
-          onclick="switchLoginMode('admin')" 
-          class="flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all">
-          👨‍🏫 Moda Guru / Admin
-        </button>
-      </div>
+  <div class="container my-4">
 
-      <!-- FORM LOGIN -->
-      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
-        
-        <!-- Input Username / NISN -->
-        <div>
-          <label id="lblUsername" class="block text-xs font-medium text-slate-600 mb-1">NISN / Username</label>
-          <input 
-            type="text" 
-            id="loginUsername" 
-            placeholder="Masukkan NISN anda..." 
-            required 
-            class="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          />
+    <!-- Header Stats Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-white-50 mb-1">Total Siswa</h6>
+              <h3 id="statTotalSiswa" class="fw-bold mb-0">0</h3>
+            </div>
+            <i class="bi bi-people display-5 opacity-50"></i>
+          </div>
         </div>
-
-        <!-- Input Password -->
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
-          <input 
-            type="password" 
-            id="loginPassword" 
-            placeholder="Masukkan password..." 
-            required 
-            class="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-          />
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-success text-white">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-white-50 mb-1">Jadwal Ujian</h6>
+              <h3 id="statTotalUjian" class="fw-bold mb-0">0</h3>
+            </div>
+            <i class="bi bi-journal-check display-5 opacity-50"></i>
+          </div>
         </div>
-
-        <!-- Submit Button -->
-        <button 
-          type="submit" 
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md text-sm shadow-sm transition-all">
-          Masuk ke Aplikasi
-        </button>
-      </form>
-
-      <div class="text-center">
-        <p class="text-[11px] text-slate-400">Default Admin: username <span class="font-mono bg-slate-100 px-1 border rounded">admin</span> | password <span class="font-mono bg-slate-100 px-1 border rounded">admin123</span></p>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-warning text-dark">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-dark-50 mb-1">Status Sistem</h6>
+              <h3 class="fw-bold mb-0">Aktif</h3>
+            </div>
+            <i class="bi bi-cpu display-5 opacity-50"></i>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-
-  <!-- ========================================================== -->
-  <!-- 2. DASHBOARD ADMIN (MANAJEMEN AKUN SISWA & HASIL UJIAN)   -->
-  <!-- ========================================================== -->
-  <div id="pageAdmin" class="hidden min-h-screen p-6">
-    <div class="max-w-7xl mx-auto space-y-6">
-      
-      <!-- Top Bar Admin -->
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
-        <div>
-          <h1 class="text-lg font-bold text-slate-800">Panel Utama Administrator</h1>
-          <p class="text-xs text-slate-500">Kelola data siswa dan pantau hasil ujian</p>
-        </div>
-        <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-md text-xs font-semibold border border-red-200">
-          🔒 Keluar (Logout)
+    <!-- Main Navigation Tabs -->
+    <ul class="nav nav-tabs nav-fill mb-4 bg-white rounded shadow-sm p-1" id="adminTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold" id="ujian-tab" data-bs-toggle="tab" data-bs-target="#tabUjian" type="button" role="tab">
+          <i class="bi bi-file-earmark-post me-1"></i> Kelola Ujian & Soal
         </button>
-      </div>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="siswa-tab" data-bs-toggle="tab" data-bs-target="#tabSiswa" type="button" role="tab">
+          <i class="bi bi-person-lines-fill me-1"></i> Data Siswa
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="nilai-tab" data-bs-toggle="tab" data-bs-target="#tabNilai" type="button" role="tab">
+          <i class="bi bi-bar-chart-line me-1"></i> Rekap Nilai
+        </button>
+      </li>
+    </ul>
 
-      <!-- GRID UTAMA DASHBOARD -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Tab Contents -->
+    <div class="tab-content" id="adminTabContent">
 
-        <!-- KIRI: MANAJEMEN AKUN SISWA -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
-          <div>
-            <h2 class="text-xl font-bold text-slate-900">Manajemen Akun Siswa</h2>
-            <p class="text-sm text-slate-500">Kelola akun siswa secara terstruktur per kelas.</p>
+      <!-- TAB 1: KELOLA UJIAN -->
+      <div class="tab-pane fade show active" id="tabUjian" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-journal-text me-2"></i>Daftar Jadwal Ujian</h5>
+            <button class="btn btn-primary btn-sm fw-bold" onclick="openModalTambahUjian()">
+              <i class="bi bi-plus-lg me-1"></i> Buat Ujian Baru
+            </button>
           </div>
-
-          <!-- FITUR IMPOR / EKSPOR MASSAL -->
-          <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fitur Impor / Ekspor Massal (Excel)</div>
-            <div class="flex flex-wrap gap-2">
-              <button onclick="downloadTemplate()" class="bg-white hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-md text-xs font-semibold border border-slate-300 shadow-sm flex items-center gap-1.5">
-                📥 Download Template
-              </button>
-
-              <button onclick="document.getElementById('excelFileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
-                📤 Import Data Siswa
-              </button>
-              <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importExcelData(event)" />
-
-              <button onclick="exportDataSiswa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
-                📊 Ekspor Data Siswa (.xlsx)
-              </button>
-            </div>
-          </div>
-
-          <!-- FORM TAMBAH MANUAL -->
-          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-3">
-            <div class="text-sm font-bold text-slate-700">Tambah Siswa Manual</div>
-            <form onsubmit="handleTambahManual(event)" class="space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-medium text-slate-600 mb-1">NISN / Username</label>
-                  <input type="text" id="manualNisn" placeholder="Misal: 1003" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
-                  <input type="text" id="manualPassword" placeholder="Misal: 123" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-medium text-slate-600 mb-1">Nama Siswa</label>
-                  <input type="text" id="manualNama" placeholder="Misal: Budi Santoso" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-slate-600 mb-1">Kelas / Rombel</label>
-                  <select id="manualKelas" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                    <option value="">-- Pilih Kelas --</option>
-                    <option value="IX-A">IX-A</option>
-                    <option value="IX-B">IX-B</option>
-                    <option value="IX-C">IX-C</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="flex justify-end gap-2 pt-2">
-                <button type="reset" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-md">Batal</button>
-                <button type="submit" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md shadow-sm">Simpan Siswa</button>
-              </div>
-            </form>
-          </div>
-
-          <!-- DAFTAR TABEL SISWA -->
-          <div class="space-y-3 pt-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-slate-700">Daftar Siswa:</span>
-              <select id="filterKelas" onchange="renderTable()" class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white">
-                <option value="semua">-- Semua Kelas --</option>
-                <option value="IX-A">IX-A</option>
-                <option value="IX-B">IX-B</option>
-                <option value="IX-C">IX-C</option>
-              </select>
-            </div>
-
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-              <table class="w-full text-xs text-left">
-                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                   <tr>
-                    <th class="p-2.5">NISN/User</th>
-                    <th class="p-2.5">Password</th>
-                    <th class="p-2.5">Nama Siswa</th>
-                    <th class="p-2.5">Kelas</th>
-                    <th class="p-2.5 text-center">Aksi</th>
+                    <th>No</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Judul Ujian</th>
+                    <th>Durasi</th>
+                    <th>Token</th>
+                    <th>Jumlah Soal</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
-                <tbody id="studentTableBody" class="divide-y divide-slate-200">
-                  <!-- Data siswa dirender di sini via JS -->
+                <tbody id="tbodyUjian">
+                  <!-- Data Ujian di-render via JS -->
                 </tbody>
               </table>
             </div>
           </div>
-
         </div>
+      </div>
 
-        <!-- KANAN: HASIL UJIAN -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+      <!-- TAB 2: DATA SISWA -->
+      <div class="tab-pane fade" id="tabSiswa" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-people me-2"></i>Data Siswa</h5>
+            
+            <!-- Grup Tombol Fitur Excel & Tambah Siswa -->
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-outline-success btn-sm" onclick="downloadTemplateSiswa()">
+                <i class="bi bi-file-earmark-excel me-1"></i> Template Excel
+              </button>
+              
+              <label class="btn btn-success btn-sm mb-0">
+                <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Excel
+                <input type="file" id="inputImportSiswa" accept=".xlsx, .xls, .csv" onchange="importSiswaExcel(event)" hidden>
+              </label>
+
+              <button class="btn btn-outline-primary btn-sm" onclick="exportSiswaExcel()">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i> Export Data
+              </button>
+
+              <button class="btn btn-primary btn-sm fw-bold" onclick="openModalTambahSiswa()">
+                <i class="bi bi-person-plus me-1"></i> + Tambah Siswa
+              </button>
+            </div>
+
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>No</th>
+                    <th>NISN</th>
+                    <th>Nama Siswa</th>
+                    <th>Kelas</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySiswa">
+                  <!-- Data Siswa di-render via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: REKAP NILAI -->
+      <div class="tab-pane fade" id="tabNilai" role="tabpanel">
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white py-3">
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-award me-2"></i>Hasil & Rekap Nilai Siswa</h5>
+          </div>
+          <div class="card-body bg-light">
+            <!-- Filter & Download Panel -->
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <label for="selectFilterKelas" class="form-label fw-bold small text-muted">Pilih Kelas</label>
+                <select id="selectFilterKelas" class="form-select">
+                  <option value="">-- Semua Kelas --</option>
+                  <option value="IX A">IX A</option>
+                  <option value="IX B">IX B</option>
+                  <option value="IX C">IX C</option>
+                  <option value="IX D">IX D</option>
+                  <option value="IX E">IX E</option>
+                  <option value="IX F">IX F</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label for="selectFilterUjian" class="form-label fw-bold small text-muted">Pilih Judul Ujian</label>
+                <select id="selectFilterUjian" class="form-select">
+                  <option value="">-- Semua Ujian --</option>
+                  <!-- Opsi diisi otomatis via JS dari localStorage -->
+                </select>
+              </div>
+              <div class="col-md-3">
+                <button type="button" class="btn btn-success fw-bold w-100" onclick="triggerDownloadRekap()">
+                  <i class="bi bi-file-earmark-excel me-1"></i> Download Rekap Excel
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-striped align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>No</th>
+                    <th>NISN</th>
+                    <th>Nama Siswa</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Nilai</th>
+                    <th>Waktu Selesai</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyNilai">
+                  <!-- Data Nilai di-render via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah Ujian Baru -->
+  <div class="modal fade" id="modalUjian" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">Buat Ujian Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formUjian" onsubmit="handleSimpanUjian(event)">
+          <div class="modal-body">
+            <input type="hidden" id="ujianId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Mata Pelajaran</label>
+              <input type="text" id="ujianMapel" class="form-control" value="Informatika" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Judul Ujian / Materi</label>
+              <input type="text" id="ujianJudul" class="form-control" placeholder="Contoh: Sumatif Tengah Semester 2" required>
+            </div>
+            <div class="row g-2">
+              <div class="col-6 mb-3">
+                <label class="form-label fw-bold">Durasi (Menit)</label>
+                <input type="number" id="ujianDurasi" class="form-control" value="60" min="5" required>
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label fw-bold">Token Ujian</label>
+                <input type="text" id="ujianToken" class="form-control fw-bold text-uppercase" readonly>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary fw-bold">Simpan Ujian</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Kelola Soal Ujian (Support 3 Tipe Soal & Import Excel) -->
+  <div class="modal fade" id="modalKelolaSoal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
           <div>
-            <h2 class="text-xl font-bold text-slate-900">Hasil Ujian & Ekspor Data</h2>
-            <p class="text-sm text-slate-500">Unduh rekapitulasi nilai per kelas atau reset sesi siswa yang terkendala.</p>
+            <h5 class="modal-title fw-bold">Kelola Soal Ujian</h5>
+            <small id="judulUjianSoal" class="text-white-50 fw-bold"></small>
           </div>
-
-          <div class="flex items-center gap-3">
-            <select class="text-xs border border-slate-300 rounded-md px-3 py-2 bg-white">
-              <option>-- Semua Kelas --</option>
-              <option>IX-A</option>
-              <option>IX-B</option>
-            </select>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-xs font-semibold shadow-sm">
-              Ekspor Rekap Excel (.xlsx)
-            </button>
-          </div>
-
-          <div class="border border-slate-200 rounded-lg overflow-x-auto">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                <tr>
-                  <th class="p-2.5">NISN / Username</th>
-                  <th class="p-2.5">Nama Siswa</th>
-                  <th class="p-2.5">Kelas</th>
-                  <th class="p-2.5">Nilai Akhir</th>
-                  <th class="p-2.5">Status</th>
-                  <th class="p-2.5 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="6" class="text-center p-8 text-slate-400">Belum ada hasil ujian terekam.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body">
+          
+          <!-- Form Input Soal Baru -->
+          <div class="card mb-4 border-primary">
+            <div class="card-header bg-light font-weight-bold">
+              <i class="bi bi-plus-circle-fill text-primary"></i> Form Input Soal Baru
+            </div>
+            <div class="card-body">
+              <form id="formTambahSoal" onsubmit="handleTambahSoal(event)">
+                
+                <!-- Pilih Tipe Soal -->
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Tipe Soal</label>
+                  <select id="soalTipe" class="form-select fw-bold bg-light" onchange="switchTipeSoal(this.value)">
+                    <option value="pg">Pilihan Ganda biasa (1 Jawaban Benar)</option>
+                    <option value="pg_kompleks">PG Kompleks (Bisa >1 Jawaban Benar)</option>
+                    <option value="mencocokkan">Mencocokkan / Menjodohkan</option>
+                  </select>
+                </div>
 
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Pertanyaan / Instruksi Soal</label>
+                  <textarea id="soalPertanyaan" class="form-control" rows="2" required placeholder="Tuliskan pertanyaan..."></textarea>
+                </div>
+
+                <!-- CONTAINER 1: Pilihan Ganda & PG Kompleks -->
+                <div id="containerPG">
+                  <label class="form-label fw-bold">Opsi Pilihan Jawaban</label>
+                  <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                      <input type="text" id="soalA" class="form-control" placeholder="Pilihan A">
+                    </div>
+                    <div class="col-md-6">
+                      <input type="text" id="soalB" class="form-control" placeholder="Pilihan B">
+                    </div>
+                    <div class="col-md-6">
+                      <input type="text" id="soalC" class="form-control" placeholder="Pilihan C">
+                    </div>
+                    <div class="col-md-6">
+                      <input type="text" id="soalD" class="form-control" placeholder="Pilihan D">
+                    </div>
+                  </div>
+
+                  <!-- Kunci PG Biasa -->
+                  <div id="boxKunciPG" class="mb-3">
+                    <label class="form-label fw-bold">Kunci Jawaban</label>
+                    <select id="soalKunciPG" class="form-select">
+                      <option value="A">Opsi A</option>
+                      <option value="B">Opsi B</option>
+                      <option value="C">Opsi C</option>
+                      <option value="D">Opsi D</option>
+                    </select>
+                  </div>
+
+                  <!-- Kunci PG Kompleks -->
+                  <div id="boxKunciKompleks" class="mb-3 d-none">
+                    <label class="form-label fw-bold text-success">Centang Semua Jawaban yang Benar:</label>
+                    <div class="d-flex gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="kunciKompleksA" value="A">
+                        <label class="form-check-label fw-bold" for="kunciKompleksA">A</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="kunciKompleksB" value="B">
+                        <label class="form-check-label fw-bold" for="kunciKompleksB">B</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="kunciKompleksC" value="C">
+                        <label class="form-check-label fw-bold" for="kunciKompleksC">C</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="kunciKompleksD" value="D">
+                        <label class="form-check-label fw-bold" for="kunciKompleksD">D</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CONTAINER 2: Mencocokkan / Menjodohkan -->
+                <div id="containerMencocokkan" class="d-none">
+                  <label class="form-label fw-bold text-primary">Daftar Pasangan (Kiri = Pernyataan, Kanan = Pasangan Benar)</label>
+                  <p class="small text-muted mb-2">Sistem akan otomatis mengacak pilihan pasangan di layar siswa.</p>
+                  
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" id="matchKiri1" class="form-control form-control-sm" placeholder="Pernyataan 1 (contoh: CPU)">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" id="matchKanan1" class="form-control form-control-sm" placeholder="Pasangan 1 (contoh: Otak Komputer)">
+                    </div>
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" id="matchKiri2" class="form-control form-control-sm" placeholder="Pernyataan 2 (contoh: RAM)">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" id="matchKanan2" class="form-control form-control-sm" placeholder="Pasangan 2 (contoh: Memori Sementara)">
+                    </div>
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" id="matchKiri3" class="form-control form-control-sm" placeholder="Pernyataan 3 (contoh: HDD)">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" id="matchKanan3" class="form-control form-control-sm" placeholder="Pasangan 3 (contoh: Penyimpanan Permanen)">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 text-end">
+                  <button type="submit" class="btn btn-primary fw-bold px-4">
+                    <i class="bi bi-save"></i> Simpan Soal
+                  </button>
+                </div>
+
+              </form>
+            </div>
+          </div>
+
+          <!-- Import Soal via Excel -->
+          <div class="mb-3 p-3 bg-light rounded border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label fw-bold mb-0">
+                <i class="bi bi-file-earmark-excel text-success"></i> Import Soal dari Excel
+              </label>
+              <!-- Tombol Download Template Soal -->
+              <button type="button" class="btn btn-outline-success" onclick="event.preventDefault(); downloadTemplateSoal();">
+                <i class="bi bi-file-earmark-excel"></i> Template Soal
+              </button>
+            </div>
+            <p class="small text-muted mb-2">
+              Header Excel wajib berisi: <strong>Pertanyaan</strong>, <strong>A</strong>, <strong>B</strong>, <strong>C</strong>, <strong>D</strong>, <strong>Kunci</strong> (A/B/C/D).
+            </p>
+            <input type="file" class="form-control" accept=".xlsx, .xls" onchange="importExcelSoal(event)">
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
 
-
-  <!-- ========================================================== -->
-  <!-- 3. HALAMAN RUANG UJIAN SISWA                              -->
-  <!-- ========================================================== -->
-  <div id="pageSiswa" class="hidden min-h-screen p-6">
-    <div class="max-w-4xl mx-auto space-y-6">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
-        <div>
-          <h1 class="text-xl font-bold text-slate-800" id="welcomeSiswaName">Selamat Datang Siswa</h1>
-          <p class="text-xs text-slate-500">Ujian Akhir Semester TIK Kelas IX</p>
+  <!-- MODAL: Tambah Data Siswa -->
+  <div class="modal fade" id="modalSiswa" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Data Siswa</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <button onclick="logout()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md text-xs font-semibold border">
-          Keluar
-        </button>
-      </div>
-
-      <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center space-y-4">
-        <div class="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
-          Sesi Ujian Anda Siap. Silakan klik tombol di bawah ini untuk memulai ujian.
-        </div>
-        <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-lg text-sm shadow-sm">
-          🚀 Mulai Kerjakan Ujian
-        </button>
+        <form id="formSiswa" onsubmit="handleSimpanSiswa(event)">
+          <div class="modal-body">
+            <input type="hidden" id="siswaId">
+            <div class="mb-3">
+              <label class="form-label fw-bold">NISN</label>
+              <input type="text" id="siswaNisn" class="form-control" placeholder="Contoh: 0081234567" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nama Lengkap Siswa</label>
+              <input type="text" id="siswaNama" class="form-control" placeholder="Masukkan nama siswa" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Kelas</label>
+              <input type="text" id="siswaKelas" class="form-control" placeholder="Contoh: IX A" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-success fw-bold">Simpan Siswa</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap JS & SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
 
-  <!-- JAVASCRIPT LOGIK SISTEM -->
+  <!-- Script Perantara Rekap Nilai -->
   <script>
-    // State Moda Login saat ini (default: siswa)
-    let currentMode = 'siswa';
-
-    // State Data Siswa
-    let studentState = [
-      { nisn: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
-      { nisn: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" },
-      { nisn: "1003", password: "123", nama: "Budi Santoso", kelas: "IX-B" }
-    ];
-
-    // 1. FUNGSI GANTI TAB MODA LOGIN
-    function switchLoginMode(mode) {
-      currentMode = mode;
-      const tabSiswa = document.getElementById("tabSiswa");
-      const tabAdmin = document.getElementById("tabAdmin");
-      const lblUsername = document.getElementById("lblUsername");
-      const inputUsername = document.getElementById("loginUsername");
-
-      if (mode === 'siswa') {
-        tabSiswa.className = "flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all font-semibold";
-        tabAdmin.className = "flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
-        lblUsername.innerText = "NISN / Username Siswa";
-        inputUsername.placeholder = "Masukkan NISN anda...";
+    function triggerDownloadRekap() {
+      const kelas = document.getElementById("selectFilterKelas").value;
+      const ujianId = document.getElementById("selectFilterUjian").value;
+      
+      if (typeof downloadRekapNilaiPerKelas === "function") {
+        downloadRekapNilaiPerKelas(kelas, ujianId);
       } else {
-        tabAdmin.className = "flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all font-semibold";
-        tabSiswa.className = "flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
-        lblUsername.innerText = "Username Admin / Guru";
-        inputUsername.placeholder = "Masukkan username admin...";
+        alert("Fungsi downloadRekapNilaiPerKelas() belum tersedia di app.js");
       }
     }
 
-    // 2. FUNGSI LOGIN
-    function handleLogin(e) {
-      e.preventDefault();
-      const user = document.getElementById("loginUsername").value.trim();
-      const pass = document.getElementById("loginPassword").value.trim();
-
-      if (currentMode === 'admin') {
-        // Otentikasi Sederhana Admin (Nanti diganti dengan Auth Firestore/Firebase)
-        if (user === "admin" && pass === "admin123") {
-          document.getElementById("pageLogin").classList.add("hidden");
-          document.getElementById("pageAdmin").classList.remove("hidden");
-          renderTable();
-        } else {
-          alert("Username/Password Admin Salah! (Default: admin / admin123)");
-        }
-      } else {
-        // Otentikasi Siswa dari Array State
-        const found = studentState.find(s => s.nisn === user && s.password === pass);
-        if (found) {
-          document.getElementById("pageLogin").classList.add("hidden");
-          document.getElementById("pageSiswa").classList.remove("hidden");
-          document.getElementById("welcomeSiswaName").innerText = `Selamat Datang, ${found.nama} (${found.kelas})`;
-        } else {
-          alert("NISN atau Password Siswa tidak ditemukan!");
-        }
+    // Isi Otomatis Dropdown Filter Ujian saat halaman dimuat
+    document.addEventListener("DOMContentLoaded", () => {
+      const selectUjian = document.getElementById("selectFilterUjian");
+      if (selectUjian) {
+        const daftarUjian = JSON.parse(localStorage.getItem("daftarUjian") || "[]");
+        daftarUjian.forEach(u => {
+          const opt = document.createElement("option");
+          opt.value = u.id;
+          opt.textContent = `${u.mapel} - ${u.judul}`;
+          selectUjian.appendChild(opt);
+        });
       }
-    }
-
-    // 3. LOGOUT
-    function logout() {
-      document.getElementById("pageAdmin").classList.add("hidden");
-      document.getElementById("pageSiswa").classList.add("hidden");
-      document.getElementById("pageLogin").classList.remove("hidden");
-      document.getElementById("formLogin").reset();
-    }
-
-    // 4. RENDER TABEL SISWA (ADMIN)
-    function renderTable() {
-      const tbody = document.getElementById("studentTableBody");
-      const filter = document.getElementById("filterKelas").value;
-      tbody.innerHTML = "";
-
-      const filteredData = filter === "semua" 
-        ? studentState 
-        : studentState.filter(s => s.kelas === filter);
-
-      if (filteredData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-slate-400">Tidak ada data siswa.</td></tr>`;
-        return;
-      }
-
-      filteredData.forEach((s) => {
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50";
-        tr.innerHTML = `
-          <td class="p-2.5 font-bold">${s.nisn}</td>
-          <td class="p-2.5">${s.password}</td>
-          <td class="p-2.5">${s.nama}</td>
-          <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-semibold text-[10px]">${s.kelas}</span></td>
-          <td class="p-2.5 text-center space-x-1">
-            <button onclick="hapusSiswa('${s.nisn}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] font-semibold">Hapus</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // 5. DOWNLOAD TEMPLATE EXCEL
-    function downloadTemplate() {
-      const templateData = [
-        { "NISN / Username": "1004", "Nama Siswa": "Contoh: Ani Saputri", "Kelas": "IX-A", "Password": "123" }
-      ];
-      const ws = XLSX.utils.json_to_sheet(templateData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Template_Siswa");
-      XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
-    }
-
-    // 6. IMPORT DATA DARI EXCEL (BATCH FIREBASE READY)
-    function importExcelData(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-        const formattedStudents = rawRows.map(row => ({
-          nisn: String(row["NISN / Username"] || "").trim(),
-          nama: String(row["Nama Siswa"] || "").trim(),
-          kelas: String(row["Kelas"] || "").trim(),
-          password: String(row["Password"] || "123").trim()
-        })).filter(s => s.nisn !== "" && s.nama !== "");
-
-        if (formattedStudents.length === 0) {
-          alert("File kosong atau format kolom tidak sesuai!");
-          return;
-        }
-
-        studentState = [...studentState, ...formattedStudents];
-        renderTable();
-
-        // EKSEKUSI BATCH WRITE KE FIREBASE (JIKA AKTIF)
-        if (window.isFirebaseConnected && window.db) {
-          try {
-            const batch = writeBatch(window.db);
-            formattedStudents.forEach(s => {
-              const studentRef = doc(window.db, "students", s.nisn);
-              batch.set(studentRef, s);
-            });
-            await batch.commit();
-            alert(`Berhasil mengimpor dan menyimpan ${formattedStudents.length} siswa ke Firebase!`);
-          } catch (err) {
-            console.error(err);
-            alert("Impor ke UI berhasil, namun gagal menyimpan ke Firebase.");
-          }
-        } else {
-          alert(`Berhasil mengimpor ${formattedStudents.length} siswa ke tampilan UI!`);
-        }
-
-        event.target.value = null;
-      };
-
-      reader.readAsArrayBuffer(file);
-    }
-
-    // 7. EKSPOR DATA SISWA KE EXCEL
-    function exportDataSiswa() {
-      if (studentState.length === 0) {
-        alert("Belum ada data siswa untuk diekspor!");
-        return;
-      }
-
-      const dataToExport = studentState.map(s => ({
-        "NISN / Username": s.nisn,
-        "Nama Siswa": s.nama,
-        "Kelas": s.kelas,
-        "Password": s.password
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(dataToExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Data_Siswa");
-      XLSX.writeFile(wb, `Data_Siswa_Ujian_${new Date().toISOString().slice(0,10)}.xlsx`);
-    }
-
-    // 8. TAMBAH MANUAL & HAPUS
-    function handleTambahManual(e) {
-      e.preventDefault();
-      const newStudent = {
-        nisn: document.getElementById("manualNisn").value.trim(),
-        password: document.getElementById("manualPassword").value.trim(),
-        nama: document.getElementById("manualNama").value.trim(),
-        kelas: document.getElementById("manualKelas").value
-      };
-
-      studentState.push(newStudent);
-      renderTable();
-      e.target.reset();
-    }
-
-    function hapusSiswa(nisn) {
-      if (confirm(`Hapus data siswa NISN: ${nisn}?`)) {
-        studentState = studentState.filter(s => s.nisn !== nisn);
-        renderTable();
-      }
-    }
+    });
   </script>
+
 </body>
 </html>
