@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aplikasi Ujian Akhir Semester - Manajemen Siswa</title>
+  <title>Aplikasi Ujian Akhir Semester</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,7 +19,7 @@
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // -------------------------------------------------------------
-    // OPTIONAL: UNCOMMENT & ISI CONFIG FIREBASE ANDA NANTI
+    // SETUP FIREBASE (UNCOMMENT & ISI KONFIGURASI ANDA NANTI)
     // -------------------------------------------------------------
     /*
     const firebaseConfig = {
@@ -34,180 +34,339 @@
     const app = initializeApp(firebaseConfig);
     window.db = getFirestore(app);
     window.isFirebaseConnected = true;
-    console.log("Firebase Connected!");
     */
-    window.isFirebaseConnected = false; // Status default sebelum dihubungkan
+    window.isFirebaseConnected = false;
   </script>
 </head>
-<body class="bg-slate-100 min-h-screen p-6 font-sans text-slate-800">
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
-  <div class="max-w-7xl mx-auto space-y-6">
-    
-    <!-- HEADER GRID UTAMA -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- ========================================================== -->
+  <!-- 1. HALAMAN LOGIN (TAMPILAN PERTAMA SAAT APILKASI DIBUKA)   -->
+  <!-- ========================================================== -->
+  <div id="pageLogin" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200 w-full max-w-md space-y-6">
+      
+      <!-- Header Login -->
+      <div class="text-center space-y-1">
+        <h1 class="text-2xl font-bold text-slate-900">Aplikasi Ujian Sekolah</h1>
+        <p class="text-xs text-slate-500">Silakan pilih moda masuk dan masukkan akun Anda</p>
+      </div>
 
-      <!-- ========================================================== -->
-      <!-- KIRI: MANAJEMEN AKUN SISWA                                -->
-      <!-- ========================================================== -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+      <!-- TAB PILIH MODA LOGIN -->
+      <div class="flex border-b border-slate-200 text-sm font-semibold">
+        <button 
+          id="tabSiswa" 
+          onclick="switchLoginMode('siswa')" 
+          class="flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all">
+          👨‍🎓 Moda Siswa
+        </button>
+        <button 
+          id="tabAdmin" 
+          onclick="switchLoginMode('admin')" 
+          class="flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all">
+          👨‍🏫 Moda Guru / Admin
+        </button>
+      </div>
+
+      <!-- FORM LOGIN -->
+      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
         
+        <!-- Input Username / NISN -->
         <div>
-          <h2 class="text-xl font-bold text-slate-900">Manajemen Akun Siswa</h2>
-          <p class="text-sm text-slate-500">Kelola akun siswa secara terstruktur per kelas.</p>
+          <label id="lblUsername" class="block text-xs font-medium text-slate-600 mb-1">NISN / Username</label>
+          <input 
+            type="text" 
+            id="loginUsername" 
+            placeholder="Masukkan NISN anda..." 
+            required 
+            class="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          />
         </div>
 
-        <!-- FITUR UTAMA: BATCH IMPORT / EXPORT & TEMPLATE -->
-        <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
-          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fitur Impor / Ekspor Massal (Excel)</div>
-          <div class="flex flex-wrap gap-2">
-            
-            <button onclick="downloadTemplate()" class="bg-white hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-md text-xs font-semibold border border-slate-300 shadow-sm flex items-center gap-1.5">
-              📥 Template Excel
-            </button>
+        <!-- Input Password -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
+          <input 
+            type="password" 
+            id="loginPassword" 
+            placeholder="Masukkan password..." 
+            required 
+            class="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          />
+        </div>
 
-            <button onclick="document.getElementById('excelFileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
-              📤 Import Data Siswa
-            </button>
-            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importExcelData(event)" />
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md text-sm shadow-sm transition-all">
+          Masuk ke Aplikasi
+        </button>
+      </form>
 
-            <button onclick="exportDataSiswa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
-              📊 Ekspor Data Siswa (.xlsx)
-            </button>
+      <div class="text-center">
+        <p class="text-[11px] text-slate-400">Default Admin: username <span class="font-mono bg-slate-100 px-1 border rounded">admin</span> | password <span class="font-mono bg-slate-100 px-1 border rounded">admin123</span></p>
+      </div>
+    </div>
+  </div>
 
+
+  <!-- ========================================================== -->
+  <!-- 2. DASHBOARD ADMIN (MANAJEMEN AKUN SISWA & HASIL UJIAN)   -->
+  <!-- ========================================================== -->
+  <div id="pageAdmin" class="hidden min-h-screen p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+      
+      <!-- Top Bar Admin -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <h1 class="text-lg font-bold text-slate-800">Panel Utama Administrator</h1>
+          <p class="text-xs text-slate-500">Kelola data siswa dan pantau hasil ujian</p>
+        </div>
+        <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-md text-xs font-semibold border border-red-200">
+          🔒 Keluar (Logout)
+        </button>
+      </div>
+
+      <!-- GRID UTAMA DASHBOARD -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- KIRI: MANAJEMEN AKUN SISWA -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Manajemen Akun Siswa</h2>
+            <p class="text-sm text-slate-500">Kelola akun siswa secara terstruktur per kelas.</p>
           </div>
+
+          <!-- FITUR IMPOR / EKSPOR MASSAL -->
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Fitur Impor / Ekspor Massal (Excel)</div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="downloadTemplate()" class="bg-white hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-md text-xs font-semibold border border-slate-300 shadow-sm flex items-center gap-1.5">
+                📥 Download Template
+              </button>
+
+              <button onclick="document.getElementById('excelFileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                📤 Import Data Siswa
+              </button>
+              <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importExcelData(event)" />
+
+              <button onclick="exportDataSiswa()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                📊 Ekspor Data Siswa (.xlsx)
+              </button>
+            </div>
+          </div>
+
+          <!-- FORM TAMBAH MANUAL -->
+          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-3">
+            <div class="text-sm font-bold text-slate-700">Tambah Siswa Manual</div>
+            <form onsubmit="handleTambahManual(event)" class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">NISN / Username</label>
+                  <input type="text" id="manualNisn" placeholder="Misal: 1003" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
+                  <input type="text" id="manualPassword" placeholder="Misal: 123" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Nama Siswa</label>
+                  <input type="text" id="manualNama" placeholder="Misal: Budi Santoso" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1">Kelas / Rombel</label>
+                  <select id="manualKelas" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="">-- Pilih Kelas --</option>
+                    <option value="IX-A">IX-A</option>
+                    <option value="IX-B">IX-B</option>
+                    <option value="IX-C">IX-C</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="reset" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-md">Batal</button>
+                <button type="submit" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md shadow-sm">Simpan Siswa</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- DAFTAR TABEL SISWA -->
+          <div class="space-y-3 pt-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-700">Daftar Siswa:</span>
+              <select id="filterKelas" onchange="renderTable()" class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white">
+                <option value="semua">-- Semua Kelas --</option>
+                <option value="IX-A">IX-A</option>
+                <option value="IX-B">IX-B</option>
+                <option value="IX-C">IX-C</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="p-2.5">NISN/User</th>
+                    <th class="p-2.5">Password</th>
+                    <th class="p-2.5">Nama Siswa</th>
+                    <th class="p-2.5">Kelas</th>
+                    <th class="p-2.5 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="studentTableBody" class="divide-y divide-slate-200">
+                  <!-- Data siswa dirender di sini via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
 
-        <!-- FORM TAMBAH SISWA MANUAL -->
-        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-3">
-          <div class="text-sm font-bold text-slate-700">Tambah Siswa Manual</div>
-          
-          <form id="formManual" onsubmit="handleTambahManual(event)" class="space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">NISN / Username</label>
-                <input type="text" id="manualNisn" placeholder="Misal: 1003" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
-                <input type="text" id="manualPassword" placeholder="Misal: 123" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
+        <!-- KANAN: HASIL UJIAN -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Hasil Ujian & Ekspor Data</h2>
+            <p class="text-sm text-slate-500">Unduh rekapitulasi nilai per kelas atau reset sesi siswa yang terkendala.</p>
+          </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">Nama Siswa</label>
-                <input type="text" id="manualNama" placeholder="Misal: Budi Santoso" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">Kelas / Rombel</label>
-                <select id="manualKelas" required class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option value="">-- Pilih Kelas --</option>
-                  <option value="IX-A">IX-A</option>
-                  <option value="IX-B">IX-B</option>
-                  <option value="IX-C">IX-C</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2">
-              <button type="reset" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-md">Batal</button>
-              <button type="submit" class="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md shadow-sm">Simpan Siswa</button>
-            </div>
-          </form>
-        </div>
-
-        <!-- DAFTAR TABEL SISWA -->
-        <div class="space-y-3 pt-2">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-700">Daftar Siswa:</span>
-            <select id="filterKelas" onchange="renderTable()" class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white">
-              <option value="semua">-- Semua Kelas --</option>
-              <option value="IX-A">IX-A</option>
-              <option value="IX-B">IX-B</option>
-              <option value="IX-C">IX-C</option>
+          <div class="flex items-center gap-3">
+            <select class="text-xs border border-slate-300 rounded-md px-3 py-2 bg-white">
+              <option>-- Semua Kelas --</option>
+              <option>IX-A</option>
+              <option>IX-B</option>
             </select>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-xs font-semibold shadow-sm">
+              Ekspor Rekap Excel (.xlsx)
+            </button>
           </div>
 
-          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+          <div class="border border-slate-200 rounded-lg overflow-x-auto">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                 <tr>
-                  <th class="p-2.5">NISN/User</th>
-                  <th class="p-2.5">Password</th>
+                  <th class="p-2.5">NISN / Username</th>
                   <th class="p-2.5">Nama Siswa</th>
                   <th class="p-2.5">Kelas</th>
+                  <th class="p-2.5">Nilai Akhir</th>
+                  <th class="p-2.5">Status</th>
                   <th class="p-2.5 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody id="studentTableBody" class="divide-y divide-slate-200">
-                <!-- Data siswa dirender di sini via JS -->
+              <tbody>
+                <tr>
+                  <td colspan="6" class="text-center p-8 text-slate-400">Belum ada hasil ujian terekam.</td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
 
       </div>
-
-      <!-- ========================================================== -->
-      <!-- KANAN: HASIL UJIAN & EKSPOR DATA                           -->
-      <!-- ========================================================== -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
-        <div>
-          <h2 class="text-xl font-bold text-slate-900">Hasil Ujian & Ekspor Data</h2>
-          <p class="text-sm text-slate-500">Unduh rekapitulasi nilai per kelas atau reset sesi siswa yang terkendala.</p>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <select class="text-xs border border-slate-300 rounded-md px-3 py-2 bg-white">
-            <option>-- Semua Kelas --</option>
-            <option>IX-A</option>
-            <option>IX-B</option>
-          </select>
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-xs font-semibold shadow-sm">
-            Ekspor Rekap Excel (.xlsx)
-          </button>
-        </div>
-
-        <!-- TABEL HASIL UJIAN -->
-        <div class="border border-slate-200 rounded-lg overflow-x-auto">
-          <table class="w-full text-xs text-left">
-            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-              <tr>
-                <th class="p-2.5">NISN / Username</th>
-                <th class="p-2.5">Nama Siswa</th>
-                <th class="p-2.5">Kelas</th>
-                <th class="p-2.5">Nilai Akhir</th>
-                <th class="p-2.5">Status</th>
-                <th class="p-2.5 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="6" class="text-center p-8 text-slate-400">Belum ada hasil ujian terekam.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
   </div>
 
-  <!-- JAVASCRIPT LOGIC -->
+
+  <!-- ========================================================== -->
+  <!-- 3. HALAMAN RUANG UJIAN SISWA                              -->
+  <!-- ========================================================== -->
+  <div id="pageSiswa" class="hidden min-h-screen p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800" id="welcomeSiswaName">Selamat Datang Siswa</h1>
+          <p class="text-xs text-slate-500">Ujian Akhir Semester TIK Kelas IX</p>
+        </div>
+        <button onclick="logout()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md text-xs font-semibold border">
+          Keluar
+        </button>
+      </div>
+
+      <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center space-y-4">
+        <div class="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
+          Sesi Ujian Anda Siap. Silakan klik tombol di bawah ini untuk memulai ujian.
+        </div>
+        <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-lg text-sm shadow-sm">
+          🚀 Mulai Kerjakan Ujian
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- JAVASCRIPT LOGIK SISTEM -->
   <script>
-    // State lokal untuk menampung data siswa
+    // State Moda Login saat ini (default: siswa)
+    let currentMode = 'siswa';
+
+    // State Data Siswa
     let studentState = [
       { nisn: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
       { nisn: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" },
       { nisn: "1003", password: "123", nama: "Budi Santoso", kelas: "IX-B" }
     ];
 
-    // Render tabel siswa saat halaman dimuat
-    document.addEventListener("DOMContentLoaded", () => {
-      renderTable();
-    });
+    // 1. FUNGSI GANTI TAB MODA LOGIN
+    function switchLoginMode(mode) {
+      currentMode = mode;
+      const tabSiswa = document.getElementById("tabSiswa");
+      const tabAdmin = document.getElementById("tabAdmin");
+      const lblUsername = document.getElementById("lblUsername");
+      const inputUsername = document.getElementById("loginUsername");
 
-    // 1. RENDER TABEL SISWA
+      if (mode === 'siswa') {
+        tabSiswa.className = "flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all font-semibold";
+        tabAdmin.className = "flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
+        lblUsername.innerText = "NISN / Username Siswa";
+        inputUsername.placeholder = "Masukkan NISN anda...";
+      } else {
+        tabAdmin.className = "flex-1 py-2.5 text-center border-b-2 border-blue-600 text-blue-600 transition-all font-semibold";
+        tabSiswa.className = "flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all";
+        lblUsername.innerText = "Username Admin / Guru";
+        inputUsername.placeholder = "Masukkan username admin...";
+      }
+    }
+
+    // 2. FUNGSI LOGIN
+    function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById("loginUsername").value.trim();
+      const pass = document.getElementById("loginPassword").value.trim();
+
+      if (currentMode === 'admin') {
+        // Otentikasi Sederhana Admin (Nanti diganti dengan Auth Firestore/Firebase)
+        if (user === "admin" && pass === "admin123") {
+          document.getElementById("pageLogin").classList.add("hidden");
+          document.getElementById("pageAdmin").classList.remove("hidden");
+          renderTable();
+        } else {
+          alert("Username/Password Admin Salah! (Default: admin / admin123)");
+        }
+      } else {
+        // Otentikasi Siswa dari Array State
+        const found = studentState.find(s => s.nisn === user && s.password === pass);
+        if (found) {
+          document.getElementById("pageLogin").classList.add("hidden");
+          document.getElementById("pageSiswa").classList.remove("hidden");
+          document.getElementById("welcomeSiswaName").innerText = `Selamat Datang, ${found.nama} (${found.kelas})`;
+        } else {
+          alert("NISN atau Password Siswa tidak ditemukan!");
+        }
+      }
+    }
+
+    // 3. LOGOUT
+    function logout() {
+      document.getElementById("pageAdmin").classList.add("hidden");
+      document.getElementById("pageSiswa").classList.add("hidden");
+      document.getElementById("pageLogin").classList.remove("hidden");
+      document.getElementById("formLogin").reset();
+    }
+
+    // 4. RENDER TABEL SISWA (ADMIN)
     function renderTable() {
       const tbody = document.getElementById("studentTableBody");
       const filter = document.getElementById("filterKelas").value;
@@ -231,7 +390,6 @@
           <td class="p-2.5">${s.nama}</td>
           <td class="p-2.5"><span class="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-semibold text-[10px]">${s.kelas}</span></td>
           <td class="p-2.5 text-center space-x-1">
-            <button onclick="editSiswa('${s.nisn}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px] font-semibold">Edit</button>
             <button onclick="hapusSiswa('${s.nisn}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] font-semibold">Hapus</button>
           </td>
         `;
@@ -239,7 +397,7 @@
       });
     }
 
-    // 2. DOWNLOAD TEMPLATE EXCEL
+    // 5. DOWNLOAD TEMPLATE EXCEL
     function downloadTemplate() {
       const templateData = [
         { "NISN / Username": "1004", "Nama Siswa": "Contoh: Ani Saputri", "Kelas": "IX-A", "Password": "123" }
@@ -250,7 +408,7 @@
       XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
     }
 
-    // 3. IMPORT DATA DARI EXCEL (BATCH READY FOR FIREBASE)
+    // 6. IMPORT DATA DARI EXCEL (BATCH FIREBASE READY)
     function importExcelData(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -262,7 +420,6 @@
         const sheetName = workbook.SheetNames[0];
         const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-        // Formating agar sesuai dengan Firestore Document Schema
         const formattedStudents = rawRows.map(row => ({
           nisn: String(row["NISN / Username"] || "").trim(),
           nama: String(row["Nama Siswa"] || "").trim(),
@@ -275,38 +432,34 @@
           return;
         }
 
-        // PUSH KE LOCAL STATE UNTUK DISPLAY UI
         studentState = [...studentState, ...formattedStudents];
         renderTable();
 
-        // -------------------------------------------------------------
-        // LOGIKA KONEKSI FIREBASE FIRESTORE (SAAT SUDAH DI-UNCOMMENT)
-        // -------------------------------------------------------------
+        // EKSEKUSI BATCH WRITE KE FIREBASE (JIKA AKTIF)
         if (window.isFirebaseConnected && window.db) {
           try {
             const batch = writeBatch(window.db);
             formattedStudents.forEach(s => {
-              // Menjadikan NISN sebagai Document ID di Firestore
               const studentRef = doc(window.db, "students", s.nisn);
               batch.set(studentRef, s);
             });
             await batch.commit();
             alert(`Berhasil mengimpor dan menyimpan ${formattedStudents.length} siswa ke Firebase!`);
           } catch (err) {
-            console.error("Gagal simpan ke Firebase:", err);
+            console.error(err);
             alert("Impor ke UI berhasil, namun gagal menyimpan ke Firebase.");
           }
         } else {
-          alert(`Berhasil mengimpor ${formattedStudents.length} siswa ke tampilan UI! (Mode offline/tanpa Firebase)`);
+          alert(`Berhasil mengimpor ${formattedStudents.length} siswa ke tampilan UI!`);
         }
 
-        event.target.value = null; // Reset input file
+        event.target.value = null;
       };
 
       reader.readAsArrayBuffer(file);
     }
 
-    // 4. EKSPOR DATA SISWA KE EXCEL
+    // 7. EKSPOR DATA SISWA KE EXCEL
     function exportDataSiswa() {
       if (studentState.length === 0) {
         alert("Belum ada data siswa untuk diekspor!");
@@ -326,7 +479,7 @@
       XLSX.writeFile(wb, `Data_Siswa_Ujian_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    // 5. TAMBAH SISWA MANUAL
+    // 8. TAMBAH MANUAL & HAPUS
     function handleTambahManual(e) {
       e.preventDefault();
       const newStudent = {
@@ -341,18 +494,12 @@
       e.target.reset();
     }
 
-    // 6. HAPUS SISWA
     function hapusSiswa(nisn) {
       if (confirm(`Hapus data siswa NISN: ${nisn}?`)) {
         studentState = studentState.filter(s => s.nisn !== nisn);
         renderTable();
       }
     }
-
-    function editSiswa(nisn) {
-      alert(`Fitur edit untuk NISN ${nisn}`);
-    }
   </script>
-
 </body>
 </html>
