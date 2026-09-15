@@ -213,12 +213,12 @@
           <label>Role Pengguna</label>
           <select id="loginRole">
             <option value="siswa">Siswa</option>
-            <option value="admin">Admin / Guru</option>
+            <option value="guru">Guru / Admin</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Username / NISN</label>
-          <input type="text" id="loginUsername" placeholder="Masukkan username / NISN" required>
+          <label>Username / NIP / NISN</label>
+          <input type="text" id="loginUsername" placeholder="Masukkan username" required>
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -234,18 +234,111 @@
   =========================================== -->
   <div id="viewAdmin" class="hidden">
     <div class="navbar">
-      <h3>Panel Admin Ujian - TKA</h3>
+      <div>
+        <h3>Panel Kelola Ujian</h3>
+        <small id="displayUserRole" style="color: #94a3b8;">Pengguna: -</small>
+      </div>
       <button class="btn btn-danger" onclick="logout()">Keluar</button>
     </div>
     
     <div class="admin-container">
-      
+
+      <!-- MODUL MASTER: MATA PELAJARAN & AKUN GURU -->
+      <div class="grid-2">
+        <!-- 1. MANAJEMEN MATA PELAJARAN -->
+        <div class="card">
+          <h3>Manajemen Mata Pelajaran</h3>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Tambah dan kelola mata pelajaran ujian.</p>
+          
+          <form id="formMapel" onsubmit="saveMapel(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+            <input type="hidden" id="mapelIndex" value="">
+            <div class="grid-2">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Kode Mapel</label>
+                <input type="text" id="inputKodeMapel" placeholder="Misal: TIK-IX" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Nama Mata Pelajaran</label>
+                <input type="text" id="inputNamaMapel" placeholder="Misal: Informatika Kelas IX" required>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 6px;">
+              <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormMapel()">Batal</button>
+              <button type="submit" id="btnSubmitMapel" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Mapel</button>
+            </div>
+          </form>
+
+          <div style="overflow-x: auto; max-height: 200px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th>Nama Mata Pelajaran</th>
+                  <th style="text-align: center; width: 100px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMapel"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. MANAJEMEN AKUN GURU -->
+        <div class="card">
+          <h3>Manajemen Akun Guru / Pengajar</h3>
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Kelola data guru serta mata pelajaran yang diampu.</p>
+          
+          <form id="formGuru" onsubmit="saveGuru(event)" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+            <input type="hidden" id="guruIndex" value="">
+            <div class="grid-2">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Username / NIP</label>
+                <input type="text" id="inputGuruUser" placeholder="Misal: guru_tik" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Password</label>
+                <input type="text" id="inputGuruPass" placeholder="Password login" required>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Nama Guru</label>
+                <input type="text" id="inputGuruNama" placeholder="Misal: Idas, S.Pd." required>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 12px;">Mata Pelajaran Diampu</label>
+                <select id="inputGuruMapel" required>
+                  <option value="">-- Pilih Mapel --</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 6px;">
+              <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="resetFormGuru()">Batal</button>
+              <button type="submit" id="btnSubmitGuru" class="btn btn-success" style="font-size: 11px; padding: 4px 8px;">Simpan Guru</button>
+            </div>
+          </form>
+
+          <div style="overflow-x: auto; max-height: 200px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>User / NIP</th>
+                  <th>Nama Guru</th>
+                  <th>Mapel Diampu</th>
+                  <th style="text-align: center; width: 100px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyGuru"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- FITUR MANAJEMEN BANK SOAL UJIAN -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
-            <h3>Manajemen Bank Soal Ujian multi-bentuk</h3>
-            <p style="font-size: 13px; color: #64748b;">Kelola soal PG Biasa, PG Kompleks, atau Menjodohkan.</p>
+            <h3>Manajemen Bank Soal Ujian</h3>
+            <p style="font-size: 13px; color: #64748b;">Kelola soal PG Biasa, PG Kompleks, atau Menjodohkan per Mata Pelajaran.</p>
           </div>
           
           <div style="display: flex; gap: 8px;">
@@ -265,6 +358,12 @@
             <input type="hidden" id="soalId" value="">
             
             <div class="grid-2">
+              <div class="form-group">
+                <label>Mata Pelajaran</label>
+                <select id="inputSoalMapel" required>
+                  <option value="">-- Pilih Mapel --</option>
+                </select>
+              </div>
               <div class="form-group">
                 <label>Bentuk / Tipe Soal</label>
                 <select id="inputTypeSoal" onchange="handleTypeChange()" required>
@@ -326,7 +425,7 @@
 
             <!-- CONTAINER MENJODOHKAN -->
             <div id="sectionMenjodohkan" class="hidden">
-              <p style="font-size:13px; color:#64748b; margin-bottom:8px;">Isi item kiri, item kanan, serta nomor indeks pasangannya (0-based).</p>
+              <p style="font-size:13px; color:#64748b; margin-bottom:8px;">Isi item kiri, item kanan, serta pemetaan kunci.</p>
               <div class="grid-2">
                 <div class="form-group">
                   <label>Item Sisi Kiri (Pisahkan koma ,)</label>
@@ -356,6 +455,7 @@
             <thead>
               <tr>
                 <th style="width: 50px; text-align: center;">No</th>
+                <th style="width: 120px;">Mapel</th>
                 <th style="width: 140px;">Bentuk Soal</th>
                 <th>Pertanyaan</th>
                 <th style="width: 250px;">Detail / Pilihan</th>
@@ -363,16 +463,14 @@
                 <th style="width: 120px; text-align: center;">Aksi</th>
               </tr>
             </thead>
-            <tbody id="tabelBankSoalBody">
-              <!-- Soal di-render oleh JS -->
-            </tbody>
+            <tbody id="tabelBankSoalBody"></tbody>
           </table>
         </div>
       </div>
 
       <!-- MODUL SISWA & HASIL UJIAN -->
       <div class="grid-2">
-        <!-- MANAJEMEN AKUN SISWA (CRUD + IMPORT EXCEL) -->
+        <!-- MANAJEMEN AKUN SISWA -->
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
             <div>
@@ -432,9 +530,7 @@
                   <th style="text-align: center;">Aksi</th>
                 </tr>
               </thead>
-              <tbody id="tbodySiswa">
-                <!-- Data siswa di-render oleh JS -->
-              </tbody>
+              <tbody id="tbodySiswa"></tbody>
             </table>
           </div>
         </div>
@@ -501,20 +597,26 @@
         LOGIKA JAVASCRIPT APLIKASI
   =========================================== -->
   <script>
-    // Data Akun Default
+    // Data Default Master
+    const defaultMapelList = [
+      { kode: "TIK-IX", nama: "Informatika Kelas IX" },
+      { kode: "BIN-IX", nama: "Bahasa Indonesia IX" }
+    ];
+
+    const defaultGuruList = [
+      { username: "admin", password: "adminpassword", nama: "Administrator Utama", mapel: "TIK-IX" },
+      { username: "idas_guru", password: "123", nama: "Idas, S.Pd.", mapel: "TIK-IX" }
+    ];
+
     const defaultSiswaList = [
       { username: "1001", password: "123", nama: "Ahmad Rivaldi", kelas: "IX-A" },
       { username: "1002", password: "123", nama: "Siti Rahmawati", kelas: "IX-A" }
     ];
 
-    const dataAdminValid = [
-      { username: "admin", password: "adminpassword" }
-    ];
-
-    // Bank Soal Default Multi-Bentuk
     const defaultQuestions = [
       {
         id: 1,
+        mapel: "TIK-IX",
         type: "pg_biasa",
         question: "Komponen utama dalam arsitektur komputer yang berfungsi sebagai otak pemrosesan data adalah...",
         options: ["RAM", "Central Processing Unit (CPU)", "Harddisk", "Power Supply"],
@@ -523,6 +625,7 @@
       },
       {
         id: 2,
+        mapel: "TIK-IX",
         type: "pg_kompleks",
         question: "Manakah di antara perangkat berikut yang merupakan perangkat keras penyimpanan sekunder (secondary storage)? (Pilih lebih dari satu)",
         options: ["Harddisk Drive (HDD)", "Solid State Drive (SSD)", "Random Access Memory (RAM)", "Flashdisk"],
@@ -531,6 +634,7 @@
       },
       {
         id: 3,
+        mapel: "TIK-IX",
         type: "menjodohkan",
         question: "Jodohkanlah perangkat komputer di sebelah kiri dengan fungsinya di sebelah kanan!",
         leftItems: ["CPU", "RAM", "SSD"],
@@ -540,8 +644,12 @@
       }
     ];
 
-    let examQuestions = JSON.parse(localStorage.getItem("bankSoalUjian")) || defaultQuestions;
+    // State Aplikasi
+    let mapelList = JSON.parse(localStorage.getItem("dataMapelActive")) || defaultMapelList;
+    let guruList = JSON.parse(localStorage.getItem("dataGuruActive")) || defaultGuruList;
     let dataSiswaList = JSON.parse(localStorage.getItem("dataSiswaActive")) || defaultSiswaList;
+    let examQuestions = JSON.parse(localStorage.getItem("bankSoalUjian")) || defaultQuestions;
+
     let currentUser = null;
     let currentQuestionIndex = 0;
     let studentAnswers = {};
@@ -550,39 +658,45 @@
     const MAX_VIOLATIONS = 3;
 
     document.addEventListener("DOMContentLoaded", () => {
+      renderMapelTable();
+      renderGuruTable();
+      renderMapelDropdowns();
       renderTabelBankSoal();
       renderTabelSiswa();
     });
 
-    // Handle Login & Validasi Akun
+    // Handle Login Role Guru / Admin / Siswa
     function handleLogin(e) {
       e.preventDefault();
       const role = document.getElementById('loginRole').value;
       const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value.trim();
 
-      // 1. Validasi Login Admin / Guru
-      if (role === 'admin') {
-        const adminFound = dataAdminValid.find(a => a.username === username && a.password === password);
-        if (!adminFound) {
-          alert("Akses Admin Gagal! Username atau password Admin salah.");
+      if (role === 'guru') {
+        const guruFound = guruList.find(g => g.username === username && g.password === password);
+        if (!guruFound) {
+          alert("Login Guru/Admin Gagal! Username atau password salah.");
           return;
         }
-        
-        currentUser = { username: adminFound.username, role: 'admin' };
+
+        currentUser = { username: guruFound.username, nama: guruFound.nama, role: 'guru', mapel: guruFound.mapel };
         document.getElementById('viewLogin').classList.add('hidden');
         document.getElementById('viewAdmin').classList.remove('hidden');
+        document.getElementById('displayUserRole').textContent = `Pengguna: ${guruFound.nama} (${guruFound.mapel || 'Admin'})`;
+
+        renderMapelTable();
+        renderGuruTable();
+        renderMapelDropdowns();
         renderTabelBankSoal();
         renderTabelSiswa();
         return;
       }
 
-      // 2. Validasi Login Siswa
       if (role === 'siswa') {
         const siswaFound = dataSiswaList.find(s => String(s.username).trim() === username && String(s.password).trim() === password);
 
         if (!siswaFound) {
-          alert("Login Gagal! NISN/Username atau Password tidak terdaftar.");
+          alert("Login Siswa Gagal! NISN/Username atau Password tidak terdaftar.");
           return;
         }
 
@@ -604,6 +718,152 @@
         requestExamFullscreen();
         initSecurityListeners();
       }
+    }
+
+    /* ==========================================
+          MANAJEMEN MATA PELAJARAN (MAPEL)
+    =========================================== */
+    function renderMapelTable() {
+      const tbody = document.getElementById("tbodyMapel");
+      tbody.innerHTML = "";
+      if (mapelList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Belum ada mapel.</td></tr>`;
+        return;
+      }
+      mapelList.forEach((m, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${m.kode}</strong></td>
+            <td>${m.nama}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-warning" style="padding:2px 6px; font-size:11px;" onclick="editMapel(${idx})">Edit</button>
+              <button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deleteMapel(${idx})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function renderMapelDropdowns() {
+      const guruSelect = document.getElementById("inputGuruMapel");
+      const soalSelect = document.getElementById("inputSoalMapel");
+
+      let optionsHtml = `<option value="">-- Pilih Mapel --</option>`;
+      mapelList.forEach(m => {
+        optionsHtml += `<option value="${m.kode}">${m.nama} (${m.kode})</option>`;
+      });
+
+      guruSelect.innerHTML = optionsHtml;
+      soalSelect.innerHTML = optionsHtml;
+    }
+
+    function saveMapel(e) {
+      e.preventDefault();
+      const idx = document.getElementById("mapelIndex").value;
+      const kode = document.getElementById("inputKodeMapel").value.trim();
+      const nama = document.getElementById("inputNamaMapel").value.trim();
+
+      const mapelObj = { kode, nama };
+      if (idx === "") {
+        mapelList.push(mapelObj);
+      } else {
+        mapelList[idx] = mapelObj;
+      }
+
+      localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
+      resetFormMapel();
+      renderMapelTable();
+      renderMapelDropdowns();
+    }
+
+    function editMapel(idx) {
+      const m = mapelList[idx];
+      document.getElementById("mapelIndex").value = idx;
+      document.getElementById("inputKodeMapel").value = m.kode;
+      document.getElementById("inputNamaMapel").value = m.nama;
+      document.getElementById("btnSubmitMapel").innerText = "Update Mapel";
+    }
+
+    function deleteMapel(idx) {
+      if (confirm(`Hapus mapel ${mapelList[idx].nama}?`)) {
+        mapelList.splice(idx, 1);
+        localStorage.setItem("dataMapelActive", JSON.stringify(mapelList));
+        renderMapelTable();
+        renderMapelDropdowns();
+      }
+    }
+
+    function resetFormMapel() {
+      document.getElementById("mapelIndex").value = "";
+      document.getElementById("formMapel").reset();
+      document.getElementById("btnSubmitMapel").innerText = "Simpan Mapel";
+    }
+
+    /* ==========================================
+          MANAJEMEN AKUN GURU
+    =========================================== */
+    function renderGuruTable() {
+      const tbody = document.getElementById("tbodyGuru");
+      tbody.innerHTML = "";
+      if (guruList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Belum ada data guru.</td></tr>`;
+        return;
+      }
+      guruList.forEach((g, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${g.username}</strong></td>
+            <td>${g.nama}</td>
+            <td>${g.mapel || '-'}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-warning" style="padding:2px 6px; font-size:11px;" onclick="editGuru(${idx})">Edit</button>
+              <button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deleteGuru(${idx})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function saveGuru(e) {
+      e.preventDefault();
+      const idx = document.getElementById("guruIndex").value;
+      const username = document.getElementById("inputGuruUser").value.trim();
+      const password = document.getElementById("inputGuruPass").value.trim();
+      const nama = document.getElementById("inputGuruNama").value.trim();
+      const mapel = document.getElementById("inputGuruMapel").value;
+
+      const guruObj = { username, password, nama, mapel };
+      if (idx === "") {
+        guruList.push(guruObj);
+      } else {
+        guruList[idx] = guruObj;
+      }
+
+      localStorage.setItem("dataGuruActive", JSON.stringify(guruList));
+      resetFormGuru();
+      renderGuruTable();
+    }
+
+    function editGuru(idx) {
+      const g = guruList[idx];
+      document.getElementById("guruIndex").value = idx;
+      document.getElementById("inputGuruUser").value = g.username;
+      document.getElementById("inputGuruPass").value = g.password;
+      document.getElementById("inputGuruNama").value = g.nama;
+      document.getElementById("inputGuruMapel").value = g.mapel || "";
+      document.getElementById("btnSubmitGuru").innerText = "Update Guru";
+    }
+
+    function deleteGuru(idx) {
+      if (confirm(`Hapus akun guru ${guruList[idx].nama}?`)) {
+        guruList.splice(idx, 1);
+        localStorage.setItem("dataGuruActive", JSON.stringify(guruList));
+        renderGuruTable();
+      }
+    }
+
+    function resetFormGuru() {
+      document.getElementById("guruIndex").value = "";
+      document.getElementById("formGuru").reset();
+      document.getElementById("btnSubmitGuru").innerText = "Simpan Guru";
     }
 
     /* ==========================================
@@ -645,7 +905,6 @@
       const newSiswa = { username: user, password: pass, nama: nama, kelas: kelas };
 
       if (index === "") {
-        // Cek duplikasi username
         if (dataSiswaList.some(s => String(s.username).trim() === user)) {
           alert("Username/NISN sudah digunakan!");
           return;
@@ -722,7 +981,6 @@
           const k = String(row["Kelas"] || "").trim();
 
           if (u && p) {
-            // Update atau tambah baru
             const existingIdx = dataSiswaList.findIndex(s => String(s.username).trim() === u);
             const objSiswa = { username: u, password: p, nama: n || u, kelas: k || "-" };
 
@@ -774,7 +1032,7 @@
       tbody.innerHTML = "";
 
       if (examQuestions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 16px;">Belum ada soal. Silakan impor dari Excel atau tambah baru.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 16px;">Belum ada soal. Silakan impor dari Excel atau tambah baru.</td></tr>`;
         return;
       }
 
@@ -790,6 +1048,7 @@
 
         tr.innerHTML = `
           <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td><span class="badge-type" style="background:#dbeafe; color:#1e40af;">${item.mapel || 'UMUM'}</span></td>
           <td><span class="badge-type">${getQuestionTypeName(item.type)}</span></td>
           <td>${item.question || item.pertanyaan}</td>
           <td style="font-size: 12px;">${detailText}</td>
@@ -807,11 +1066,13 @@
       e.preventDefault();
 
       const id = document.getElementById("soalId").value;
+      const mapel = document.getElementById("inputSoalMapel").value;
       const type = document.getElementById("inputTypeSoal").value;
       const pertanyaan = document.getElementById("inputPertanyaan").value;
 
       let soalObj = {
         id: id !== "" ? examQuestions[id].id : Date.now(),
+        mapel: mapel,
         type: type,
         question: pertanyaan
       };
@@ -883,6 +1144,7 @@
     function editSoal(index) {
       const item = examQuestions[index];
       document.getElementById("soalId").value = index;
+      document.getElementById("inputSoalMapel").value = item.mapel || "";
       document.getElementById("inputTypeSoal").value = item.type || "pg_biasa";
       handleTypeChange();
 
@@ -937,6 +1199,7 @@
 
       const exportData = examQuestions.map((item, idx) => ({
         "No": idx + 1,
+        "Kode_Mapel": item.mapel || "TIK-IX",
         "Tipe": item.type || "pg_biasa",
         "Pertanyaan": item.question || item.pertanyaan,
         "Opsi A / Item Kiri": item.options ? item.options[0] : (item.leftItems ? item.leftItems.join(",") : ""),
@@ -964,6 +1227,7 @@
         const jsonData = XLSX.utils.sheet_to_json(sheet);
 
         const newQuestions = jsonData.map((row, idx) => {
+          const mapel = row["Kode_Mapel"] || "TIK-IX";
           const type = row["Tipe"] || "pg_biasa";
           const question = row["Pertanyaan"] || "";
           
@@ -980,7 +1244,7 @@
               if (kunciStr === "C") kunciVal = opsiC;
               if (kunciStr === "D") kunciVal = opsiD;
 
-              return { id: Date.now() + idx, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: kunciVal, kunci: kunciStr };
+              return { id: Date.now() + idx, mapel, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: kunciVal, kunci: kunciStr };
             } else {
               let keysArr = [];
               if (kunciStr.includes("A")) keysArr.push(opsiA);
@@ -988,7 +1252,7 @@
               if (kunciStr.includes("C")) keysArr.push(opsiC);
               if (kunciStr.includes("D")) keysArr.push(opsiD);
 
-              return { id: Date.now() + idx, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: keysArr, kunci: kunciStr };
+              return { id: Date.now() + idx, mapel, type, question, options: [opsiA, opsiB, opsiC, opsiD], answerKey: keysArr, kunci: kunciStr };
             }
           } else if (type === "menjodohkan") {
             const leftItems = String(row["Opsi A / Item Kiri"] || "").split(",");
@@ -997,7 +1261,7 @@
             let answerKey = {};
             try { answerKey = JSON.parse(kunciStr); } catch(e){}
 
-            return { id: Date.now() + idx, type, question, leftItems, rightItems, answerKey, kunci: kunciStr };
+            return { id: Date.now() + idx, mapel, type, question, leftItems, rightItems, answerKey, kunci: kunciStr };
           }
         });
 
@@ -1012,9 +1276,9 @@
 
     function downloadTemplateSoal() {
       const templateData = [
-        { "No": 1, "Tipe": "pg_biasa", "Pertanyaan": "Otak pemrosesan data adalah?", "Opsi A / Item Kiri": "RAM", "Opsi B / Item Kanan": "CPU", "Opsi C": "Harddisk", "Opsi D": "PSU", "Kunci": "B" },
-        { "No": 2, "Tipe": "pg_kompleks", "Pertanyaan": "Pilih memori non-volatile!", "Opsi A / Item Kiri": "HDD", "Opsi B / Item Kanan": "SSD", "Opsi C": "RAM", "Opsi D": "Cache", "Kunci": "A, B" },
-        { "No": 3, "Tipe": "menjodohkan", "Pertanyaan": "Jodohkan perangkat berikut!", "Opsi A / Item Kiri": "CPU,RAM", "Opsi B / Item Kanan": "Otak,Memori", "Opsi C": "", "Opsi D": "", "Kunci": '{"0":0, "1":1}' }
+        { "No": 1, "Kode_Mapel": "TIK-IX", "Tipe": "pg_biasa", "Pertanyaan": "Otak pemrosesan data adalah?", "Opsi A / Item Kiri": "RAM", "Opsi B / Item Kanan": "CPU", "Opsi C": "Harddisk", "Opsi D": "PSU", "Kunci": "B" },
+        { "No": 2, "Kode_Mapel": "TIK-IX", "Tipe": "pg_kompleks", "Pertanyaan": "Pilih memori non-volatile!", "Opsi A / Item Kiri": "HDD", "Opsi B / Item Kanan": "SSD", "Opsi C": "RAM", "Opsi D": "Cache", "Kunci": "A, B" },
+        { "No": 3, "Kode_Mapel": "TIK-IX", "Tipe": "menjodohkan", "Pertanyaan": "Jodohkan perangkat berikut!", "Opsi A / Item Kiri": "CPU,RAM", "Opsi B / Item Kanan": "Otak,Memori", "Opsi C": "", "Opsi D": "", "Kunci": '{"0":0, "1":1}' }
       ];
       const worksheet = XLSX.utils.json_to_sheet(templateData);
       const workbook = XLSX.utils.book_new();
