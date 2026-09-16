@@ -6,351 +6,435 @@
   <title>Ujian Online CBT - Portal Siswa</title>
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    .card-login {
-      max-width: 450px;
-      margin: 60px auto;
+    body {
+      user-select: none; /* Mencegah foto/copy-paste teks soal */
+      -webkit-user-select: none;
+    }
+    .sticky-timer {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+    .soal-card {
+      border-left: 4px solid #0d6efd;
+    }
+    .warning-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(220, 53, 69, 0.95);
+      color: white;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
 <body class="bg-light">
 
-  <!-- Navbar -->
+  <!-- OVERLAY PERINGATAN KELUAR FULLSCREEN / KELUAR TAB -->
+  <div id="warningOverlay" class="warning-overlay d-none">
+    <i class="bi bi-exclamation-triangle-fill display-1 mb-3"></i>
+    <h2 class="fw-bold">PERINGATAN KECURANGAN!</h2>
+    <p class="fs-5 text-center px-3" id="warningText">Anda terdeteksi keluar dari layar penuh / berpindah tab!</p>
+    <p class="fw-bold fs-4">Sisa Kesempatan: <span id="warningCount" class="badge bg-warning text-dark">3</span></p>
+    <button class="btn btn-light btn-lg fw-bold mt-3" onclick="kembaliKeFullscreen()">
+      <i class="bi bi-fullscreen me-2"></i>Kembali Ke Ujian (Layar Penuh)
+    </button>
+  </div>
+
+  <!-- NAVBAR -->
   <nav class="navbar navbar-dark bg-primary shadow-sm">
     <div class="container">
-      <span class="navbar-brand fw-bold">
-        <i class="bi bi-laptop me-2"></i>CBT SMP PLUS ANNUUR - Portal Siswa
-      </span>
+      <a class="navbar-brand fw-bold" href="#">
+        <i class="bi bi-mortarboard-fill me-2"></i>CBT SMP PLUS ANNUUR - PORTAL SISWA
+      </a>
+      <span id="siswaNavInfo" class="navbar-text text-white fw-bold"></span>
     </div>
   </nav>
 
-  <!-- FORM LOGIN SISWA -->
-  <div id="sectionLogin" class="container">
-    <div class="card card-login border-0 shadow-lg">
-      <div class="card-header bg-primary text-white text-center py-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-person-circle me-2"></i>Masuk Ujian</h5>
-      </div>
-      <div class="card-body p-4">
-        <form id="formLoginSiswa" onsubmit="handleLoginSiswa(event)">
-          <div class="mb-3">
-            <label class="form-label fw-bold">NISN Siswa</label>
-            <input type="text" id="loginNisn" class="form-control" placeholder="Masukkan NISN Anda" required>
+  <!-- 1. HALAMAN LOGIN / MASUK UJIAN -->
+  <div class="container my-5" id="sectionLogin">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card border-0 shadow-lg">
+          <div class="card-header bg-primary text-white text-center py-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-person-check me-2"></i>Masuk Ujian</h5>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Token Ujian</label>
-            <input type="text" id="loginToken" class="form-control text-uppercase fw-bold" placeholder="Contoh: X7K9P" required>
+          <div class="card-body p-4">
+            <form id="formLoginSiswa">
+              <div class="mb-3">
+                <label class="form-label fw-bold">NISN Siswa</label>
+                <input type="text" id="inputNisn" class="form-control form-control-lg" placeholder="Masukkan NISN Anda" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Token Ujian</label>
+                <input type="text" id="inputToken" class="form-control form-control-lg text-uppercase fw-bold" placeholder="Contoh: X7Y2Z" required>
+              </div>
+              <div class="alert alert-info small mb-3">
+                <i class="bi bi-shield-lock-fill me-1"></i> Ujian menggunakan mode <strong>Layar Penuh (Fullscreen)</strong>. Dilarang berpindah tab atau keluar dari browser selama pengerjaan.
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Mulai Ujian
+              </button>
+            </form>
           </div>
-          <button type="submit" id="btnSubmitLogin" class="btn btn-primary w-100 fw-bold py-2">
-            <i class="bi bi-box-arrow-in-right me-1"></i> Mulai Kerjakan Ujian
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- LEMBAR UJIAN SISWA -->
-  <div id="sectionUjian" class="container my-4 d-none">
-    <div class="row g-3">
-      
-      <!-- Panel Info & Timer -->
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
-          <div class="card-header bg-primary text-white fw-bold">
-            <i class="bi bi-person-badge me-2"></i>Data Peserta
-          </div>
-          <div class="card-body">
-            <p class="mb-1"><strong>Nama:</strong> <span id="infoSiswaNama">-</span></p>
-            <p class="mb-1"><strong>NISN:</strong> <span id="infoSiswaNisn">-</span></p>
-            <p class="mb-3"><strong>Kelas:</strong> <span id="infoSiswaKelas">-</span></p>
-            <hr>
-            <div class="text-center bg-light p-3 rounded border">
-              <span class="small text-muted d-block font-monospace">Sisa Waktu Ujian</span>
-              <h3 id="timerDisplay" class="fw-bold text-danger mb-0 font-monospace">00:00</h3>
-            </div>
-          </div>
+  <!-- 2. HALAMAN PENGERJAAN SOAL -->
+  <div class="container my-4 d-none" id="sectionUjian">
+    
+    <!-- Timer & Info Ujian Header -->
+    <div class="card border-0 shadow-sm bg-dark text-white mb-4 sticky-timer">
+      <div class="card-body d-flex justify-content-between align-items-center py-2 px-3">
+        <div>
+          <h6 id="infoJudulUjian" class="fw-bold mb-0 text-warning">--</h6>
+          <small id="infoNamaSiswa" class="text-white-50">--</small>
+        </div>
+        <div class="text-end">
+          <span class="small text-white-50 d-block">Sisa Waktu</span>
+          <span id="timerCountdown" class="fs-4 fw-bold font-monospace text-success">00:00:00</span>
         </div>
       </div>
-
-      <!-- Area Lembar Soal -->
-      <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 id="infoJudulUjian" class="fw-bold text-primary mb-0">Ujian</h5>
-          </div>
-          <div class="card-body p-4" id="containerLembarSoal">
-            <!-- Soal-soal di-render secara dinamis via JavaScript -->
-          </div>
-          <div class="card-footer bg-white text-end py-3">
-            <button id="btnSubmitJawaban" class="btn btn-success fw-bold px-4" onclick="submitJawabanSiswa()">
-              <i class="bi bi-check-circle me-1"></i> Kirim Jawaban Saya
-            </button>
-          </div>
-        </div>
-      </div>
-
     </div>
+
+    <!-- Container Daftar Soal -->
+    <div id="containerSoalList" class="mb-4"></div>
+
+    <!-- Tombol Selesai Ujian -->
+    <div class="card border-0 shadow-sm mb-5">
+      <div class="card-body text-end bg-white">
+        <button class="btn btn-success btn-lg fw-bold px-5" onclick="konfirmasiSelesaiUjian()">
+          <i class="bi bi-check-circle-fill me-2"></i>Kumpulkan Jawaban
+        </button>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Bootstrap JS -->
+  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- SDK Firebase Modular v9/v10 -->
+  <!-- Firebase Logic (Module) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
-  apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
-  authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
-  databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "aplikasi-ujian-8e501",
-  storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
-  messagingSenderId: "945781407027",
-  appId: "1:945781407027:web:4672d4c894e143c9b05246",
-  measurementId: "G-CBH4C0BVXD"
-};
-
-    // Inisialisasi Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    let activeSiswaData = null;
-    let activeUjianData = null;
-    let timerInterval = null;
-
-    // Login Siswa dengan Ambil Data dari Firestore
-    window.handleLoginSiswa = async function(e) {
-      e.preventDefault();
-      const btnSubmit = document.getElementById("btnSubmitLogin");
-      btnSubmit.disabled = true;
-      btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memeriksa...`;
-
-      const nisnInput = document.getElementById("loginNisn").value.trim();
-      const tokenInput = document.getElementById("loginToken").value.trim().toUpperCase();
-
-      try {
-        // 1. Cek Data Siswa di Collection 'siswa'
-        const qSiswa = query(collection(db, "siswa"), where("nisn", "==", nisnInput));
-        const snapSiswa = await getDocs(qSiswa);
-
-        if (snapSiswa.empty) {
-          alert("NISN tidak ditemukan! Silakan hubungi Guru/Admin.");
-          resetBtnLogin();
-          return;
-        }
-
-        const siswaFound = { id: snapSiswa.docs[0].id, ...snapSiswa.docs[0].data() };
-
-        // 2. Cek Data Ujian berdasarkan Token di Collection 'ujian'
-        const qUjian = query(collection(db, "ujian"), where("token", "==", tokenInput));
-        const snapUjian = await getDocs(qUjian);
-
-        if (snapUjian.empty) {
-          alert("Token Ujian tidak valid atau salah!");
-          resetBtnLogin();
-          return;
-        }
-
-        const ujianFound = { id: snapUjian.docs[0].id, ...snapUjian.docs[0].data() };
-
-        if (!ujianFound.soal || ujianFound.soal.length === 0) {
-          alert("Ujian ini belum memiliki soal.");
-          resetBtnLogin();
-          return;
-        }
-
-        activeSiswaData = siswaFound;
-        activeUjianData = ujianFound;
-
-        // Tampilkan Tampilan Ujian
-        document.getElementById("sectionLogin").classList.add("d-none");
-        document.getElementById("sectionUjian").classList.remove("d-none");
-
-        document.getElementById("infoSiswaNama").textContent = siswaFound.nama;
-        document.getElementById("infoSiswaNisn").textContent = siswaFound.nisn;
-        document.getElementById("infoSiswaKelas").textContent = siswaFound.kelas;
-        document.getElementById("infoJudulUjian").textContent = `${ujianFound.mapel} - ${ujianFound.judul}`;
-
-        renderSoalUjian(ujianFound.soal);
-        startTimer(parseInt(ujianFound.durasi) * 60);
-
-      } catch (err) {
-        console.error("Error Login Firebase:", err);
-        alert("Gagal menghubungkan ke server Firebase. Pastikan database Firestore sudah disetup!");
-        resetBtnLogin();
-      }
+      apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
+      authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+      databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "aplikasi-ujian-8e501",
+      storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
+      messagingSenderId: "945781407027",
+      appId: "1:945781407027:web:4672d4c894e143c9b05246",
+      measurementId: "G-CBH4C0BVXD"
     };
 
-    function resetBtnLogin() {
-      const btnSubmit = document.getElementById("btnSubmitLogin");
-      btnSubmit.disabled = false;
-      btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i> Mulai Kerjakan Ujian`;
-    }
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    // Render Soal Ujian (3 Tipe)
-    function renderSoalUjian(soalList) {
-      const container = document.getElementById("containerLembarSoal");
-      container.innerHTML = "";
+    let siswaAktif = null;
+    let ujianAktif = null;
+    let timerInterval = null;
+    let sisaDetik = 0;
+    let warningTotal = 3;
+    let isExamActive = false;
 
-      soalList.forEach((soal, i) => {
-        const itemDiv = document.createElement("div");
-        itemDiv.className = "mb-4 p-3 border rounded bg-light";
+    // --- FORM LOGIN SUBMIT ---
+    document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nisnInput = document.getElementById("inputNisn").value.trim();
+      const tokenInput = document.getElementById("inputToken").value.trim().toUpperCase();
 
-        let htmlHeader = `<h6 class="fw-bold mb-3">${i + 1}. ${soal.pertanyaan}</h6>`;
-        let htmlContent = "";
-
-        if (soal.tipe === "pg") {
-          htmlContent = `
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="radio" name="jawaban_${i}" value="A" id="q_${i}_A">
-              <label class="form-check-label" for="q_${i}_A">A. ${soal.opsi.A}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="radio" name="jawaban_${i}" value="B" id="q_${i}_B">
-              <label class="form-check-label" for="q_${i}_B">B. ${soal.opsi.B}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="radio" name="jawaban_${i}" value="C" id="q_${i}_C">
-              <label class="form-check-label" for="q_${i}_C">C. ${soal.opsi.C}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="radio" name="jawaban_${i}" value="D" id="q_${i}_D">
-              <label class="form-check-label" for="q_${i}_D">D. ${soal.opsi.D}</label>
-            </div>
-          `;
-        } else if (soal.tipe === "pg_kompleks") {
-          htmlContent = `
-            <p class="small text-success fw-bold mb-2"><i class="bi bi-info-circle"></i> Pilih satu atau lebih jawaban yang benar:</p>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" name="jawaban_${i}" value="A" id="q_${i}_A">
-              <label class="form-check-label" for="q_${i}_A">A. ${soal.opsi.A}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" name="jawaban_${i}" value="B" id="q_${i}_B">
-              <label class="form-check-label" for="q_${i}_B">B. ${soal.opsi.B}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" name="jawaban_${i}" value="C" id="q_${i}_C">
-              <label class="form-check-label" for="q_${i}_C">C. ${soal.opsi.C}</label>
-            </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" name="jawaban_${i}" value="D" id="q_${i}_D">
-              <label class="form-check-label" for="q_${i}_D">D. ${soal.opsi.D}</label>
-            </div>
-          `;
-        } else if (soal.tipe === "mencocokkan") {
-          let optionsKanan = soal.pasangan.map(p => p.kanan).sort(() => Math.random() - 0.5);
-          htmlContent = '<p class="small text-primary fw-bold mb-2">Jodohkan kolom kiri dengan opsi kanan yang sesuai:</p>';
-          
-          soal.pasangan.forEach((p, indexP) => {
-            let selectOptions = optionsKanan.map(opt => `<option value="${opt}">${opt}</option>`).join("");
-            htmlContent += `
-              <div class="row g-2 align-items-center mb-2">
-                <div class="col-6 fw-bold small">${p.kiri}</div>
-                <div class="col-6">
-                  <select class="form-select form-select-sm" name="match_${i}_${indexP}">
-                    <option value="">-- Pilih Pasangan --</option>
-                    ${selectOptions}
-                  </select>
-                </div>
-              </div>
-            `;
-          });
+      try {
+        const dbRef = ref(db);
+        
+        // 1. Ambil & Cek Siswa
+        const snapSiswa = await get(child(dbRef, "daftarSiswa"));
+        if (!snapSiswa.exists()) {
+          alert("Belum ada data siswa terdaftar!");
+          return;
         }
 
-        itemDiv.innerHTML = htmlHeader + htmlContent;
-        container.appendChild(itemDiv);
+        const dataSiswa = snapSiswa.val();
+        let foundSiswa = Object.values(dataSiswa).find(s => String(s.nisn).trim() === nisnInput);
+
+        if (!foundSiswa) {
+          alert("NISN tidak ditemukan! Silakan hubungi Guru/Admin.");
+          return;
+        }
+
+        // 2. Ambil & Cek Ujian Token
+        const snapUjian = await get(child(dbRef, "daftarUjian"));
+        if (!snapUjian.exists()) {
+          alert("Belum ada jadwal ujian aktif!");
+          return;
+        }
+
+        const dataUjian = snapUjian.val();
+        let foundUjian = Object.values(dataUjian).find(u => String(u.token).trim().toUpperCase() === tokenInput);
+
+        if (!foundUjian) {
+          alert("Token Ujian tidak valid atau salah!");
+          return;
+        }
+
+        if (!foundUjian.soal || foundUjian.soal.length === 0) {
+          alert("Ujian ini belum memiliki soal!");
+          return;
+        }
+
+        siswaAktif = foundSiswa;
+        ujianAktif = foundUjian;
+
+        // Minta Layar Penuh
+        mulaiUjianFull();
+
+      } catch (err) {
+        console.error("Login Error:", err);
+        alert("Gagal memproses login: " + err.message);
+      }
+    });
+
+    // --- MASUK KONTEN UJIAN & FULLSCREEN ---
+    function mulaiUjianFull() {
+      // Buka Mode Fullscreen Browser
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.log(err));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      }
+
+      document.getElementById("sectionLogin").classList.add("d-none");
+      document.getElementById("sectionUjian").classList.remove("d-none");
+
+      document.getElementById("siswaNavInfo").innerText = `${siswaAktif.nama} (${siswaAktif.kelas})`;
+      document.getElementById("infoJudulUjian").innerText = `${ujianAktif.mapel} - ${ujianAktif.judul}`;
+      document.getElementById("infoNamaSiswa").innerText = `Siswa: ${siswaAktif.nama} | NISN: ${siswaAktif.nisn}`;
+
+      renderSoalSiswa(ujianAktif.soal);
+
+      // Start Timer
+      sisaDetik = parseInt(ujianAktif.durasi || 60) * 60;
+      startTimer();
+
+      isExamActive = true;
+      pasangSistemKeamanan();
+    }
+
+    // --- RENDER SOAL (PG, PG KOMPLEKS, MENCOCOKKAN) ---
+    function renderSoalSiswa(listSoal) {
+      const container = document.getElementById("containerSoalList");
+      container.innerHTML = "";
+
+      listSoal.forEach((s, idx) => {
+        const card = document.createElement("div");
+        card.className = "card border-0 shadow-sm mb-4 soal-card";
+
+        let htmlOption = "";
+
+        if (s.tipe === "pg") {
+          htmlOption = `
+            <div class="mt-3">
+              ${['A', 'B', 'C', 'D'].map(opt => s.opsi && s.opsi[opt] ? `
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="soal_${s.id}" id="opt_${s.id}_${opt}" value="${opt}">
+                  <label class="form-check-label fs-6" for="opt_${s.id}_${opt}">
+                    <strong>${opt}.</strong> ${s.opsi[opt]}
+                  </label>
+                </div>
+              ` : '').join('')}
+            </div>
+          `;
+        } else if (s.tipe === "pg_kompleks") {
+          htmlOption = `
+            <div class="mt-3">
+              <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Pilih satu atau lebih jawaban benar:</p>
+              ${['A', 'B', 'C', 'D'].map(opt => s.opsi && s.opsi[opt] ? `
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" name="soal_${s.id}" id="opt_${s.id}_${opt}" value="${opt}">
+                  <label class="form-check-label fs-6" for="opt_${s.id}_${opt}">
+                    <strong>${opt}.</strong> ${s.opsi[opt]}
+                  </label>
+                </div>
+              ` : '').join('')}
+            </div>
+          `;
+        } else if (s.tipe === "mencocokkan" && s.pasangan) {
+          // Acak Pilihan Kanan
+          const listKananShuffled = [...s.pasangan.map(p => p.kanan)].sort(() => Math.random() - 0.5);
+          
+          htmlOption = `
+            <div class="mt-3">
+              <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Jodohkan pernyataan di kiri dengan pasangan di kanan:</p>
+              ${s.pasangan.map((p, pIdx) => `
+                <div class="row align-items-center g-2 mb-3 bg-light p-2 rounded">
+                  <div class="col-md-6 fw-bold">${pIdx + 1}. ${p.kiri}</div>
+                  <div class="col-md-6">
+                    <select class="form-select match-select" data-soal-id="${s.id}" data-kiri="${p.kiri}">
+                      <option value="">-- Pilih Pasangan --</option>
+                      ${listKananShuffled.map(k => `<option value="${k}">${k}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="card-body p-4">
+            <h5 class="fw-bold text-dark mb-3">Soal No. ${idx + 1}</h5>
+            <div class="fs-5 mb-3">${s.pertanyaan}</div>
+            ${htmlOption}
+          </div>
+        `;
+        container.appendChild(card);
       });
     }
 
-    // Timer Ujian
-    function startTimer(durationInSeconds) {
-      let timer = durationInSeconds;
-      const display = document.getElementById("timerDisplay");
-
+    // --- TIMER COUNTDOWN ---
+    function startTimer() {
       timerInterval = setInterval(() => {
-        let minutes = parseInt(timer / 60, 10);
-        let seconds = parseInt(timer % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        display.textContent = `${minutes}:${seconds}`;
-
-        if (--timer < 0) {
+        sisaDetik--;
+        if (sisaDetik <= 0) {
           clearInterval(timerInterval);
-          alert("Waktu ujian telah habis! Jawaban Anda akan dikirim otomatis.");
-          submitJawabanSiswa();
+          alert("Waktu ujian telah habis! Sistem akan otomatis mengumpulkan jawaban Anda.");
+          prosesKumpulJawaban();
+        } else {
+          const jam = Math.floor(sisaDetik / 3600);
+          const menit = Math.floor((sisaDetik % 3600) / 60);
+          const detik = sisaDetik % 60;
+          document.getElementById("timerCountdown").innerText = 
+            `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}:${String(detik).padStart(2, '0')}`;
         }
       }, 1000);
     }
 
-    // Penilaian & Simpan Hasil ke Firestore Collection 'hasil'
-    window.submitJawabanSiswa = async function() {
-      if (!confirm("Apakah Anda yakin ingin menyelesaikan ujian ini?")) return;
+    // --- FULLSCREEN LOCK & anti CHEATING SYSTEM ---
+    function pasangSistemKeamanan() {
+      // 1. Cek Keluar Fullscreen
+      document.addEventListener("fullscreenchange", handleViolation);
+      document.addEventListener("webkitfullscreenchange", handleViolation);
 
-      const btnSubmit = document.getElementById("btnSubmitJawaban");
-      btnSubmit.disabled = true;
-      btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
+      // 2. Cek Pindah Tab / Minimalize
+      window.addEventListener("blur", handleViolation);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) handleViolation();
+      });
+    }
 
+    function handleViolation() {
+      if (!isExamActive) return;
+
+      const isFull = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!isFull || document.hidden) {
+        warningTotal--;
+        document.getElementById("warningCount").innerText = warningTotal;
+
+        if (warningTotal <= 0) {
+          isExamActive = false;
+          document.getElementById("warningOverlay").classList.add("d-none");
+          alert("Anda telah melanggar batas kesempatan keluar dari ujian! Jawaban Anda dikirim secara otomatis.");
+          prosesKumpulJawaban();
+        } else {
+          document.getElementById("warningOverlay").classList.remove("d-none");
+        }
+      }
+    }
+
+    window.kembaliKeFullscreen = function() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.log(err));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      }
+      document.getElementById("warningOverlay").classList.add("d-none");
+    };
+
+    // --- KONFIRMASI & SUBMIT JAWABAN ---
+    window.konfirmasiSelesaiUjian = function() {
+      if (confirm("Apakah Anda yakin ingin mengumpulkan jawaban ujian ini?")) {
+        prosesKumpulJawaban();
+      }
+    };
+
+    async function prosesKumpulJawaban() {
+      isExamActive = false;
       clearInterval(timerInterval);
 
-      const soalList = activeUjianData.soal;
-      let totalPoin = 0;
-      let poinMaksimal = soalList.length;
+      // Hitung Nilai Ujian
+      let skorTotal = 0;
+      const listSoal = ujianAktif.soal || [];
+      const totalSoal = listSoal.length;
 
-      soalList.forEach((soal, i) => {
-        if (soal.tipe === "pg") {
-          const checked = document.querySelector(`input[name="jawaban_${i}"]:checked`);
-          if (checked && checked.value === soal.kunci) {
-            totalPoin += 1;
+      listSoal.forEach(s => {
+        if (s.tipe === "pg") {
+          const selected = document.querySelector(`input[name="soal_${s.id}"]:checked`);
+          if (selected && selected.value === s.kunci) {
+            skorTotal++;
           }
-        } else if (soal.tipe === "pg_kompleks") {
-          const checkedArr = Array.from(document.querySelectorAll(`input[name="jawaban_${i}"]:checked`)).map(c => c.value);
-          const kunciArr = soal.kunci || [];
-          if (JSON.stringify(checkedArr.sort()) === JSON.stringify(kunciArr.sort())) {
-            totalPoin += 1;
+        } else if (s.tipe === "pg_kompleks") {
+          const checkedVals = Array.from(document.querySelectorAll(`input[name="soal_${s.id}"]:checked`)).map(c => c.value);
+          const kunciArr = Array.isArray(s.kunci) ? s.kunci : [s.kunci];
+          
+          if (checkedVals.length === kunciArr.length && checkedVals.every(v => kunciArr.includes(v))) {
+            skorTotal++;
           }
-        } else if (soal.tipe === "mencocokkan") {
-          let matchBenar = true;
-          soal.pasangan.forEach((p, indexP) => {
-            const selectEl = document.querySelector(`select[name="match_${i}_${indexP}"]`);
-            if (!selectEl || selectEl.value !== p.kanan) {
-              matchBenar = false;
+        } else if (s.tipe === "mencocokkan" && s.pasangan) {
+          const selects = document.querySelectorAll(`select[data-soal-id="${s.id}"]`);
+          let benarCount = 0;
+          selects.forEach(sel => {
+            const kiriVal = sel.getAttribute("data-kiri");
+            const pairFound = s.pasangan.find(p => p.kiri === kiriVal);
+            if (pairFound && pairFound.kanan === sel.value) {
+              benarCount++;
             }
           });
-          if (matchBenar) totalPoin += 1;
+          if (benarCount === s.pasangan.length) {
+            skorTotal++;
+          }
         }
       });
 
-      const nilaiAkhir = Math.round((totalPoin / poinMaksimal) * 100);
+      const nilaiAkhir = Math.round((skorTotal / totalSoal) * 100);
+
+      // Simpan Hasil ke Firebase
+      const hasilRefKey = `${siswaAktif.nisn}_${ujianAktif.id}`;
+      const payloadHasil = {
+        nisn: siswaAktif.nisn,
+        nama: siswaAktif.nama,
+        kelas: siswaAktif.kelas || "-",
+        ujianId: ujianAktif.id,
+        mapel: ujianAktif.mapel,
+        judul: ujianAktif.judul,
+        nilai: nilaiAkhir,
+        waktuSelesai: new Date().toLocaleString("id-ID")
+      };
 
       try {
-        // Kirim hasil ke Firestore
-        await addDoc(collection(db, "hasil"), {
-          ujianId: activeUjianData.id,
-          nisn: activeSiswaData.nisn,
-          nama: activeSiswaData.nama,
-          kelas: activeSiswaData.kelas,
-          mapel: activeUjianData.mapel,
-          judul: activeUjianData.judul,
-          nilai: nilaiAkhir,
-          waktuSelesai: new Date().toLocaleString("id-ID")
-        });
-
-        alert(`Ujian Selesai!\n\nNama: ${activeSiswaData.nama}\nNilai Anda: ${nilaiAkhir}`);
-        window.location.reload();
-
-      } catch (err) {
-        console.error("Error Simpan Hasil Firestore:", err);
-        alert("Gagal mengirim hasil ke server. Silakan coba klik Kirim Jawaban lagi.");
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<i class="bi bi-check-circle me-1"></i> Kirim Jawaban Saya`;
+        await set(ref(db, "hasilUjian/" + hasilRefKey), payloadHasil);
+        alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
+      } catch (e) {
+        console.error("Gagal simpan nilai:", e);
+        alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir} (Catatan: Gagal mengirim rekap ke server).`);
       }
-    };
-  </script>
 
+      // Keluar Layar Penuh & Refresh
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(e => console.log(e));
+      }
+      window.location.reload();
+    }
+  </script>
 </body>
 </html>
