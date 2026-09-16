@@ -108,7 +108,7 @@
                   </tr>
                 </thead>
                 <tbody id="tbodyUjian">
-                  <!-- Data Ujian di-render via JS -->
+                  <!-- Data Ujian di-render via Firebase -->
                 </tbody>
               </table>
             </div>
@@ -122,7 +122,6 @@
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-people me-2"></i>Data Siswa</h5>
             
-            <!-- Grup Tombol Fitur Excel & Tambah Siswa -->
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-outline-success btn-sm" onclick="downloadTemplateSiswa()">
                 <i class="bi bi-file-earmark-excel me-1"></i> Template Excel
@@ -130,7 +129,7 @@
               
               <label class="btn btn-success btn-sm mb-0">
                 <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Excel
-                <input type="file" id="inputImportSiswa" accept=".xlsx, .xls, .csv" onchange="importSiswaExcel(event)" hidden>
+                <input type="file" id="fileExcelSiswa" accept=".xlsx, .xls, .csv" hidden>
               </label>
 
               <button class="btn btn-outline-primary btn-sm" onclick="exportSiswaExcel()">
@@ -156,7 +155,7 @@
                   </tr>
                 </thead>
                 <tbody id="tbodySiswa">
-                  <!-- Data Siswa di-render via JS -->
+                  <!-- Data Siswa di-render via Firebase -->
                 </tbody>
               </table>
             </div>
@@ -171,7 +170,6 @@
             <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-award me-2"></i>Hasil & Rekap Nilai Siswa</h5>
           </div>
           <div class="card-body bg-light">
-            <!-- Filter & Download Panel -->
             <div class="row g-3 align-items-end">
               <div class="col-md-4">
                 <label for="selectFilterKelas" class="form-label fw-bold small text-muted">Pilih Kelas</label>
@@ -189,7 +187,6 @@
                 <label for="selectFilterUjian" class="form-label fw-bold small text-muted">Pilih Judul Ujian</label>
                 <select id="selectFilterUjian" class="form-select">
                   <option value="">-- Semua Ujian --</option>
-                  <!-- Opsi diisi otomatis via JS dari localStorage -->
                 </select>
               </div>
               <div class="col-md-3">
@@ -213,7 +210,7 @@
                   </tr>
                 </thead>
                 <tbody id="tbodyNilai">
-                  <!-- Data Nilai di-render via JS -->
+                  <!-- Data Nilai di-render via Firebase -->
                 </tbody>
               </table>
             </div>
@@ -232,7 +229,7 @@
           <h5 class="modal-title fw-bold">Buat Ujian Baru</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <form id="formUjian" onsubmit="handleSimpanUjian(event)">
+        <form id="formUjian">
           <div class="modal-body">
             <input type="hidden" id="ujianId">
             <div class="mb-3">
@@ -263,7 +260,7 @@
     </div>
   </div>
 
-  <!-- MODAL: Kelola Soal Ujian (Support 3 Tipe Soal & Import Excel) -->
+  <!-- MODAL: Kelola Soal Ujian -->
   <div class="modal fade" id="modalKelolaSoal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -282,9 +279,8 @@
               <i class="bi bi-plus-circle-fill text-primary"></i> Form Input Soal Baru
             </div>
             <div class="card-body">
-              <form id="formTambahSoal" onsubmit="handleTambahSoal(event)">
+              <form id="formTambahSoal">
                 
-                <!-- Pilih Tipe Soal -->
                 <div class="mb-3">
                   <label class="form-label fw-bold">Tipe Soal</label>
                   <select id="soalTipe" class="form-select fw-bold bg-light" onchange="switchTipeSoal(this.value)">
@@ -399,15 +395,14 @@
               <label class="form-label fw-bold mb-0">
                 <i class="bi bi-file-earmark-excel text-success"></i> Import Soal dari Excel
               </label>
-              <!-- Tombol Download Template Soal -->
-              <button type="button" class="btn btn-outline-success" onclick="event.preventDefault(); downloadTemplateSoal();">
+              <button type="button" class="btn btn-outline-success" onclick="downloadTemplateSoal()">
                 <i class="bi bi-file-earmark-excel"></i> Template Soal
               </button>
             </div>
             <p class="small text-muted mb-2">
               Header Excel wajib berisi: <strong>Pertanyaan</strong>, <strong>A</strong>, <strong>B</strong>, <strong>C</strong>, <strong>D</strong>, <strong>Kunci</strong> (A/B/C/D).
             </p>
-            <input type="file" class="form-control" accept=".xlsx, .xls" onchange="importExcelSoal(event)">
+            <input type="file" id="fileExcelSoal" class="form-control" accept=".xlsx, .xls">
           </div>
 
         </div>
@@ -423,7 +418,7 @@
           <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Data Siswa</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <form id="formSiswa" onsubmit="handleSimpanSiswa(event)">
+        <form id="formSiswa">
           <div class="modal-body">
             <input type="hidden" id="siswaId">
             <div class="mb-3">
@@ -448,37 +443,25 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS & SheetJS -->
+  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
+  
+  <!-- Main Application Script (ES Module) -->
+  <script type="module" src="app.js"></script>
 
-  <!-- Script Perantara Rekap Nilai -->
+  <!-- Script Perantara Trigger Rekap Nilai -->
   <script>
     function triggerDownloadRekap() {
       const kelas = document.getElementById("selectFilterKelas").value;
       const ujianId = document.getElementById("selectFilterUjian").value;
       
-      if (typeof downloadRekapNilaiPerKelas === "function") {
-        downloadRekapNilaiPerKelas(kelas, ujianId);
+      if (typeof window.downloadRekapNilaiPerKelas === "function") {
+        window.downloadRekapNilaiPerKelas(kelas, ujianId);
       } else {
-        alert("Fungsi downloadRekapNilaiPerKelas() belum tersedia di app.js");
+        alert("Fungsi downloadRekapNilaiPerKelas() belum siap.");
       }
     }
-
-    // Isi Otomatis Dropdown Filter Ujian saat halaman dimuat
-    document.addEventListener("DOMContentLoaded", () => {
-      const selectUjian = document.getElementById("selectFilterUjian");
-      if (selectUjian) {
-        const daftarUjian = JSON.parse(localStorage.getItem("daftarUjian") || "[]");
-        daftarUjian.forEach(u => {
-          const opt = document.createElement("option");
-          opt.value = u.id;
-          opt.textContent = `${u.mapel} - ${u.judul}`;
-          selectUjian.appendChild(opt);
-        });
-      }
-    });
   </script>
 
 </body>
