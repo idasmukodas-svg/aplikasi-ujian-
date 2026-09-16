@@ -125,14 +125,6 @@ function renderTabelUjian() {
   });
 }
 
-window.openModalTambahUjian = function() {
-  document.getElementById("formUjian").reset();
-  document.getElementById("ujianId").value = "";
-  document.getElementById("ujianToken").value = Math.random().toString(36).substring(2, 7).toUpperCase();
-  const modal = new bootstrap.Modal(document.getElementById("modalUjian"));
-  modal.show();
-};
-
 function handleSimpanUjian(e) {
   e.preventDefault();
   const mapel  = document.getElementById("ujianMapel").value;
@@ -157,50 +149,6 @@ function handleSimpanUjian(e) {
       if (modal) modal.hide();
     });
 }
-
-window.hapusUjian = function(id) {
-  if (confirm("Apakah Anda yakin ingin menghapus ujian ini beserta seluruh soalnya?")) {
-    remove(ref(db, "daftarUjian/" + id));
-  }
-};
-
-// --- MODAL KELOLA SOAL ---
-window.openModalSoal = function(ujianId) {
-  activeUjianId = ujianId;
-  const u = daftarUjian.find(item => item.id === ujianId);
-  if (!u) return;
-
-  document.getElementById("judulUjianSoal").innerText = `${u.mapel} - ${u.judul}`;
-  document.getElementById("formTambahSoal").reset();
-  switchTipeSoal("pg");
-
-  const modal = new bootstrap.Modal(document.getElementById("modalKelolaSoal"));
-  modal.show();
-};
-
-window.switchTipeSoal = function(tipe) {
-  const containerPG = document.getElementById("containerPG");
-  const containerMencocokkan = document.getElementById("containerMencocokkan");
-  const boxKunciPG = document.getElementById("boxKunciPG");
-  const boxKunciKompleks = document.getElementById("boxKunciKompleks");
-
-  if (!containerPG || !containerMencocokkan) return;
-
-  if (tipe === "pg") {
-    containerPG.classList.remove("d-none");
-    containerMencocokkan.classList.add("d-none");
-    if (boxKunciPG) boxKunciPG.classList.remove("d-none");
-    if (boxKunciKompleks) boxKunciKompleks.classList.add("d-none");
-  } else if (tipe === "pg_kompleks") {
-    containerPG.classList.remove("d-none");
-    containerMencocokkan.classList.add("d-none");
-    if (boxKunciPG) boxKunciPG.classList.add("d-none");
-    if (boxKunciKompleks) boxKunciKompleks.classList.remove("d-none");
-  } else if (tipe === "mencocokkan") {
-    containerPG.classList.add("d-none");
-    containerMencocokkan.classList.remove("d-none");
-  }
-};
 
 function handleTambahSoal(e) {
   e.preventDefault();
@@ -255,7 +203,7 @@ function handleTambahSoal(e) {
   simpanDataUjian();
   alert("Soal berhasil ditambahkan!");
   document.getElementById("formTambahSoal").reset();
-  switchTipeSoal("pg");
+  window.switchTipeSoal("pg");
 }
 
 /* ===================================================
@@ -288,12 +236,6 @@ function renderTabelSiswa() {
   });
 }
 
-window.openModalTambahSiswa = function() {
-  document.getElementById("formSiswa").reset();
-  const modal = new bootstrap.Modal(document.getElementById("modalSiswa"));
-  modal.show();
-};
-
 function handleSimpanSiswa(e) {
   e.preventDefault();
   const nisn = document.getElementById("siswaNisn").value.trim();
@@ -314,25 +256,6 @@ function handleSimpanSiswa(e) {
     });
 }
 
-window.hapusSiswa = function(nisn) {
-  if (confirm("Hapus data siswa ini?")) {
-    remove(ref(db, "daftarSiswa/" + nisn));
-  }
-};
-
-// Download Template Excel Siswa
-window.downloadTemplateSiswa = function() {
-  const data = [
-    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A" },
-    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B" }
-  ];
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Template Siswa");
-  XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
-};
-
-// Import Excel Siswa
 function importSiswaExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -364,32 +287,6 @@ function importSiswaExcel(event) {
   reader.readAsArrayBuffer(file);
 }
 
-// Export Data Siswa Ke Excel
-window.exportSiswaExcel = function() {
-  if (daftarSiswa.length === 0) {
-    alert("Tidak ada data siswa untuk diekspor.");
-    return;
-  }
-  const ws = XLSX.utils.json_to_sheet(daftarSiswa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Data Siswa");
-  XLSX.writeFile(wb, "Data_Siswa_CBT.xlsx");
-};
-
-// Download Template Soal Excel
-window.downloadTemplateSoal = function() {
-  const data = [
-    { Tipe: "pg", Pertanyaan: "Perangkat keras input komputer adalah?", A: "Keyboard", B: "Printer", C: "Speaker", D: "Proyektor", Kunci: "A", Pasangan: "" },
-    { Tipe: "pg_kompleks", Pertanyaan: "Pilih yang termasuk perangkat lunak sistem operasi!", A: "Windows", B: "Linux", C: "Microsoft Word", D: "Google Chrome", Kunci: "A,B", Pasangan: "" },
-    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", A: "", B: "", C: "", D: "", Kunci: "", Pasangan: "CPU=Otak Komputer; RAM=Memori Utama; HDD=Penyimpanan" }
-  ];
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
-  XLSX.writeFile(wb, "Template_Soal_3_Tipe.xlsx");
-};
-
-// Import Soal dari Excel
 function importExcelSoal(event) {
   const file = event.target.files[0];
   if (!file || !activeUjianId) return;
@@ -498,6 +395,106 @@ function updateFilterUjianDropdown() {
     selectUjian.appendChild(opt);
   });
 }
+
+/* ===================================================
+   4. EKSPOR FUNGSI KE WINDOW (AGAR BISA DIBANGKITKAN OLEH ONCLICK)
+   =================================================== */
+window.openModalTambahUjian = function() {
+  document.getElementById("formUjian").reset();
+  document.getElementById("ujianId").value = "";
+  document.getElementById("ujianToken").value = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const modal = new bootstrap.Modal(document.getElementById("modalUjian"));
+  modal.show();
+};
+
+window.hapusUjian = function(id) {
+  if (confirm("Apakah Anda yakin ingin menghapus ujian ini beserta seluruh soalnya?")) {
+    remove(ref(db, "daftarUjian/" + id));
+  }
+};
+
+window.openModalSoal = function(ujianId) {
+  activeUjianId = ujianId;
+  const u = daftarUjian.find(item => item.id === ujianId);
+  if (!u) return;
+
+  document.getElementById("judulUjianSoal").innerText = `${u.mapel} - ${u.judul}`;
+  document.getElementById("formTambahSoal").reset();
+  window.switchTipeSoal("pg");
+
+  const modal = new bootstrap.Modal(document.getElementById("modalKelolaSoal"));
+  modal.show();
+};
+
+window.switchTipeSoal = function(tipe) {
+  const containerPG = document.getElementById("containerPG");
+  const containerMencocokkan = document.getElementById("containerMencocokkan");
+  const boxKunciPG = document.getElementById("boxKunciPG");
+  const boxKunciKompleks = document.getElementById("boxKunciKompleks");
+
+  if (!containerPG || !containerMencocokkan) return;
+
+  if (tipe === "pg") {
+    containerPG.classList.remove("d-none");
+    containerMencocokkan.classList.add("d-none");
+    if (boxKunciPG) boxKunciPG.classList.remove("d-none");
+    if (boxKunciKompleks) boxKunciKompleks.classList.add("d-none");
+  } else if (tipe === "pg_kompleks") {
+    containerPG.classList.remove("d-none");
+    containerMencocokkan.classList.add("d-none");
+    if (boxKunciPG) boxKunciPG.classList.add("d-none");
+    if (boxKunciKompleks) boxKunciKompleks.classList.remove("d-none");
+  } else if (tipe === "mencocokkan") {
+    containerPG.classList.add("d-none");
+    containerMencocokkan.classList.remove("d-none");
+  }
+};
+
+window.openModalTambahSiswa = function() {
+  document.getElementById("formSiswa").reset();
+  const modal = new bootstrap.Modal(document.getElementById("modalSiswa"));
+  modal.show();
+};
+
+window.hapusSiswa = function(nisn) {
+  if (confirm("Hapus data siswa ini?")) {
+    remove(ref(db, "daftarSiswa/" + nisn));
+  }
+};
+
+window.downloadTemplateSiswa = function() {
+  const data = [
+    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A" },
+    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B" }
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Template Siswa");
+  XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
+};
+
+window.exportSiswaExcel = function() {
+  if (daftarSiswa.length === 0) {
+    alert("Tidak ada data siswa untuk diekspor.");
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(daftarSiswa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Data Siswa");
+  XLSX.writeFile(wb, "Data_Siswa_CBT.xlsx");
+};
+
+window.downloadTemplateSoal = function() {
+  const data = [
+    { Tipe: "pg", Pertanyaan: "Perangkat keras input komputer adalah?", A: "Keyboard", B: "Printer", C: "Speaker", D: "Proyektor", Kunci: "A", Pasangan: "" },
+    { Tipe: "pg_kompleks", Pertanyaan: "Pilih yang termasuk perangkat lunak sistem operasi!", A: "Windows", B: "Linux", C: "Microsoft Word", D: "Google Chrome", Kunci: "A,B", Pasangan: "" },
+    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", A: "", B: "", C: "", D: "", Kunci: "", Pasangan: "CPU=Otak Komputer; RAM=Memori Utama; HDD=Penyimpanan" }
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
+  XLSX.writeFile(wb, "Template_Soal_3_Tipe.xlsx");
+};
 
 window.downloadRekapNilaiPerKelas = function(kelasFilter, ujianIdFilter) {
   if (hasilUjian.length === 0) {
