@@ -3,7 +3,7 @@
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -72,13 +72,18 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- HELPER UNTUK SIMPAN DATA KE FIREBASE ---
 function simpanDataUjian() {
   const dataObj = {};
-  daftarUjian.forEach(u => dataObj[u.id] = u);
+  daftarUjian.forEach(u => {
+    if (u.id) dataObj[u.id] = u;
+  });
   set(ref(db, "daftarUjian"), dataObj);
 }
 
 function simpanDataSiswa() {
   const dataObj = {};
-  daftarSiswa.forEach(s => dataObj[s.nisn] = s);
+  daftarSiswa.forEach(s => {
+    const cleanKey = String(s.nisn).replace(/[.#$\[\]]/g, "_");
+    dataObj[cleanKey] = s;
+  });
   set(ref(db, "daftarSiswa"), dataObj);
 }
 
@@ -107,10 +112,10 @@ function renderTabelUjian() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td><span class="badge bg-secondary">${u.mapel}</span></td>
-      <td class="fw-bold">${u.judul}</td>
-      <td>${u.durasi} Menit</td>
-      <td><span class="badge bg-info text-dark font-monospace">${u.token}</span></td>
+      <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
+      <td class="fw-bold">${u.judul || '-'}</td>
+      <td>${u.durasi || 0} Menit</td>
+      <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
@@ -137,25 +142,33 @@ function handleSimpanUjian(e) {
     id,
     mapel,
     judul,
-    durasi,
+    durasi: parseInt(durasi),
     token,
     soal: []
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
+      alert("Jadwal Ujian Berhasil Disimpan!");
       const modalEl = document.getElementById("modalUjian");
       if (modalEl && window.bootstrap) {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
       }
+    })
+    .catch((error) => {
+      console.error("Gagal menyimpan ujian:", error);
+      alert("Gagal menyimpan ujian: " + error.message);
     });
 }
 
 function handleTambahSoal(e) {
   e.preventDefault();
   const u = daftarUjian.find(item => item.id === activeUjianId);
-  if (!u) return;
+  if (!u) {
+    alert("Ujian aktif tidak ditemukan!");
+    return;
+  }
 
   const tipe = document.getElementById("soalTipe").value;
   const pertanyaan = document.getElementById("soalPertanyaan").value;
@@ -168,18 +181,18 @@ function handleTambahSoal(e) {
 
   if (tipe === "pg") {
     newSoal.opsi = {
-      A: document.getElementById("soalA").value,
-      B: document.getElementById("soalB").value,
-      C: document.getElementById("soalC").value,
-      D: document.getElementById("soalD").value
+      A: document.getElementById("soalA")?.value || "",
+      B: document.getElementById("soalB")?.value || "",
+      C: document.getElementById("soalC")?.value || "",
+      D: document.getElementById("soalD")?.value || ""
     };
-    newSoal.kunci = document.getElementById("soalKunciPG").value;
+    newSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
   } else if (tipe === "pg_kompleks") {
     newSoal.opsi = {
-      A: document.getElementById("soalA").value,
-      B: document.getElementById("soalB").value,
-      C: document.getElementById("soalC").value,
-      D: document.getElementById("soalD").value
+      A: document.getElementById("soalA")?.value || "",
+      B: document.getElementById("soalB")?.value || "",
+      C: document.getElementById("soalC")?.value || "",
+      D: document.getElementById("soalD")?.value || ""
     };
     const checkedKunci = [];
     ['A', 'B', 'C', 'D'].forEach(opt => {
@@ -244,19 +257,27 @@ function handleSimpanSiswa(e) {
   const nama = document.getElementById("siswaNama").value.trim();
   const kelas = document.getElementById("siswaKelas").value.trim();
 
-  if (daftarSiswa.some(s => s.nisn === nisn)) {
-    alert("NISN sudah terdaftar!");
+  if (!nisn || !nama || !kelas) {
+    alert("Harap isi semua kolom!");
     return;
   }
 
+  // Bersihkan karakter illegal untuk Firebase Realtime Database Key
+  const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
+
   const newSiswa = { nisn, nama, kelas };
-  set(ref(db, "daftarSiswa/" + nisn), newSiswa)
+  set(ref(db, "daftarSiswa/" + cleanKey), newSiswa)
     .then(() => {
+      alert("Data siswa berhasil disimpan!");
       const modalEl = document.getElementById("modalSiswa");
       if (modalEl && window.bootstrap) {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
       }
+    })
+    .catch((error) => {
+      console.error("Gagal menyimpan siswa:", error);
+      alert("Gagal menyimpan siswa: " + error.message);
     });
 }
 
@@ -278,14 +299,14 @@ function importSiswaExcel(event) {
       const nama = String(row.NAMA || row.Nama || row.nama || "").trim();
       const kelas = String(row.KELAS || row.Kelas || row.kelas || "").trim();
 
-      if (nisn && nama && !daftarSiswa.some(s => s.nisn === nisn)) {
-        daftarSiswa.push({ nisn, nama, kelas });
+      if (nisn && nama) {
+        const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
+        set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas });
         countAdded++;
       }
     });
 
-    simpanDataSiswa();
-    alert(`Berhasil mengimpor ${countAdded} data siswa!`);
+    alert(`Berhasil mengimpor/memperbarui ${countAdded} data siswa!`);
     event.target.value = "";
   };
   reader.readAsArrayBuffer(file);
@@ -380,8 +401,8 @@ function renderTabelNilai() {
       <td>${i + 1}</td>
       <td class="font-monospace">${h.nisn}</td>
       <td class="fw-bold">${h.nama} <span class="badge bg-light text-dark border ms-1">${h.kelas || '-'}</span></td>
-      <td>${h.mapel} - ${h.judul}</td>
-      <td><span class="badge bg-success fs-6">${h.nilai}</span></td>
+      <td>${h.mapel || '-'} - ${h.judul || '-'}</td>
+      <td><span class="badge bg-success fs-6">${h.nilai || 0}</span></td>
       <td class="small text-muted">${h.waktuSelesai || '-'}</td>
     `;
     tbody.appendChild(tr);
@@ -395,7 +416,7 @@ function updateFilterUjianDropdown() {
   daftarUjian.forEach(u => {
     const opt = document.createElement("option");
     opt.value = u.id;
-    opt.textContent = `${u.mapel} - ${u.judul}`;
+    opt.textContent = `${u.mapel || ''} - ${u.judul || ''}`;
     selectUjian.appendChild(opt);
   });
 }
@@ -407,13 +428,11 @@ window.openModalTambahUjian = function() {
   const form = document.getElementById("formUjian");
   if (form) form.reset();
   const tokenEl = document.getElementById("ujianToken");
-  if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 7).toUpperCase();
+  if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
   const modalEl = document.getElementById("modalUjian");
-  if (modalEl) {
+  if (modalEl && window.bootstrap) {
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
-  } else {
-    alert("Elemen modalUjian tidak ditemukan di HTML!");
   }
 };
 
@@ -421,17 +440,17 @@ window.openModalTambahSiswa = function() {
   const form = document.getElementById("formSiswa");
   if (form) form.reset();
   const modalEl = document.getElementById("modalSiswa");
-  if (modalEl) {
+  if (modalEl && window.bootstrap) {
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
-  } else {
-    alert("Elemen modalSiswa tidak ditemukan di HTML!");
   }
 };
 
 window.hapusUjian = function(id) {
   if (confirm("Apakah Anda yakin ingin menghapus ujian ini beserta seluruh soalnya?")) {
-    remove(ref(db, "daftarUjian/" + id));
+    remove(ref(db, "daftarUjian/" + id))
+      .then(() => alert("Ujian berhasil dihapus!"))
+      .catch(err => alert("Gagal menghapus: " + err.message));
   }
 };
 
@@ -444,10 +463,10 @@ window.openModalSoal = function(ujianId) {
   if (titleEl) titleEl.innerText = `${u.mapel} - ${u.judul}`;
   const form = document.getElementById("formTambahSoal");
   if (form) form.reset();
-  window.switchTipeSoal("pg");
+  if (window.switchTipeSoal) window.switchTipeSoal("pg");
 
   const modalEl = document.getElementById("modalKelolaSoal");
-  if (modalEl) {
+  if (modalEl && window.bootstrap) {
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
   }
@@ -479,7 +498,10 @@ window.switchTipeSoal = function(tipe) {
 
 window.hapusSiswa = function(nisn) {
   if (confirm("Hapus data siswa ini?")) {
-    remove(ref(db, "daftarSiswa/" + nisn));
+    const cleanKey = String(nisn).replace(/[.#$\[\]]/g, "_");
+    remove(ref(db, "daftarSiswa/" + cleanKey))
+      .then(() => alert("Siswa berhasil dihapus!"))
+      .catch(err => alert("Gagal menghapus: " + err.message));
   }
 };
 
