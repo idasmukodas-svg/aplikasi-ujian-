@@ -145,8 +145,10 @@ function handleSimpanUjian(e) {
   set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
       const modalEl = document.getElementById("modalUjian");
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
+      if (modalEl && window.bootstrap) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      }
     });
 }
 
@@ -203,7 +205,7 @@ function handleTambahSoal(e) {
   simpanDataUjian();
   alert("Soal berhasil ditambahkan!");
   document.getElementById("formTambahSoal").reset();
-  window.switchTipeSoal("pg");
+  if (window.switchTipeSoal) window.switchTipeSoal("pg");
 }
 
 /* ===================================================
@@ -251,8 +253,10 @@ function handleSimpanSiswa(e) {
   set(ref(db, "daftarSiswa/" + nisn), newSiswa)
     .then(() => {
       const modalEl = document.getElementById("modalSiswa");
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
+      if (modalEl && window.bootstrap) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      }
     });
 }
 
@@ -397,14 +401,32 @@ function updateFilterUjianDropdown() {
 }
 
 /* ===================================================
-   4. EKSPOR FUNGSI KE WINDOW (AGAR BISA DIBANGKITKAN OLEH ONCLICK)
+   4. EKSPOR FUNGSI KE WINDOW (UNTUK ONCLICK EVENT)
    =================================================== */
 window.openModalTambahUjian = function() {
-  document.getElementById("formUjian").reset();
-  document.getElementById("ujianId").value = "";
-  document.getElementById("ujianToken").value = Math.random().toString(36).substring(2, 7).toUpperCase();
-  const modal = new bootstrap.Modal(document.getElementById("modalUjian"));
-  modal.show();
+  const form = document.getElementById("formUjian");
+  if (form) form.reset();
+  const tokenEl = document.getElementById("ujianToken");
+  if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const modalEl = document.getElementById("modalUjian");
+  if (modalEl) {
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  } else {
+    alert("Elemen modalUjian tidak ditemukan di HTML!");
+  }
+};
+
+window.openModalTambahSiswa = function() {
+  const form = document.getElementById("formSiswa");
+  if (form) form.reset();
+  const modalEl = document.getElementById("modalSiswa");
+  if (modalEl) {
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  } else {
+    alert("Elemen modalSiswa tidak ditemukan di HTML!");
+  }
 };
 
 window.hapusUjian = function(id) {
@@ -418,12 +440,17 @@ window.openModalSoal = function(ujianId) {
   const u = daftarUjian.find(item => item.id === ujianId);
   if (!u) return;
 
-  document.getElementById("judulUjianSoal").innerText = `${u.mapel} - ${u.judul}`;
-  document.getElementById("formTambahSoal").reset();
+  const titleEl = document.getElementById("judulUjianSoal");
+  if (titleEl) titleEl.innerText = `${u.mapel} - ${u.judul}`;
+  const form = document.getElementById("formTambahSoal");
+  if (form) form.reset();
   window.switchTipeSoal("pg");
 
-  const modal = new bootstrap.Modal(document.getElementById("modalKelolaSoal"));
-  modal.show();
+  const modalEl = document.getElementById("modalKelolaSoal");
+  if (modalEl) {
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
 };
 
 window.switchTipeSoal = function(tipe) {
@@ -448,12 +475,6 @@ window.switchTipeSoal = function(tipe) {
     containerPG.classList.add("d-none");
     containerMencocokkan.classList.remove("d-none");
   }
-};
-
-window.openModalTambahSiswa = function() {
-  document.getElementById("formSiswa").reset();
-  const modal = new bootstrap.Modal(document.getElementById("modalSiswa"));
-  modal.show();
 };
 
 window.hapusSiswa = function(nisn) {
