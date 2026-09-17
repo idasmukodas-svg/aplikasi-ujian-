@@ -1,57 +1,51 @@
-// Contoh fungsi saat siswa memverifikasi token untuk mulai ujian
-function cekAksesDanMulaiUjian(nisnSiswa, tokenInput) {
-  // 1. Ambil data siswa yang sedang login dari database
-  get(ref(db, "daftarSiswa/" + nisnSiswa)).then((snapshotSiswa) => {
-    if (!snapshotSiswa.exists()) {
-      alert("Data siswa tidak ditemukan!");
-      return;
-    }
-    const dataSiswa = snapshotSiswa.val(); // Berisi { nama, kelas: "IX A", sesi: "Sesi 1" }
+/* ===================================================
+   1. KELOLA UJIAN & BANK SOAL
+   =================================================== */
+function renderTabelUjian() {
+  const tbody = document.getElementById("tbodyUjian");
+  if (!tbody) return;
+  tbody.innerHTML = "";
 
-    // 2. Ambil daftar ujian yang sedang berstatus "Aktif"
-    get(ref(db, "daftarUjian")).then((snapshotUjian) => {
-      if (!snapshotUjian.exists()) {
-        alert("Tidak ada ujian yang aktif saat ini.");
-        return;
-      }
+  if (daftarUjian.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal.</td></tr>`;
+    return;
+  }
 
-      let ujianAktif = null;
-      snapshotUjian.forEach((childSnapshot) => {
-        const ujian = childSnapshot.val();
-        // Cek ujian yang statusnya Aktif dan tokennya cocok
-        if (ujian.status === "Aktif" && ujian.token === tokenInput) {
-          ujianAktif = ujian;
-        }
-      });
+  daftarUjian.forEach((u, i) => {
+    const jmlSoal = u.soal ? u.soal.length : 0;
+    const isAktif = u.status === "aktif";
+    const statusBadge = isAktif 
+      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>` 
+      : `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Nonaktif</span>`;
+    
+    const jadwalText = `<div class="small fw-bold text-primary">${formatDateTimeDisplay(u.waktuMulai)}</div>
+                        <div class="small text-muted">s.d. ${formatDateTimeDisplay(u.waktuSelesai)}</div>`;
 
-      if (!ujianAktif) {
-        alert("Token salah atau tidak ada ujian yang sedang aktif dengan token tersebut.");
-        return;
-      }
-
-      // 3. VALIDASI KELAS (Otomatis berdasarkan Mapel/Judul Ujian & Kelas Siswa)
-      // Misal judul/mapel ujian mengandung kata "Kelas IX" atau target kelas 9
-      const mapelAtauJudul = (ujianAktif.mapel + " " + ujianAktif.judul).toLowerCase();
-      const kelasSiswa = dataSiswa.kelas.toLowerCase(); // contoh: "ix a" atau "9b"
-
-      // Cek jika ujian untuk kelas 9 (IX / 9)
-      if (mapelAtauJudul.includes("ix") || mapelAtauJudul.includes("kelas 9")) {
-        if (!kelasSiswa.includes("ix") && !kelasSiswa.includes("9")) {
-          alert("Akses Ditolak! Ujian ini khusus untuk siswa Kelas 9.");
-          return;
-        }
-      } 
-      // Cek jika ujian untuk kelas 8 (VIII / 8)
-      else if (mapelAtauJudul.includes("viii") || mapelAtauJudul.includes("kelas 8")) {
-        if (!kelasSiswa.includes("viii") && !kelasSiswa.includes("8")) {
-          alert("Akses Ditolak! Ujian ini khusus untuk siswa Kelas 8.");
-          return;
-        }
-      }
-
-      // Jika lolos validasi, arahkan ke halaman pengerjaan soal
-      alert("Token valid! Memulai ujian...");
-      window.location.href = `kerjakan-ujian.html?id=${ujianAktif.id}&nisn=${nisnSiswa}`;
-    });
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
+      <td><span class="badge bg-dark">${u.kelasTarget || 'Semua'}</span></td>
+      <td class="fw-bold">${u.judul || '-'}</td>
+      <td>${jadwalText}</td>
+      <td>${u.durasi || 0} Mns</td>
+      <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
+      <td>
+        <div class="form-check form-switch cursor-pointer" title="Klik untuk mengubah status">
+          <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? 'checked' : ''} onchange="toggleStatusUjian('${u.id}', '${u.status}')">
+          <label class="form-check-label" for="switch-${u.id}">${statusBadge}</label>
+        </div>
+      </td>
+      <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
+          <i class="bi bi-gear-fill me-1"></i> Soal
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="hapusUjian('${u.id}')">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 }
