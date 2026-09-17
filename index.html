@@ -4,110 +4,118 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Admin - LMS & CBT SMP PLUS ANNUUR</title>
-  
-  <!-- Bootstrap 5 CSS & Icons -->
+  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-  
-  <!-- SheetJS / XLSX Library -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- SheetJS (XLSX) Import/Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    .cursor-pointer { cursor: pointer; }
+    .card-stat { transition: transform 0.2s; }
+    .card-stat:hover { transform: translateY(-3px); }
+  </style>
 </head>
 <body class="bg-light">
 
   <!-- NAVBAR -->
   <nav class="navbar navbar-dark bg-primary px-3 shadow-sm">
-   <a class="navbar-brand fw-bold" href="#">
-     <i class="bi bi-laptop me-2"></i>CBT SMP PLUS ANNUUR
-   </a>
-   <div class="d-flex align-items-center gap-2">
-     <span id="userDisplayName" class="text-white fw-semibold me-2"></span>
-     <button class="btn btn-outline-light btn-sm" onclick="logout()">
-       <i class="bi bi-box-arrow-right me-1"></i>Keluar
-     </button>
-     </div>
-   </nav>
-  <div class="container">
-    <!-- STATS ROW -->
+    <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+      <i class="bi bi-laptop me-2 fs-4"></i>
+      <span>CBT SMP PLUS ANNUUR</span>
+    </a>
+    <div class="d-flex align-items-center gap-2">
+      <span id="userDisplayName" class="text-white fw-semibold me-2"></span>
+      <button class="btn btn-outline-light btn-sm" onclick="logout()">
+        <i class="bi bi-box-arrow-right me-1"></i>Keluar
+      </button>
+    </div>
+  </nav>
+
+  <!-- CONTAINER UTAMA -->
+  <div class="container-fluid py-4 px-md-4">
+
+    <!-- STATISTIK RINGKASAN -->
     <div class="row g-3 mb-4">
       <div class="col-md-4">
-        <div class="card bg-primary text-white border-0 shadow-sm rounded-3">
+        <div class="card card-stat border-0 bg-primary text-white shadow-sm h-100">
           <div class="card-body d-flex align-items-center justify-content-between p-4">
             <div>
-              <p class="mb-0 small text-white-50">Total Siswa</p>
-              <h2 class="fw-bold mb-0" id="statTotalSiswa">0</h2>
+              <p class="text-white-50 mb-1 fw-medium">Total Siswa</p>
+              <h2 id="statTotalSiswa" class="fw-bold mb-0">0</h2>
             </div>
-            <i class="bi bi-people display-4 text-white-50"></i>
+            <i class="bi bi-people-fill display-4 opacity-50"></i>
           </div>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card bg-success text-white border-0 shadow-sm rounded-3">
+        <div class="card card-stat border-0 bg-success text-white shadow-sm h-100">
           <div class="card-body d-flex align-items-center justify-content-between p-4">
             <div>
-              <p class="mb-0 small text-white-50">Jadwal Ujian / Bank Soal</p>
-              <h2 class="fw-bold mb-0" id="statTotalUjian">0</h2>
+              <p class="text-white-50 mb-1 fw-medium">Jadwal Ujian / Bank Soal</p>
+              <h2 id="statTotalUjian" class="fw-bold mb-0">0</h2>
             </div>
-            <i class="bi bi-journal-check display-4 text-white-50"></i>
+            <i class="bi bi-journal-check display-4 opacity-50"></i>
           </div>
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card bg-warning text-dark border-0 shadow-sm rounded-3">
+        <div class="card card-stat border-0 bg-warning text-dark shadow-sm h-100">
           <div class="card-body d-flex align-items-center justify-content-between p-4">
             <div>
-              <p class="mb-0 small text-black-50">Status Sistem</p>
+              <p class="text-dark-50 mb-1 fw-medium">Status Sistem</p>
               <h2 class="fw-bold mb-0">Aktif</h2>
             </div>
-            <i class="bi bi-cpu display-4 text-black-50"></i>
+            <i class="bi bi-cpu-fill display-4 opacity-50"></i>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- MAIN NAVIGATION TABS -->
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-      <div class="card-header bg-white border-bottom-0 pt-3">
-        <ul class="nav nav-pills card-header-pills fw-bold" id="mainTab" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="tab-ujian-tab" data-bs-toggle="pill" data-bs-target="#tab-ujian" type="button" role="tab" aria-controls="tab-ujian" aria-selected="true">
-              <i class="bi bi-journal-text me-1"></i> Kelola Ujian & Bank Soal
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-siswa-tab" data-bs-toggle="pill" data-bs-target="#tab-siswa" type="button" role="tab" aria-controls="tab-siswa" aria-selected="false">
-              <i class="bi bi-people-fill me-1"></i> Data Siswa
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-nilai-tab" data-bs-toggle="pill" data-bs-target="#tab-nilai" type="button" role="tab" aria-controls="tab-nilai" aria-selected="false">
-              <i class="bi bi-bar-chart-line-fill me-1"></i> Rekap Nilai
-            </button>
-          </li>
-          <!-- TAB KHUSUS ADMIN -->
-          <li class="nav-item" id="navGuruTab" role="presentation">
-            <button class="nav-link text-danger" id="tab-guru-tab" data-bs-toggle="pill" data-bs-target="#tab-guru" type="button" role="tab" aria-controls="tab-guru" aria-selected="false">
-              <i class="bi bi-person-badge-fill me-1"></i> Kelola Akun Guru
-            </button>
-          </li>
-        </ul>
-      </div>
+    <!-- NAVIGASI TAB UTAMA -->
+    <ul class="nav nav-pills bg-white p-2 rounded shadow-sm mb-4" id="mainTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold" id="tabUjian" data-bs-toggle="pill" data-bs-target="#contentUjian" type="button" role="tab">
+          <i class="bi bi-journal-text me-1"></i>Kelola Ujian & Bank Soal
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="tabSiswa" data-bs-toggle="pill" data-bs-target="#contentSiswa" type="button" role="tab">
+          <i class="bi bi-person-lines-fill me-1"></i>Data Siswa
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="tabNilai" data-bs-toggle="pill" data-bs-target="#contentNilai" type="button" role="tab">
+          <i class="bi bi-bar-chart-line-fill me-1"></i>Rekap Nilai
+        </button>
+      </li>
+      <li class="nav-item" id="navGuruTab" role="presentation">
+        <button class="nav-link fw-semibold" id="tabGuru" data-bs-toggle="pill" data-bs-target="#contentGuru" type="button" role="tab">
+          <i class="bi bi-person-badge-fill me-1"></i>Kelola Akun Guru
+        </button>
+      </li>
+    </ul>
 
-      <div class="card-body">
-        <div class="tab-content" id="mainTabContent">
-          
-          <!-- TAB 1: KELOLA UJIAN -->
-          <div class="tab-pane fade show active" id="tab-ujian" role="tabpanel" aria-labelledby="tab-ujian-tab">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h5 class="fw-bold text-primary m-0"><i class="bi bi-list-task me-2"></i>Daftar Jadwal Ujian & Bank Soal</h5>
-              <button class="btn btn-primary fw-bold" onclick="openModalTambahUjian()">
-                <i class="bi bi-plus-lg me-1"></i> Buat Ujian Baru
-              </button>
-            </div>
+    <!-- KONTEN TAB -->
+    <div class="tab-content" id="mainTabContent">
+
+      <!-- TAB 1: KELOLA UJIAN & BANK SOAL -->
+      <div class="tab-pane fade show active" id="contentUjian" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-list-task me-2"></i>Daftar Jadwal Ujian & Bank Soal
+            </h5>
+            <button class="btn btn-primary" onclick="openModalTambahUjian()">
+              <i class="bi bi-plus-lg me-1"></i>Buat Ujian Baru
+            </button>
+          </div>
+          <div class="card-body p-0">
             <div class="table-responsive">
-              <table class="table table-hover align-middle">
+              <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th>No</th>
+                    <th style="width: 50px;">No</th>
                     <th>Mata Pelajaran</th>
                     <th>Target Kelas</th>
                     <th>Judul Ujian / Materi</th>
@@ -116,359 +124,404 @@
                     <th>Token</th>
                     <th>Status</th>
                     <th>Jumlah Soal</th>
-                    <th>Aksi</th>
+                    <th style="width: 140px;">Aksi</th>
                   </tr>
                 </thead>
-                <tbody id="tbodyUjian"></tbody>
+                <tbody id="tbodyUjian">
+                  <!-- Rendered by app.js -->
+                </tbody>
               </table>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- TAB 2: DATA SISWA -->
-          <div class="tab-pane fade" id="tab-siswa" role="tabpanel" aria-labelledby="tab-siswa-tab">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h5 class="fw-bold text-primary m-0"><i class="bi bi-people me-2"></i>Data Siswa Terdaftar</h5>
-              <div>
-                <button class="btn btn-outline-success me-1 fw-bold" onclick="downloadTemplateSiswa()">
-                  <i class="bi bi-download me-1"></i> Template Excel
-                </button>
-                <label class="btn btn-success me-1 fw-bold mb-0">
-                  <i class="bi bi-file-earmark-excel me-1"></i> Import Excel
-                  <input type="file" id="fileExcelSiswa" accept=".xlsx, .xls" hidden>
-                </label>
-                <button class="btn btn-primary fw-bold" onclick="openModalTambahSiswa()">
-                  <i class="bi bi-plus-lg me-1"></i> Tambah Siswa
-                </button>
-              </div>
+      <!-- TAB 2: DATA SISWA -->
+      <div class="tab-pane fade" id="contentSiswa" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-people me-2"></i>Data Siswa Terdaftar
+            </h5>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSiswa()">
+                <i class="bi bi-download me-1"></i>Template Excel
+              </button>
+              <label class="btn btn-success btn-sm mb-0 cursor-pointer">
+                <i class="bi bi-file-earmark-excel me-1"></i>Import Excel
+                <input type="file" id="fileExcelSiswa" accept=".xlsx, .xls" class="d-none">
+              </label>
+              <button class="btn btn-primary btn-sm" onclick="openModalTambahSiswa()">
+                <i class="bi bi-plus-lg me-1"></i>Tambah Siswa
+              </button>
             </div>
+          </div>
+          <div class="card-body p-0">
             <div class="table-responsive">
-              <table class="table table-hover align-middle">
+              <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th>No</th>
+                    <th style="width: 50px;">No</th>
                     <th>NISN</th>
                     <th>Nama Lengkap</th>
                     <th>Kelas</th>
-                    <th>Aksi</th>
+                    <th style="width: 100px;">Aksi</th>
                   </tr>
                 </thead>
-                <tbody id="tbodySiswa"></tbody>
+                <tbody id="tbodySiswa">
+                  <!-- Rendered by app.js -->
+                </tbody>
               </table>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- TAB 3: REKAP NILAI -->
-          <div class="tab-pane fade" id="tab-nilai" role="tabpanel" aria-labelledby="tab-nilai-tab">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h5 class="fw-bold text-primary m-0"><i class="bi bi-journal-check me-2"></i>Hasil & Rekap Nilai Siswa</h5>
-              <div class="d-flex gap-2">
-                <select id="selectFilterUjian" class="form-select form-select-sm" style="width: auto;"></select>
-                <button class="btn btn-sm btn-success fw-bold" onclick="downloadRekapNilaiPerKelas('', document.getElementById('selectFilterUjian').value)">
-                  <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
-                </button>
+      <!-- TAB 3: REKAP NILAI -->
+      <div class="tab-pane fade" id="contentNilai" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <div class="row g-3 align-items-center">
+              <div class="col-md-4">
+                <h5 class="fw-bold mb-0 text-primary">
+                  <i class="bi bi-file-earmark-text me-2"></i>Hasil Ujian Siswa
+                </h5>
+              </div>
+              <div class="col-md-8">
+                <div class="d-flex gap-2 justify-content-md-end flex-wrap">
+                  <select id="selectFilterKelas" class="form-select form-select-sm style-select w-auto">
+                    <option value="">-- Semua Kelas --</option>
+                    <option value="VII A">VII A</option>
+                    <option value="VII B">VII B</option>
+                    <option value="VIII A">VIII A</option>
+                    <option value="VIII B">VIII B</option>
+                    <option value="IX A">IX A</option>
+                    <option value="IX B">IX B</option>
+                  </select>
+                  <select id="selectFilterUjian" class="form-select form-select-sm style-select w-auto">
+                    <option value="">-- Semua Ujian --</option>
+                  </select>
+                  <button id="btnExportRekap" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Export Rekap Nilai
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
+          <div class="card-body p-0">
             <div class="table-responsive">
-              <table class="table table-hover align-middle">
+              <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th>No</th>
+                    <th style="width: 50px;">No</th>
                     <th>NISN</th>
                     <th>Nama Siswa</th>
-                    <th>Ujian / Mapel</th>
+                    <th>Mata Pelajaran & Judul Ujian</th>
                     <th>Nilai</th>
                     <th>Waktu Selesai</th>
                   </tr>
                 </thead>
-                <tbody id="tbodyNilai"></tbody>
+                <tbody id="tbodyNilai">
+                  <!-- Rendered by app.js -->
+                </tbody>
               </table>
             </div>
           </div>
-
-          <!-- TAB 4: KELOLA AKUN GURU (KHUSUS ADMIN) -->
-          <div class="tab-pane fade" id="tab-guru" role="tabpanel" aria-labelledby="tab-guru-tab">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h5 class="fw-bold text-danger m-0"><i class="bi bi-person-gear me-2"></i>Manajemen Akun Guru & Pengajar</h5>
-              <button class="btn btn-danger fw-bold" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
-                <i class="bi bi-person-plus-fill me-1"></i> Buat Akun Guru Baru
-              </button>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th>No</th>
-                    <th>Nama Pengajar</th>
-                    <th>Email Login</th>
-                    <th>Mata Pelajaran Utama</th>
-                    <th>Hak Akses (Role)</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyPengguna"></tbody>
-              </table>
-            </div>
-          </div>
-
         </div>
       </div>
+
+      <!-- TAB 4: KELOLA AKUN GURU (ADMIN ONLY) -->
+      <div class="tab-pane fade" id="contentGuru" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
+            </h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+              <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 50px;">No</th>
+                    <th>Nama Guru</th>
+                    <th>Email</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Role</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPengguna">
+                  <!-- Rendered by app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- MODAL TAMBAH UJIAN -->
-  <div class="modal fade" id="modalUjian" tabindex="-1" aria-hidden="true">
+  <!-- MODAL: BUAT / EDIT UJIAN -->
+  <div class="modal fade" id="modalUjian" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <form id="formUjian">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title fw-bold"><i class="bi bi-journal-plus me-2"></i>Buat Ujian Baru</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-journal-plus me-2"></i>Buat Jadwal Ujian Baru</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran</label>
+              <label class="form-label fw-semibold">Mata Pelajaran</label>
               <input type="text" id="ujianMapel" class="form-control" placeholder="Contoh: Informatika" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Target Kelas</label>
+              <label class="form-label fw-semibold">Target Kelas</label>
               <select id="ujianKelasTarget" class="form-select">
                 <option value="Semua">Semua Kelas</option>
-                <option value="VII A">VII A</option>
-                <option value="VIII A">VIII A</option>
-                <option value="IX A">IX A</option>
+                <option value="VII">Kelas VII</option>
+                <option value="VIII">Kelas VIII</option>
+                <option value="IX">Kelas IX</option>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Judul Ujian / Materi</label>
+              <label class="form-label fw-semibold">Judul Ujian / Materi</label>
               <input type="text" id="ujianJudul" class="form-control" placeholder="Contoh: Penilaian Tengah Semester" required>
             </div>
-
-            <!-- JADWAL PELAKSANAAN -->
             <div class="row g-2 mb-3">
               <div class="col-6">
-                <label class="form-label fw-bold">Waktu Mulai</label>
+                <label class="form-label fw-semibold">Waktu Mulai</label>
                 <input type="datetime-local" id="ujianWaktuMulai" class="form-control" required>
               </div>
               <div class="col-6">
-                <label class="form-label fw-bold">Waktu Selesai</label>
+                <label class="form-label fw-semibold">Waktu Selesai</label>
                 <input type="datetime-local" id="ujianWaktuSelesai" class="form-control" required>
               </div>
             </div>
-
             <div class="row g-2 mb-3">
               <div class="col-6">
-                <label class="form-label fw-bold">Durasi (Menit)</label>
-                <input type="number" id="ujianDurasi" class="form-control" value="60" required min="1">
+                <label class="form-label fw-semibold">Durasi (Menit)</label>
+                <input type="number" id="ujianDurasi" class="form-control" value="60" min="5" required>
               </div>
               <div class="col-6">
-                <label class="form-label fw-bold">Token Masuk</label>
-                <input type="text" id="ujianToken" class="form-control font-monospace fw-bold" readonly>
+                <label class="form-label fw-semibold">Token Ujian</label>
+                <input type="text" id="ujianToken" class="form-control font-monospace text-uppercase" required>
               </div>
             </div>
-
-            <!-- STATUS UJIAN -->
             <div class="mb-3">
-              <label class="form-label fw-bold">Status Ujian</label>
-              <select id="ujianStatus" class="form-select fw-bold text-primary">
-                <option value="aktif">🟢 AKTIF (Siswa Dapat Mengakses)</option>
-                <option value="nonaktif" selected>🔴 NONAKTIF (Terkunci / Tidak Dapat Diakses)</option>
+              <label class="form-label fw-semibold">Status Awal</label>
+              <select id="ujianStatus" class="form-select">
+                <option value="aktif">Aktif</option>
+                <option value="nonaktif">Nonaktif</option>
               </select>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary fw-bold">Simpan Ujian</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan Ujian</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL KELOLA SOAL -->
-  <div class="modal fade" id="modalKelolaSoal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+  <!-- MODAL: KELOLA SOAL -->
+  <div class="modal fade" id="modalKelolaSoal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold" id="judulUjianSoal">Kelola Bank Soal</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="judulUjianSoal">
+            <i class="bi bi-gear-fill me-2"></i>Kelola Soal Ujian
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h6 class="fw-bold m-0"><i class="bi bi-file-earmark-plus me-1"></i>Tambah Soal Baru</h6>
-            <div>
-              <button class="btn btn-sm btn-outline-success me-1 fw-bold" onclick="downloadTemplateSoal()">Template Excel</button>
-              <label class="btn btn-sm btn-success fw-bold mb-0">
-                Import Excel Soal
-                <input type="file" id="fileExcelSoal" accept=".xlsx, .xls" hidden>
-              </label>
-            </div>
-          </div>
-
-          <form id="formTambahSoal">
-            <div class="row mb-3">
-              <div class="col-md-4">
-                <label class="form-label fw-bold">Tipe Soal</label>
-                <select id="soalTipe" class="form-select" onchange="switchTipeSoal(this.value)">
-                  <option value="pg">Pilihan Ganda Biasa</option>
-                  <option value="pg_kompleks">Pilihan Ganda Kompleks</option>
-                  <option value="mencocokkan">Menjodohkan / Mencocokkan</option>
-                </select>
-              </div>
-              <div class="col-md-8">
-                <label class="form-label fw-bold">URL Gambar (Opsional)</label>
-                <input type="url" id="soalGambarUrl" class="form-control" placeholder="https://i.ibb.co/sample/gambar.jpg">
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-bold">Pertanyaan / Instruksi Soal</label>
-              <textarea id="soalPertanyaan" class="form-control" rows="3" required></textarea>
-            </div>
-
-            <!-- CONTAINER PG & PG KOMPLEKS -->
-            <div id="containerPG">
-              <div class="row g-2 mb-2">
-                <div class="col-md-6"><input type="text" id="soalA" class="form-control" placeholder="Opsi A"></div>
-                <div class="col-md-6"><input type="text" id="soalB" class="form-control" placeholder="Opsi B"></div>
-                <div class="col-md-6"><input type="text" id="soalC" class="form-control" placeholder="Opsi C"></div>
-                <div class="col-md-6"><input type="text" id="soalD" class="form-control" placeholder="Opsi D"></div>
-              </div>
-
-              <div id="boxKunciPG" class="mb-3">
-                <label class="form-label fw-bold text-success">Kunci Jawaban (Satu Pilihan)</label>
-                <select id="soalKunciPG" class="form-select">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                </select>
-              </div>
-
-              <div id="boxKunciKompleks" class="mb-3 d-none">
-                <label class="form-label fw-bold text-success">Kunci Jawaban Benar (Bisa Lebih Dari Satu)</label>
-                <div class="d-flex gap-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="kunciKompleksA" value="A">
-                    <label class="form-check-label" for="kunciKompleksA">A</label>
+          <div class="row g-4">
+            <!-- Form Input Soal -->
+            <div class="col-md-7">
+              <div class="card border">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                  <span class="fw-bold"><i class="bi bi-pencil-square me-1"></i>Form Tambah Soal</span>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSoal()">
+                      <i class="bi bi-download me-1"></i>Template Soal
+                    </button>
+                    <label class="btn btn-success btn-sm mb-0 cursor-pointer">
+                      <i class="bi bi-file-earmark-excel me-1"></i>Import Excel
+                      <input type="file" id="fileExcelSoal" accept=".xlsx, .xls" class="d-none">
+                    </label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="kunciKompleksB" value="B">
-                    <label class="form-check-label" for="kunciKompleksB">B</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="kunciKompleksC" value="C">
-                    <label class="form-check-label" for="kunciKompleksC">C</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="kunciKompleksD" value="D">
-                    <label class="form-check-label" for="kunciKompleksD">D</label>
-                  </div>
+                </div>
+                <div class="card-body">
+                  <form id="formTambahSoal">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Tipe Soal</label>
+                      <select id="soalTipe" class="form-select" onchange="switchTipeSoal(this.value)">
+                        <option value="pg">Pilihan Ganda (Single Choice)</option>
+                        <option value="pg_kompleks">Pilihan Ganda Kompleks (Multiple Choice)</option>
+                        <option value="mencocokkan">Mencocokkan / Menjodohkan</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Pertanyaan / Instruksi</label>
+                      <textarea id="soalPertanyaan" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">URL Gambar (Opsional)</label>
+                      <input type="url" id="soalGambarUrl" class="form-control" placeholder="https://example.com/gambar.jpg">
+                    </div>
+
+                    <!-- Container Opsi PG / PG Kompleks -->
+                    <div id="containerPG">
+                      <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" id="soalA" class="form-control" placeholder="Opsi A"></div>
+                        <div class="col-6"><input type="text" id="soalB" class="form-control" placeholder="Opsi B"></div>
+                      </div>
+                      <div class="row g-2 mb-3">
+                        <div class="col-6"><input type="text" id="soalC" class="form-control" placeholder="Opsi C"></div>
+                        <div class="col-6"><input type="text" id="soalD" class="form-control" placeholder="Opsi D"></div>
+                      </div>
+
+                      <!-- Kunci Single PG -->
+                      <div id="boxKunciPG" class="mb-3">
+                        <label class="form-label fw-semibold">Kunci Jawaban</label>
+                        <select id="soalKunciPG" class="form-select">
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="C">C</option>
+                          <option value="D">D</option>
+                        </select>
+                      </div>
+
+                      <!-- Kunci PG Kompleks -->
+                      <div id="boxKunciKompleks" class="mb-3 d-none">
+                        <label class="form-label fw-semibold">Kunci Jawaban Benar (Bisa > 1)</label>
+                        <div class="d-flex gap-3">
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksA" value="A"><label class="form-check-label">A</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksB" value="B"><label class="form-check-label">B</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksC" value="C"><label class="form-check-label">C</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksD" value="D"><label class="form-check-label">D</label></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Container Mencocokkan -->
+                    <div id="containerMencocokkan" class="d-none mb-3">
+                      <label class="form-label fw-semibold">Pasangan Menjodohkan (Kiri = Kanan)</label>
+                      <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" id="matchKiri1" class="form-control" placeholder="Pernyataan 1"></div>
+                        <div class="col-6"><input type="text" id="matchKanan1" class="form-control" placeholder="Pasangan 1"></div>
+                      </div>
+                      <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" id="matchKiri2" class="form-control" placeholder="Pernyataan 2"></div>
+                        <div class="col-6"><input type="text" id="matchKanan2" class="form-control" placeholder="Pasangan 2"></div>
+                      </div>
+                      <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" id="matchKiri3" class="form-control" placeholder="Pernyataan 3"></div>
+                        <div class="col-6"><input type="text" id="matchKanan3" class="form-control" placeholder="Pasangan 3"></div>
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                      <i class="bi bi-plus-circle me-1"></i>Tambahkan Soal
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
 
-            <!-- CONTAINER MENJODOHKAN -->
-            <div id="containerMencocokkan" class="d-none mb-3">
-              <label class="form-label fw-bold text-primary">Pasangan Pertanyaan & Jawaban</label>
-              <div class="row g-2 mb-1">
-                <div class="col-6"><input type="text" id="matchKiri1" class="form-control" placeholder="Pernyataan Kiri 1"></div>
-                <div class="col-6"><input type="text" id="matchKanan1" class="form-control" placeholder="Pasangan Kanan 1"></div>
-              </div>
-              <div class="row g-2 mb-1">
-                <div class="col-6"><input type="text" id="matchKiri2" class="form-control" placeholder="Pernyataan Kiri 2"></div>
-                <div class="col-6"><input type="text" id="matchKanan2" class="form-control" placeholder="Pasangan Kanan 2"></div>
-              </div>
-              <div class="row g-2">
-                <div class="col-6"><input type="text" id="matchKiri3" class="form-control" placeholder="Pernyataan Kiri 3"></div>
-                <div class="col-6"><input type="text" id="matchKanan3" class="form-control" placeholder="Pasangan Kanan 3"></div>
+            <!-- List Soal Terdaftar -->
+            <div class="col-md-5">
+              <div class="card border">
+                <div class="card-header bg-light fw-bold">
+                  <i class="bi bi-list-ol me-1"></i>Daftar Soal
+                </div>
+                <div class="card-body p-2" style="max-height: 480px; overflow-y: auto;" id="listSoalUjian">
+                  <!-- Rendered by app.js -->
+                </div>
               </div>
             </div>
-
-            <button type="submit" class="btn btn-success fw-bold w-100 mt-2">Simpan Soal Ke Bank Soal</button>
-          </form>
-
-          <hr class="my-4">
-
-          <!-- LIST SOAL YANG SUDAH ADA -->
-          <h6 class="fw-bold mb-3"><i class="bi bi-journal-text me-2"></i>Daftar Soal Dalam Ujian Ini</h6>
-          <div id="listSoalUjian" class="vstack gap-2">
-            <p class="text-muted small">Belum ada soal ditambahkan.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL TAMBAH SISWA -->
-  <div class="modal fade" id="modalSiswa" tabindex="-1" aria-hidden="true">
+  <!-- MODAL: TAMBAH SISWA -->
+  <div class="modal fade" id="modalSiswa" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <form id="formSiswa">
-          <div class="modal-header bg-primary text-white">
+          <div class="modal-header">
             <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Data Siswa</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label fw-bold">NISN Siswa</label>
-              <input type="text" id="siswaNisn" class="form-control" placeholder="Contoh: 0081234567" required>
+              <label class="form-label fw-semibold">NISN</label>
+              <input type="text" id="siswaNisn" class="form-control" placeholder="10 digit NISN" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Nama Lengkap</label>
-              <input type="text" id="siswaNama" class="form-control" placeholder="Contoh: Ahmad Rizky" required>
+              <label class="form-label fw-semibold">Nama Lengkap</label>
+              <input type="text" id="siswaNama" class="form-control" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Kelas</label>
+              <label class="form-label fw-semibold">Kelas</label>
               <input type="text" id="siswaKelas" class="form-control" placeholder="Contoh: IX A" required>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary fw-bold">Simpan Siswa</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan Siswa</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL TAMBAH GURU (KHUSUS ADMIN) -->
-  <div class="modal fade" id="modalTambahGuru" tabindex="-1" aria-hidden="true">
+  <!-- MODAL: TAMBAH GURU (ADMIN ONLY) -->
+  <div class="modal fade" id="modalTambahGuru" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <form id="formTambahGuru">
-          <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title fw-bold"><i class="bi bi-person-plus-fill me-2"></i>Registrasi Akun Guru Baru</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-person-badge-plus me-2"></i>Tambah Akun Guru</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label fw-bold">Nama Lengkap Guru & Gelar</label>
-              <input type="text" id="guruNama" class="form-control" placeholder="Contoh: Ibu Ani, S.Pd." required>
+              <label class="form-label fw-semibold">Nama Lengkap Guru</label>
+              <input type="text" id="guruNama" class="form-control" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran Utama</label>
-              <input type="text" id="guruMapel" class="form-control" placeholder="Contoh: Matematika" required>
+              <label class="form-label fw-semibold">Email Login</label>
+              <input type="email" id="guruEmail" class="form-control" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Email Login Guru</label>
-              <input type="email" id="guruEmail" class="form-control" placeholder="guru.matematika@smpannuur.sch.id" required>
+              <label class="form-label fw-semibold">Password</label>
+              <input type="password" id="guruPassword" class="form-control" minlength="6" required>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Password Akun</label>
-              <input type="password" id="guruPassword" class="form-control" placeholder="Minimal 6 karakter" minlength="6" required>
+              <label class="form-label fw-semibold">Mata Pelajaran yang Diampu</label>
+              <input type="text" id="guruMapel" class="form-control" placeholder="Contoh: Informatika" required>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-danger fw-bold">Daftarkan Akun Guru</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Buat Akun Guru</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- Bootstrap 5 JS Bundle -->
+  <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Application JS -->
+  <!-- App JS -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
