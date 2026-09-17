@@ -1,5 +1,5 @@
 /* ===================================================
-   1. KELOLA UJIAN & BANK SOAL (Disesuaikan dengan HTML Asli)
+   1. KELOLA UJIAN & BANK SOAL
    =================================================== */
 function renderTabelUjian() {
   const tbody = document.getElementById("tbodyUjian");
@@ -7,7 +7,7 @@ function renderTabelUjian() {
   tbody.innerHTML = "";
 
   if (daftarUjian.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal.</td></tr>`;
     return;
   }
 
@@ -24,22 +24,18 @@ function renderTabelUjian() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>
-        <span class="badge bg-secondary">${u.mapel || '-'}</span>
-        <div class="small text-muted">Target: ${u.kelasTarget || 'Semua'}</div>
-      </td>
-      <td class="fw-bold">
-        ${u.judul || '-'}
-        <div class="mt-1">
-          <div class="form-check form-switch form-check-inline cursor-pointer mb-0" title="Klik untuk mengubah status">
-            <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? 'checked' : ''} onchange="toggleStatusUjian('${u.id}', '${u.status}')">
-            <label class="form-check-label small" for="switch-${u.id}">${statusBadge}</label>
-          </div>
-        </div>
-      </td>
+      <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
+      <td><span class="badge bg-dark">${u.kelasTarget || 'Semua'}</span></td>
+      <td class="fw-bold">${u.judul || '-'}</td>
       <td>${jadwalText}</td>
       <td>${u.durasi || 0} Mns</td>
       <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
+      <td>
+        <div class="form-check form-switch cursor-pointer" title="Klik untuk mengubah status">
+          <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? 'checked' : ''} onchange="toggleStatusUjian('${u.id}', '${u.status}')">
+          <label class="form-check-label" for="switch-${u.id}">${statusBadge}</label>
+        </div>
+      </td>
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
