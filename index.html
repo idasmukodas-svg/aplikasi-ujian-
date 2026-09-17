@@ -116,8 +116,10 @@
                     <th>Mata Pelajaran</th>
                     <th>Target Kelas</th>
                     <th>Judul Ujian / Materi</th>
+                    <th>Jadwal Pelaksanaan</th>
                     <th>Durasi</th>
                     <th>Token</th>
+                    <th>Status</th>
                     <th>Jumlah Soal</th>
                     <th>Aksi</th>
                   </tr>
@@ -244,15 +246,37 @@
               <label class="form-label fw-bold">Judul Ujian / Materi</label>
               <input type="text" id="ujianJudul" class="form-control" placeholder="Contoh: Penilaian Tengah Semester" required>
             </div>
-            <div class="row">
-              <div class="col-md-6 mb-3">
+
+            <!-- JADWAL PELAKSANAAN -->
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-bold">Waktu Mulai</label>
+                <input type="datetime-local" id="ujianWaktuMulai" class="form-control" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-bold">Waktu Selesai</label>
+                <input type="datetime-local" id="ujianWaktuSelesai" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
                 <label class="form-label fw-bold">Durasi (Menit)</label>
                 <input type="number" id="ujianDurasi" class="form-control" value="60" required min="1">
               </div>
-              <div class="col-md-6 mb-3">
+              <div class="col-6">
                 <label class="form-label fw-bold">Token Masuk</label>
                 <input type="text" id="ujianToken" class="form-control font-monospace fw-bold" readonly>
               </div>
+            </div>
+
+            <!-- STATUS UJIAN -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Status Ujian</label>
+              <select id="ujianStatus" class="form-select fw-bold text-primary">
+                <option value="aktif">🟢 AKTIF (Siswa Dapat Mengakses)</option>
+                <option value="nonaktif" selected>🔴 NONAKTIF (Terkunci / Tidak Dapat Diakses)</option>
+              </select>
             </div>
           </div>
           <div class="modal-footer">
