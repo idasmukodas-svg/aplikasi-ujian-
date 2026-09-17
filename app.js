@@ -1,9 +1,10 @@
 /* ===================================================
-   APP.JS - LMS & CBT INFORMATIKA & BANK SOAL MULTI-MAPEL
+   APP.JS - LMS & CBT SMP PLUS ANNUUR (WITH RBAC & AUTH)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -18,16 +19,38 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
+
+// Cek Sesi Login
+let userSession = null;
+const storedUser = sessionStorage.getItem("userLoggedIn");
+if (!storedUser) {
+  window.location.href = "login.html";
+} else {
+  userSession = JSON.parse(storedUser);
+}
 
 let daftarUjian = [];
 let daftarSiswa = [];
 let hasilUjian = [];
+let daftarPengguna = [];
 let activeUjianId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  renderUserInfoNav();
+
+  // Load Realtime Data
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
-    daftarUjian = data ? Object.values(data) : [];
+    const rawList = data ? Object.values(data) : [];
+    
+    // Jika Guru, filter ujian berdasarkan Mata Pelajaran miliknya
+    if (userSession.role === "guru" && userSession.mapel) {
+      daftarUjian = rawList.filter(u => u.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
+    } else {
+      daftarUjian = rawList;
+    }
+
     renderStats();
     renderTabelUjian();
     updateFilterUjianDropdown();
@@ -42,30 +65,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
   onValue(ref(db, "hasilUjian"), (snapshot) => {
     const data = snapshot.val();
-    hasilUjian = data ? Object.values(data) : [];
+    const rawHasil = data ? Object.values(data) : [];
+
+    if (userSession.role === "guru" && userSession.mapel) {
+      hasilUjian = rawHasil.filter(h => h.mapel && h.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
+    } else {
+      hasilUjian = rawHasil;
+    }
+
     renderTabelNilai();
   });
 
+  // Load Akun Pengguna (Khusus Admin)
+  if (userSession.role === "admin") {
+    onValue(ref(db, "pengguna"), (snapshot) => {
+      const data = snapshot.val();
+      daftarPengguna = data ? Object.values(data) : [];
+      renderTabelPengguna();
+    });
+  }
+
+  // Event Listeners Form
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
+  document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 });
+
+function renderUserInfoNav() {
+  const navRight = document.querySelector(".navbar-text");
+  if (navRight) {
+    navRight.innerHTML = `
+      <span class="me-2"><i class="bi bi-person-circle me-1"></i>${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'Admin' : 'Guru ' + (userSession.mapel || '')})</span>
+      <button class="btn btn-outline-light btn-sm font-monospace" onclick="logoutUser()"><i class="bi bi-box-arrow-right"></i> Keluar</button>
+    `;
+  }
+}
+
+window.logoutUser = () => {
+  signOut(auth).then(() => {
+    sessionStorage.removeItem("userLoggedIn");
+    window.location.href = "login.html";
+  });
+};
 
 function simpanDataUjian() {
   const dataObj = {};
   daftarUjian.forEach(u => { if (u.id) dataObj[u.id] = u; });
   set(ref(db, "daftarUjian"), dataObj);
-}
-
-function simpanDataSiswa() {
-  const dataObj = {};
-  daftarSiswa.forEach(s => {
-    const cleanKey = String(s.nisn).replace(/[.#$\[\]]/g, "_");
-    dataObj[cleanKey] = s;
-  });
-  set(ref(db, "daftarSiswa"), dataObj);
 }
 
 function renderStats() {
@@ -101,7 +150,7 @@ function renderTabelUjian() {
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
-          <i class="bi bi-gear-fill"></i> Kelola Soal
+          <i class="bi bi-gear-fill"></i> Soal
         </button>
         <button class="btn btn-sm btn-outline-danger" onclick="hapusUjian('${u.id}')">
           <i class="bi bi-trash"></i>
@@ -114,7 +163,7 @@ function renderTabelUjian() {
 
 function handleSimpanUjian(e) {
   e.preventDefault();
-  const mapel = document.getElementById("ujianMapel").value;
+  const mapelInput = document.getElementById("ujianMapel").value.trim();
   const kelasTarget = document.getElementById("ujianKelasTarget")?.value || "Semua";
   const judul = document.getElementById("ujianJudul").value;
   const durasi = document.getElementById("ujianDurasi").value;
@@ -122,7 +171,7 @@ function handleSimpanUjian(e) {
 
   const id = "UJN-" + Date.now();
   const newUjian = {
-    id, mapel, kelasTarget, judul, durasi: parseInt(durasi), token, soal: []
+    id, mapel: mapelInput, kelasTarget, judul, durasi: parseInt(durasi), token, soal: []
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -189,7 +238,61 @@ function handleTambahSoal(e) {
 }
 
 /* ===================================================
-   2. EXCEL & REKAP
+   2. KELOLA AKUN GURU (KHUSUS ADMIN)
+   =================================================== */
+async function handleTambahGuru(e) {
+  e.preventDefault();
+  if (userSession.role !== "admin") return alert("Akses ditolak. Hanya Admin yang bisa menambah guru.");
+
+  const nama = document.getElementById("guruNama").value.trim();
+  const email = document.getElementById("guruEmail").value.trim();
+  const password = document.getElementById("guruPassword").value;
+  const mapel = document.getElementById("guruMapel").value.trim();
+
+  try {
+    // Buat akun Auth baru
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = cred.user.uid;
+
+    const dataPengguna = { uid, nama, email, mapel, role: "guru" };
+    await set(ref(db, "pengguna/" + uid), dataPengguna);
+
+    alert(`Akun Guru ${nama} berhasil dibuat!`);
+    document.getElementById("formTambahGuru").reset();
+    const modalEl = document.getElementById("modalTambahGuru");
+    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+  } catch (err) {
+    console.error("Gagal buat guru:", err);
+    alert("Gagal membuat akun guru: " + err.message);
+  }
+}
+
+function renderTabelPengguna() {
+  const tbody = document.getElementById("tbodyPengguna");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (daftarPengguna.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada akun guru terdaftar.</td></tr>`;
+    return;
+  }
+
+  daftarPengguna.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td class="fw-bold">${p.nama}</td>
+      <td>${p.email}</td>
+      <td><span class="badge bg-info text-dark">${p.mapel || 'Semua Mapel'}</span></td>
+      <td><span class="badge ${p.role === 'admin' ? 'bg-danger' : 'bg-primary'}">${p.role.toUpperCase()}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===================================================
+   3. DATA SISWA & REKAP NILAI
    =================================================== */
 function handleSimpanSiswa(e) {
   e.preventDefault();
@@ -349,11 +452,20 @@ function updateFilterUjianDropdown() {
   });
 }
 
-/* EXPOSE GLOBALS */
+/* EXPOSE GLOBALS TO WINDOW */
 window.openModalTambahUjian = () => {
   document.getElementById("formUjian")?.reset();
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
+  
+  if (userSession.role === "guru" && userSession.mapel) {
+    const inputMapel = document.getElementById("ujianMapel");
+    if (inputMapel) {
+      inputMapel.value = userSession.mapel;
+      inputMapel.readOnly = true;
+    }
+  }
+
   const modalEl = document.getElementById("modalUjian");
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
@@ -434,12 +546,13 @@ window.exportSiswaExcel = () => {
 window.downloadTemplateSoal = () => {
   const data = [
     { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", Kunci: "B", Pasangan: "" },
-    { Tipe: "pg_kompleks", Pertanyaan: "Manakah yang merupakan OS?", GambarURL: "", A: "Windows", B: "Linux", C: "Word", D: "Excel", Kunci: "A,B", Pasangan: "" }
+    { Tipe: "pg_kompleks", Pertanyaan: "Manakah yang merupakan OS?", GambarURL: "", A: "Windows", B: "Linux", C: "Word", D: "Excel", Kunci: "A,B", Pasangan: "" },
+    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", GambarURL: "", A: "", B: "", C: "", D: "", Kunci: "", Pasangan: "CPU=Otak Komputer;RAM=Memori Sementara" }
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
-  XLSX.writeFile(wb, "Template_Soal_Dengan_Gambar.xlsx");
+  XLSX.writeFile(wb, "Template_Soal_Lengkap.xlsx");
 };
 
 window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
@@ -469,8 +582,4 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Rekap Nilai");
   XLSX.writeFile(wb, `Rekap_Nilai_CBT_${kelasFilter || 'Semua'}.xlsx`);
-};
-
-window.cetakRekapPDF = () => {
-  window.print();
 };
