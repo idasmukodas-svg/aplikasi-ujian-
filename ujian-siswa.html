@@ -147,6 +147,16 @@
     let warningTotal = 3;
     let isExamActive = false;
 
+    // --- HELPER ACAK ARRAY (Fisher-Yates Shuffle) ---
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     // --- FORM LOGIN SUBMIT ---
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -205,7 +215,6 @@
 
     // --- MASUK KONTEN UJIAN & FULLSCREEN ---
     function mulaiUjianFull() {
-      // Buka Mode Fullscreen Browser
       const docEl = document.documentElement;
       if (docEl.requestFullscreen) {
         docEl.requestFullscreen().catch(err => console.log(err));
@@ -222,7 +231,6 @@
 
       renderSoalSiswa(ujianAktif.soal);
 
-      // Start Timer
       sisaDetik = parseInt(ujianAktif.durasi || 60) * 60;
       startTimer();
 
@@ -230,48 +238,49 @@
       pasangSistemKeamanan();
     }
 
-    // --- RENDER SOAL (PG, PG KOMPLEKS, MENCOCOKKAN) ---
-    function renderSoalSiswa(listSoal) {
+    // --- RENDER SOAL (ACAK SOAL, OPSI, & GAMBAR) ---
+    function renderSoalSiswa(originalListSoal) {
       const container = document.getElementById("containerSoalList");
       container.innerHTML = "";
+
+      // 1. ACAK URUTAN SOAL
+      const listSoal = shuffleArray(originalListSoal);
 
       listSoal.forEach((s, idx) => {
         const card = document.createElement("div");
         card.className = "card border-0 shadow-sm mb-4 soal-card";
 
+        // Tampilkan Gambar jika ada
+        let htmlGambar = s.gambarUrl ? `
+          <div class="mb-3 text-center">
+            <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 300px;" alt="Gambar Soal">
+          </div>
+        ` : "";
+
         let htmlOption = "";
 
-        if (s.tipe === "pg") {
+        if (s.tipe === "pg" || s.tipe === "pg_kompleks") {
+          // 2. ACAK URUTAN OPSI JAWABAN (A, B, C, D)
+          const keysOpsi = Object.keys(s.opsi || {}).filter(k => s.opsi[k]);
+          const keysShuffled = shuffleArray(keysOpsi);
+
           htmlOption = `
             <div class="mt-3">
-              ${['A', 'B', 'C', 'D'].map(opt => s.opsi && s.opsi[opt] ? `
+              ${s.tipe === "pg_kompleks" ? '<p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Pilih satu atau lebih jawaban benar:</p>' : ''}
+              ${keysShuffled.map(opt => `
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="radio" name="soal_${s.id}" id="opt_${s.id}_${opt}" value="${opt}">
+                  <input class="form-check-input" type="${s.tipe === 'pg' ? 'radio' : 'checkbox'}" name="soal_${s.id}" id="opt_${s.id}_${opt}" value="${opt}">
                   <label class="form-check-label fs-6" for="opt_${s.id}_${opt}">
-                    <strong>${opt}.</strong> ${s.opsi[opt]}
+                    ${s.opsi[opt]}
                   </label>
                 </div>
-              ` : '').join('')}
-            </div>
-          `;
-        } else if (s.tipe === "pg_kompleks") {
-          htmlOption = `
-            <div class="mt-3">
-              <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Pilih satu atau lebih jawaban benar:</p>
-              ${['A', 'B', 'C', 'D'].map(opt => s.opsi && s.opsi[opt] ? `
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" name="soal_${s.id}" id="opt_${s.id}_${opt}" value="${opt}">
-                  <label class="form-check-label fs-6" for="opt_${s.id}_${opt}">
-                    <strong>${opt}.</strong> ${s.opsi[opt]}
-                  </label>
-                </div>
-              ` : '').join('')}
+              `).join('')}
             </div>
           `;
         } else if (s.tipe === "mencocokkan" && s.pasangan) {
-          // Acak Pilihan Kanan
-          const listKananShuffled = [...s.pasangan.map(p => p.kanan)].sort(() => Math.random() - 0.5);
-          
+          // 3. ACAK PILIHAN KANAN
+          const listKananShuffled = shuffleArray(s.pasangan.map(p => p.kanan));
+
           htmlOption = `
             <div class="mt-3">
               <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Jodohkan pernyataan di kiri dengan pasangan di kanan:</p>
@@ -293,6 +302,7 @@
         card.innerHTML = `
           <div class="card-body p-4">
             <h5 class="fw-bold text-dark mb-3">Soal No. ${idx + 1}</h5>
+            ${htmlGambar}
             <div class="fs-5 mb-3">${s.pertanyaan}</div>
             ${htmlOption}
           </div>
@@ -319,13 +329,11 @@
       }, 1000);
     }
 
-    // --- FULLSCREEN LOCK & anti CHEATING SYSTEM ---
+    // --- FULLSCREEN LOCK & ANTI-CHEATING ---
     function pasangSistemKeamanan() {
-      // 1. Cek Keluar Fullscreen
       document.addEventListener("fullscreenchange", handleViolation);
       document.addEventListener("webkitfullscreenchange", handleViolation);
 
-      // 2. Cek Pindah Tab / Minimalize
       window.addEventListener("blur", handleViolation);
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) handleViolation();
@@ -351,28 +359,11 @@
       }
     }
 
-    window.kembaliKeFullscreen = function() {
-      const docEl = document.documentElement;
-      if (docEl.requestFullscreen) {
-        docEl.requestFullscreen().catch(err => console.log(err));
-      } else if (docEl.webkitRequestFullscreen) {
-        docEl.webkitRequestFullscreen();
-      }
-      document.getElementById("warningOverlay").classList.add("d-none");
-    };
-
-    // --- KONFIRMASI & SUBMIT JAWABAN ---
-    window.konfirmasiSelesaiUjian = function() {
-      if (confirm("Apakah Anda yakin ingin mengumpulkan jawaban ujian ini?")) {
-        prosesKumpulJawaban();
-      }
-    };
-
+    // --- SUBMIT JAWABAN & HITUNG SKOR ---
     async function prosesKumpulJawaban() {
       isExamActive = false;
       clearInterval(timerInterval);
 
-      // Hitung Nilai Ujian
       let skorTotal = 0;
       const listSoal = ujianAktif.soal || [];
       const totalSoal = listSoal.length;
@@ -408,7 +399,6 @@
 
       const nilaiAkhir = Math.round((skorTotal / totalSoal) * 100);
 
-      // Simpan Hasil ke Firebase
       const hasilRefKey = `${siswaAktif.nisn}_${ujianAktif.id}`;
       const payloadHasil = {
         nisn: siswaAktif.nisn,
@@ -429,12 +419,28 @@
         alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir} (Catatan: Gagal mengirim rekap ke server).`);
       }
 
-      // Keluar Layar Penuh & Refresh
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(e => console.log(e));
       }
       window.location.reload();
     }
+
+    // --- EKSPOR FUNGSI KE SCOPE GLOBAL (WINDOW) ---
+    window.kembaliKeFullscreen = function() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.log(err));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      }
+      document.getElementById("warningOverlay").classList.add("d-none");
+    };
+
+    window.konfirmasiSelesaiUjian = function() {
+      if (confirm("Apakah Anda yakin ingin mengumpulkan jawaban ujian ini?")) {
+        prosesKumpulJawaban();
+      }
+    };
   </script>
 </body>
 </html>
