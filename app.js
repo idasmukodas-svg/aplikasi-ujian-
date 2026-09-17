@@ -105,6 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 
+  // Listener Pilihan Tipe Soal
+  document.getElementById("soalTipe")?.addEventListener("change", (e) => {
+    window.switchTipeSoal(e.target.value);
+  });
+
   // Listener Tombol Export/Download Rekap Nilai
   document.getElementById("btnExportRekap")?.addEventListener("click", () => {
     const kelas = document.getElementById("selectFilterKelas")?.value || "";
@@ -127,10 +132,9 @@ window.logout = () => {
   });
 };
 
-function simpanDataUjian() {
-  const dataObj = {};
-  daftarUjian.forEach(u => { if (u.id) dataObj[u.id] = u; });
-  set(ref(db, "daftarUjian"), dataObj);
+// Fungsi helper simpan array/list soal secara spesifik ke Firebase
+function simpanSoalUjianAktif(ujianId, listSoal) {
+  return set(ref(db, `daftarUjian/${ujianId}/soal`), listSoal);
 }
 
 function renderStats() {
@@ -292,14 +296,15 @@ function handleTambahSoal(e) {
     newSoal.pasangan = pasangan;
   }
 
-  if (!u.soal) u.soal = [];
-  u.soal.push(newSoal);
-  simpanDataUjian();
-  
-  alert("Soal berhasil ditambahkan!");
-  document.getElementById("formTambahSoal").reset();
-  if (window.switchTipeSoal) window.switchTipeSoal("pg");
-  renderDaftarSoal(u);
+  const updatedSoal = u.soal ? [...u.soal, newSoal] : [newSoal];
+
+  simpanSoalUjianAktif(activeUjianId, updatedSoal)
+    .then(() => {
+      alert("Soal berhasil ditambahkan!");
+      document.getElementById("formTambahSoal").reset();
+      if (window.switchTipeSoal) window.switchTipeSoal("pg");
+    })
+    .catch((err) => alert("Gagal menyimpan soal: " + err.message));
 }
 
 // Render daftar soal yang ada di dalam ujian aktif
@@ -336,9 +341,8 @@ window.hapusSoal = (soalId) => {
   if (!u || !u.soal) return;
 
   if (confirm("Hapus soal ini?")) {
-    u.soal = u.soal.filter(s => s.id !== soalId);
-    simpanDataUjian();
-    renderDaftarSoal(u);
+    const listSoalBaru = u.soal.filter(s => s.id !== soalId);
+    simpanSoalUjianAktif(activeUjianId, listSoalBaru);
   }
 };
 
@@ -459,6 +463,8 @@ function importExcelSoal(event) {
     const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
     let countAdded = 0;
+    const soalBaruList = u.soal ? [...u.soal] : [];
+
     json.forEach(row => {
       const tipe = String(row.Tipe || row.tipe || "pg").trim().toLowerCase();
       const pertanyaan = String(row.Pertanyaan || row.pertanyaan || "").trim();
@@ -491,15 +497,16 @@ function importExcelSoal(event) {
         itemSoal.pasangan = listPasangan;
       }
 
-      if (!u.soal) u.soal = [];
-      u.soal.push(itemSoal);
+      soalBaruList.push(itemSoal);
       countAdded++;
     });
 
-    simpanDataUjian();
-    alert(`Berhasil mengimpor ${countAdded} soal!`);
-    event.target.value = "";
-    renderDaftarSoal(u);
+    simpanSoalUjianAktif(activeUjianId, soalBaruList)
+      .then(() => {
+        alert(`Berhasil mengimpor ${countAdded} soal!`);
+        event.target.value = "";
+      })
+      .catch(err => alert("Gagal mengimpor soal ke Firebase: " + err.message));
   };
   reader.readAsArrayBuffer(file);
 }
