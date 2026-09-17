@@ -2,9 +2,6 @@
    APP.JS - DASHBOARD ADMIN & GURU CBT SMP PLUS ANNUUR
    =================================================== */
 
-// Import Firebase (Sesuaikan dengan konfigurasi proyek Anda jika menggunakan modular SDK)
-// Jika menggunakan CDN Firebase Namespaced, pastikan variabel global terhubung.
-
 let daftarUjian = [];
 let daftarSiswa = [];
 let daftarNilai = [];
@@ -18,15 +15,23 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ===================================================
-   2. AUTentikasi & SESI LOGIN
+   1. AUTENTIKASI & SESI LOGIN
    =================================================== */
 function cekSesiLogin() {
-  const savedUser = localStorage.getItem("cbt_current_user");
+  let savedUser = localStorage.getItem("cbt_current_user");
+  
+  // Jika belum ada user yang login, buatkan akun admin default otomatis
   if (!savedUser) {
-    // Jika belum login, arahkan ke halaman login atau tampilkan form login
-    window.location.href = "login.html"; // Sesuaikan jika halaman login terpisah
-    return;
+    const defaultAdmin = {
+      id: "admin_default",
+      nama: "Administrator",
+      email: "admin@smpannuur.sch.id",
+      role: "admin"
+    };
+    localStorage.setItem("cbt_current_user", JSON.stringify(defaultAdmin));
+    savedUser = JSON.stringify(defaultAdmin);
   }
+
   currentUser = JSON.parse(savedUser);
   
   const nameEl = document.getElementById("userDisplayName");
@@ -40,17 +45,16 @@ function cekSesiLogin() {
     if (navGuruTab) navGuruTab.style.display = "none";
   }
 
-  // Muat data awal dashboard
   loadDataDashboard();
 }
 
 function logout() {
   localStorage.removeItem("cbt_current_user");
-  window.location.href = "login.html";
+  window.location.reload();
 }
 
 /* ===================================================
-   3. EVENT LISTENERS & INISIALISASI FORM
+   2. EVENT LISTENERS & INISIALISASI FORM
    =================================================== */
 function setupEventListeners() {
   const formUjian = document.getElementById("formUjian");
@@ -71,11 +75,9 @@ function setupEventListeners() {
 }
 
 /* ===================================================
-   4. KELOLA UJIAN & BANK SOAL (DENGAN SAKLAR AKTIF/NONAKTIF)
+   3. KELOLA UJIAN & BANK SOAL
    =================================================== */
 function loadDataDashboard() {
-  // Simulasi pemuatan data dari localStorage / Firebase
-  // Di sini diasumsikan data diambil dari state global atau database
   renderTabelUjian();
   renderTabelSiswa();
   renderTabelNilai();
@@ -87,13 +89,12 @@ function renderTabelUjian() {
   tbody.innerHTML = "";
 
   if (!daftarUjian || daftarUjian.length === 0) {
-    // Data dummy untuk contoh jika kosong agar tabel langsung terlihat
     daftarUjian = [
       {
         id: "ujian_1",
         mapel: "Informatika",
         kelasTarget: "IX",
-        judul: "Ulanng Uji Coba",
+        judul: "Ulang Uji Coba",
         waktuMulai: "2026-09-17T08:00",
         waktuSelesai: "2026-09-17T10:00",
         durasi: 60,
@@ -116,7 +117,8 @@ function renderTabelUjian() {
     ];
   }
 
-  document.getElementById("statTotalUjian").textContent = daftarUjian.length;
+  const statUjian = document.getElementById("statTotalUjian");
+  if (statUjian) statUjian.textContent = daftarUjian.length;
 
   daftarUjian.forEach((u, i) => {
     const jmlSoal = u.soal ? u.soal.length : 0;
@@ -157,7 +159,6 @@ function renderTabelUjian() {
   });
 }
 
-// Fungsi untuk mengubah status Aktif / Nonaktif ujian via saklar toggle
 window.toggleStatusUjian = function(id) {
   const ujian = daftarUjian.find(u => u.id === id);
   if (ujian) {
@@ -167,7 +168,7 @@ window.toggleStatusUjian = function(id) {
 };
 
 /* ===================================================
-   5. BANTUAN FORMAT TANGGAL & WAKTU
+   4. FORMAT TANGGAL & WAKTU
    =================================================== */
 function formatDateTimeDisplay(dateTimeStr) {
   if (!dateTimeStr) return '-';
@@ -183,25 +184,72 @@ function formatDateTimeDisplay(dateTimeStr) {
 }
 
 /* ===================================================
-   6. PLACEHOLDER FUNGSI LAIN (Siswa, Guru, Soal)
+   5. MODAL & AKSI FORM
    =================================================== */
 function renderTabelSiswa() {
-  const tbodySiswa = document.getElementById("tbodySiswa");
-  if (tbodySiswa) {
-    document.getElementById("statTotalSiswa").textContent = "1";
-    document.getElementById("totalSiswaTampil").textContent = "1 Siswa";
-  }
+  const statSiswa = document.getElementById("statTotalSiswa");
+  const totalTampil = document.getElementById("totalSiswaTampil");
+  if (statSiswa) statSiswa.textContent = "1";
+  if (totalTampil) totalTampil.textContent = "1 Siswa";
 }
 
 function renderTabelNilai() {}
+
 function openModalTambahUjian() {
-  const modal = new bootstrap.Modal(document.getElementById("modalUjian"));
-  modal.show();
+  const modalEl = document.getElementById("modalUjian");
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
 }
+
 function openModalSoal(id) {
-  const modal = new bootstrap.Modal(document.getElementById("modalKelolaSoal"));
-  modal.show();
+  const modalEl = document.getElementById("modalKelolaSoal");
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
 }
+
+function simpanUjian() {
+  const mapel = document.getElementById("ujianMapel").value;
+  const kelasTarget = document.getElementById("ujianKelasTarget").value;
+  const judul = document.getElementById("ujianJudul").value;
+  const waktuMulai = document.getElementById("ujianWaktuMulai").value;
+  const waktuSelesai = document.getElementById("ujianWaktuSelesai").value;
+  const durasi = document.getElementById("ujianDurasi").value;
+  const token = document.getElementById("ujianToken").value;
+  const status = document.getElementById("ujianStatus").value;
+
+  const newUjian = {
+    id: "ujian_" + Date.now(),
+    mapel,
+    kelasTarget,
+    judul,
+    waktuMulai,
+    waktuSelesai,
+    durasi,
+    token,
+    status,
+    soal: []
+  };
+
+  daftarUjian.push(newUjian);
+  renderTabelUjian();
+
+  const modalEl = document.getElementById("modalUjian");
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) modal.hide();
+  document.getElementById("formUjian").reset();
+}
+
+function simpanSiswa() {
+  const modalEl = document.getElementById("modalSiswa");
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  if (modal) modal.hide();
+  document.getElementById("formSiswa").reset();
+}
+
 window.hapusUjian = function(id) {
   if (confirm("Yakin ingin menghapus jadwal ujian ini?")) {
     daftarUjian = daftarUjian.filter(u => u.id !== id);
