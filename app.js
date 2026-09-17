@@ -17,6 +17,7 @@ const firebaseConfig = {
   measurementId: "G-CBH4C0BVXD"
 };
 
+// Inisialisasi Firebase Utama
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -39,12 +40,11 @@ let activeUjianId = null;
 document.addEventListener("DOMContentLoaded", () => {
   renderUserInfoNav();
 
-  // Load Realtime Data
+  // 1. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.values(data) : [];
-    
-    // Jika Guru, filter ujian berdasarkan Mata Pelajaran miliknya
+
     if (userSession.role === "guru" && userSession.mapel) {
       daftarUjian = rawList.filter(u => u.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
     } else {
@@ -54,8 +54,15 @@ document.addEventListener("DOMContentLoaded", () => {
     renderStats();
     renderTabelUjian();
     updateFilterUjianDropdown();
+
+    // Re-render daftar soal jika modal kelola soal sedang terbuka
+    if (activeUjianId) {
+      const activeUjian = daftarUjian.find(u => u.id === activeUjianId);
+      if (activeUjian) renderDaftarSoal(activeUjian);
+    }
   });
 
+  // 2. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
     daftarSiswa = data ? Object.values(data) : [];
@@ -63,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabelSiswa();
   });
 
+  // 3. Load Realtime Data Hasil Ujian
   onValue(ref(db, "hasilUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawHasil = data ? Object.values(data) : [];
@@ -76,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabelNilai();
   });
 
-  // Load Akun Pengguna (Khusus Admin)
+  // 4. Load Akun Pengguna (Khusus Admin)
   if (userSession.role === "admin") {
     onValue(ref(db, "pengguna"), (snapshot) => {
       const data = snapshot.val();
@@ -85,13 +93,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Event Listeners Form
+  // Event Listeners Form & Input
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
   document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
+
+  // Listener Tombol Export/Download Rekap Nilai (jika ada elemen filter)
+  document.getElementById("btnExportRekap")?.addEventListener("click", () => {
+    const kelas = document.getElementById("selectFilterKelas")?.value || "";
+    const ujianId = document.getElementById("selectFilterUjian")?.value || "";
+    window.downloadRekapNilaiPerKelas(kelas, ujianId);
+  });
 });
 
 function renderUserInfoNav() {
@@ -150,7 +165,7 @@ function renderTabelUjian() {
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
-          <i class="bi bi-gear-fill"></i> Soal
+          <i class="bi bi-gear-fill"></i> Kelola Soal
         </button>
         <button class="btn btn-sm btn-outline-danger" onclick="hapusUjian('${u.id}')">
           <i class="bi bi-trash"></i>
@@ -165,9 +180,9 @@ function handleSimpanUjian(e) {
   e.preventDefault();
   const mapelInput = document.getElementById("ujianMapel").value.trim();
   const kelasTarget = document.getElementById("ujianKelasTarget")?.value || "Semua";
-  const judul = document.getElementById("ujianJudul").value;
+  const judul = document.getElementById("ujianJudul").value.trim();
   const durasi = document.getElementById("ujianDurasi").value;
-  const token = document.getElementById("ujianToken").value;
+  const token = document.getElementById("ujianToken").value.trim();
 
   const id = "UJN-" + Date.now();
   const newUjian = {
@@ -189,7 +204,7 @@ function handleTambahSoal(e) {
   if (!u) return alert("Ujian aktif tidak ditemukan!");
 
   const tipe = document.getElementById("soalTipe").value;
-  const pertanyaan = document.getElementById("soalPertanyaan").value;
+  const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
   const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
 
   let newSoal = {
@@ -222,8 +237,8 @@ function handleTambahSoal(e) {
   } else if (tipe === "mencocokkan") {
     const pasangan = [];
     for (let i = 1; i <= 3; i++) {
-      const elKiri = document.getElementById(`matchKiri${i}`)?.value;
-      const elKanan = document.getElementById(`matchKanan${i}`)?.value;
+      const elKiri = document.getElementById(`matchKiri${i}`)?.value.trim();
+      const elKanan = document.getElementById(`matchKanan${i}`)?.value.trim();
       if (elKiri && elKanan) pasangan.push({ kiri: elKiri, kanan: elKanan });
     }
     newSoal.pasangan = pasangan;
@@ -232,10 +247,52 @@ function handleTambahSoal(e) {
   if (!u.soal) u.soal = [];
   u.soal.push(newSoal);
   simpanDataUjian();
-  alert("Soal berhasil ditambahkan ke Bank Soal!");
+  
+  alert("Soal berhasil ditambahkan!");
   document.getElementById("formTambahSoal").reset();
   if (window.switchTipeSoal) window.switchTipeSoal("pg");
+  renderDaftarSoal(u);
 }
+
+// Render daftar soal yang ada di dalam ujian aktif
+function renderDaftarSoal(ujian) {
+  const container = document.getElementById("daftarSoalContainer");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!ujian.soal || ujian.soal.length === 0) {
+    container.innerHTML = `<div class="text-center text-muted py-3">Belum ada soal dalam bank ini.</div>`;
+    return;
+  }
+
+  ujian.soal.forEach((s, idx) => {
+    const item = document.createElement("div");
+    item.className = "card mb-2 border-0 bg-light";
+    item.innerHTML = `
+      <div class="card-body p-2 d-flex justify-content-between align-items-center">
+        <div>
+          <span class="badge bg-secondary me-1">${idx + 1}. ${s.tipe.toUpperCase()}</span>
+          <span class="fw-bold text-dark">${s.pertanyaan.substring(0, 60)}${s.pertanyaan.length > 60 ? '...' : ''}</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="hapusSoal('${s.id}')">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+window.hapusSoal = (soalId) => {
+  const u = daftarUjian.find(item => item.id === activeUjianId);
+  if (!u || !u.soal) return;
+
+  if (confirm("Hapus soal ini?")) {
+    u.soal = u.soal.filter(s => s.id !== soalId);
+    simpanDataUjian();
+    renderDaftarSoal(u);
+  }
+};
 
 /* ===================================================
    2. KELOLA AKUN GURU (KHUSUS ADMIN)
@@ -250,12 +307,17 @@ async function handleTambahGuru(e) {
   const mapel = document.getElementById("guruMapel").value.trim();
 
   try {
-    // Buat akun Auth baru
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    // Menggunakan secondary app agar tidak menimpa sesi Auth Admin yang sedang aktif
+    const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+    const secondaryAuth = getAuth(secondaryApp);
+
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     const uid = cred.user.uid;
 
     const dataPengguna = { uid, nama, email, mapel, role: "guru" };
     await set(ref(db, "pengguna/" + uid), dataPengguna);
+
+    await secondaryAuth.signOut();
 
     alert(`Akun Guru ${nama} berhasil dibuat!`);
     document.getElementById("formTambahGuru").reset();
@@ -274,7 +336,7 @@ function renderTabelPengguna() {
   tbody.innerHTML = "";
 
   if (daftarPengguna.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada akun guru terdaftar.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada akun terdaftar.</td></tr>`;
     return;
   }
 
@@ -304,6 +366,7 @@ function handleSimpanSiswa(e) {
   set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas })
     .then(() => {
       alert("Data siswa berhasil disimpan!");
+      document.getElementById("formSiswa").reset();
       const modalEl = document.getElementById("modalSiswa");
       if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
     })
@@ -351,8 +414,8 @@ function importExcelSoal(event) {
     let countAdded = 0;
     json.forEach(row => {
       const tipe = String(row.Tipe || row.tipe || "pg").trim().toLowerCase();
-      const pertanyaan = row.Pertanyaan || row.pertanyaan;
-      const gambarUrl = row.GambarURL || row.gambarUrl || row.Gambar || "";
+      const pertanyaan = String(row.Pertanyaan || row.pertanyaan || "").trim();
+      const gambarUrl = String(row.GambarURL || row.gambarUrl || row.Gambar || "").trim();
 
       if (!pertanyaan) return;
 
@@ -363,12 +426,12 @@ function importExcelSoal(event) {
 
       if (tipe === "pg") {
         itemSoal.opsi = {
-          A: row.A || "", B: row.B || "", C: row.C || "", D: row.D || ""
+          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || "")
         };
         itemSoal.kunci = String(row.Kunci || "A").toUpperCase().trim();
       } else if (tipe === "pg_kompleks") {
         itemSoal.opsi = {
-          A: row.A || "", B: row.B || "", C: row.C || "", D: row.D || ""
+          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || "")
         };
         itemSoal.kunci = String(row.Kunci || "").split(",").map(k => k.toUpperCase().trim()).filter(k => k);
       } else if (tipe === "mencocokkan") {
@@ -389,6 +452,7 @@ function importExcelSoal(event) {
     simpanDataUjian();
     alert(`Berhasil mengimpor ${countAdded} soal!`);
     event.target.value = "";
+    renderDaftarSoal(u);
   };
   reader.readAsArrayBuffer(file);
 }
@@ -397,10 +461,12 @@ function renderTabelSiswa() {
   const tbody = document.getElementById("tbodySiswa");
   if (!tbody) return;
   tbody.innerHTML = "";
+
   if (daftarSiswa.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada data siswa.</td></tr>`;
     return;
   }
+
   daftarSiswa.forEach((s, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -422,10 +488,12 @@ function renderTabelNilai() {
   const tbody = document.getElementById("tbodyNilai");
   if (!tbody) return;
   tbody.innerHTML = "";
+
   if (hasilUjian.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada hasil ujian.</td></tr>`;
     return;
   }
+
   hasilUjian.forEach((h, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -489,6 +557,8 @@ window.openModalSoal = (ujianId) => {
   if (titleEl) titleEl.innerText = `${u.mapel} [${u.kelasTarget || 'Semua'}] - ${u.judul}`;
   document.getElementById("formTambahSoal")?.reset();
   if (window.switchTipeSoal) window.switchTipeSoal("pg");
+
+  renderDaftarSoal(u);
 
   const modalEl = document.getElementById("modalKelolaSoal");
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
