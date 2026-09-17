@@ -3,7 +3,7 @@
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -91,6 +91,10 @@ document.addEventListener("DOMContentLoaded", () => {
       daftarPengguna = data ? Object.values(data) : [];
       renderTabelPengguna();
     });
+  } else {
+    // Sembunyikan Tab Guru jika bukan Admin
+    const navGuruTab = document.getElementById("navGuruTab");
+    if (navGuruTab) navGuruTab.style.display = "none";
   }
 
   // Event Listeners Form & Input
@@ -101,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 
-  // Listener Tombol Export/Download Rekap Nilai (jika ada elemen filter)
+  // Listener Tombol Export/Download Rekap Nilai
   document.getElementById("btnExportRekap")?.addEventListener("click", () => {
     const kelas = document.getElementById("selectFilterKelas")?.value || "";
     const ujianId = document.getElementById("selectFilterUjian")?.value || "";
@@ -110,16 +114,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function renderUserInfoNav() {
-  const navRight = document.querySelector(".navbar-text");
-  if (navRight) {
-    navRight.innerHTML = `
-      <span class="me-2"><i class="bi bi-person-circle me-1"></i>${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'Admin' : 'Guru ' + (userSession.mapel || '')})</span>
-      <button class="btn btn-outline-light btn-sm font-monospace" onclick="logoutUser()"><i class="bi bi-box-arrow-right"></i> Keluar</button>
-    `;
+  const userDisplayName = document.getElementById("userDisplayName");
+  if (userDisplayName) {
+    userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'Admin' : 'Guru ' + (userSession.mapel || '')})`;
   }
 }
 
-window.logoutUser = () => {
+window.logout = () => {
   signOut(auth).then(() => {
     sessionStorage.removeItem("userLoggedIn");
     window.location.href = "login.html";
@@ -139,6 +140,20 @@ function renderStats() {
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
+// Format Tampilan Datetime
+function formatDateTimeDisplay(dtStr) {
+  if (!dtStr) return "-";
+  const dt = new Date(dtStr);
+  if (isNaN(dt.getTime())) return dtStr;
+  return dt.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL
    =================================================== */
@@ -148,24 +163,39 @@ function renderTabelUjian() {
   tbody.innerHTML = "";
 
   if (daftarUjian.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal.</td></tr>`;
     return;
   }
 
   daftarUjian.forEach((u, i) => {
     const jmlSoal = u.soal ? u.soal.length : 0;
+    const isAktif = u.status === "aktif";
+    const statusBadge = isAktif 
+      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>` 
+      : `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Nonaktif</span>`;
+    
+    const jadwalText = `<div class="small fw-bold text-primary">${formatDateTimeDisplay(u.waktuMulai)}</div>
+                        <div class="small text-muted">s.d. ${formatDateTimeDisplay(u.waktuSelesai)}</div>`;
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
       <td><span class="badge bg-dark">${u.kelasTarget || 'Semua'}</span></td>
       <td class="fw-bold">${u.judul || '-'}</td>
+      <td>${jadwalText}</td>
       <td>${u.durasi || 0} Mns</td>
       <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
+      <td>
+        <div class="form-check form-switch cursor-pointer" title="Klik untuk mengubah status">
+          <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? 'checked' : ''} onchange="toggleStatusUjian('${u.id}', '${u.status}')">
+          <label class="form-check-label" for="switch-${u.id}">${statusBadge}</label>
+        </div>
+      </td>
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
-          <i class="bi bi-gear-fill"></i> Kelola Soal
+          <i class="bi bi-gear-fill me-1"></i> Soal
         </button>
         <button class="btn btn-sm btn-outline-danger" onclick="hapusUjian('${u.id}')">
           <i class="bi bi-trash"></i>
@@ -176,22 +206,40 @@ function renderTabelUjian() {
   });
 }
 
+window.toggleStatusUjian = (id, currentStatus) => {
+  const newStatus = currentStatus === "aktif" ? "nonaktif" : "aktif";
+  update(ref(db, `daftarUjian/${id}`), { status: newStatus })
+    .catch((err) => alert("Gagal mengubah status ujian: " + err.message));
+};
+
 function handleSimpanUjian(e) {
   e.preventDefault();
   const mapelInput = document.getElementById("ujianMapel").value.trim();
   const kelasTarget = document.getElementById("ujianKelasTarget")?.value || "Semua";
   const judul = document.getElementById("ujianJudul").value.trim();
+  const waktuMulai = document.getElementById("ujianWaktuMulai").value;
+  const waktuSelesai = document.getElementById("ujianWaktuSelesai").value;
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
+  const status = document.getElementById("ujianStatus").value;
 
   const id = "UJN-" + Date.now();
   const newUjian = {
-    id, mapel: mapelInput, kelasTarget, judul, durasi: parseInt(durasi), token, soal: []
+    id, 
+    mapel: mapelInput, 
+    kelasTarget, 
+    judul, 
+    waktuMulai, 
+    waktuSelesai, 
+    durasi: parseInt(durasi), 
+    token, 
+    status, 
+    soal: []
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
-      alert("Ujian / Bank Soal Berhasil Disimpan!");
+      alert("Jadwal Ujian / Bank Soal Berhasil Disimpan!");
       const modalEl = document.getElementById("modalUjian");
       if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
     })
@@ -256,12 +304,12 @@ function handleTambahSoal(e) {
 
 // Render daftar soal yang ada di dalam ujian aktif
 function renderDaftarSoal(ujian) {
-  const container = document.getElementById("daftarSoalContainer");
+  const container = document.getElementById("listSoalUjian");
   if (!container) return;
   container.innerHTML = "";
 
   if (!ujian.soal || ujian.soal.length === 0) {
-    container.innerHTML = `<div class="text-center text-muted py-3">Belum ada soal dalam bank ini.</div>`;
+    container.innerHTML = `<p class="text-muted small">Belum ada soal ditambahkan.</p>`;
     return;
   }
 
@@ -307,7 +355,6 @@ async function handleTambahGuru(e) {
   const mapel = document.getElementById("guruMapel").value.trim();
 
   try {
-    // Menggunakan secondary app agar tidak menimpa sesi Auth Admin yang sedang aktif
     const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
     const secondaryAuth = getAuth(secondaryApp);
 
