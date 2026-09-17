@@ -222,57 +222,29 @@
   </div>
 
   <!-- MODAL: Tambah Ujian Baru -->
-  <div class="modal fade" id="modalUjian" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold">Buat Ujian Baru</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <form id="formUjian">
-          <div class="modal-body">
-            <input type="hidden" id="ujianId">
-            <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran</label>
-              <input type="text" id="ujianMapel" class="form-control" value="Informatika" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Judul Ujian / Materi</label>
-              <input type="text" id="ujianJudul" class="form-control" placeholder="Contoh: Sumatif Tengah Semester 2" required>
-            </div>
-            <div class="row g-2">
-              <div class="col-6 mb-3">
-                <label class="form-label fw-bold">Durasi (Menit)</label>
-                <input type="number" id="ujianDurasi" class="form-control" value="60" min="5" required>
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label fw-bold">Token Ujian</label>
-                <input type="text" id="ujianToken" class="form-control fw-bold text-uppercase" readonly>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary fw-bold">Simpan Ujian</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+  <div class="mb-3">
+  <label class="form-label fw-bold">Mata Pelajaran</label>
+  <input type="text" id="ujianMapel" class="form-control" placeholder="Contoh: Informatika / Matematika" required>
+</div>
+<div class="mb-3">
+  <label class="form-label fw-bold">Target Kelas / Tingkat</label>
+  <select id="ujianKelasTarget" class="form-select fw-bold">
+    <option value="Semua">Semua Kelas</option>
+    <option value="IX A">IX A</option>
+    <option value="IX B">IX B</option>
+    <option value="IX C">IX C</option>
+    <option value="Kelas VII">Kelas VII</option>
+    <option value="Kelas VIII">Kelas VIII</option>
+    <option value="Kelas IX">Kelas IX</option>
+  </select>
+</div>
 
   <!-- MODAL: Kelola Soal Ujian -->
-  <div class="modal fade" id="modalKelolaSoal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <div>
-            <h5 class="modal-title fw-bold">Kelola Soal Ujian</h5>
-            <small id="judulUjianSoal" class="text-white-50 fw-bold"></small>
-          </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          
+  <div class="mb-3">
+  <label class="form-label fw-bold">URL Gambar Soal (Opsional)</label>
+  <input type="url" id="soalGambarUrl" class="form-control" placeholder="https://link-gambar.com/gambar.jpg">
+  <small class="text-muted">Masukkan link URL gambar jika soal membutuhkan gambar/diagram.</small>
+</div>          
           <!-- Form Input Soal Baru -->
           <div class="card mb-4 border-primary">
             <div class="card-header bg-light font-weight-bold">
