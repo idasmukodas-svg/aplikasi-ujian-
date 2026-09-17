@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - CBT SMP PLUS ANNUUR</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-primary d-flex align-items-center min-vh-100">
+
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-4">
+        <div class="card border-0 shadow-lg rounded-3">
+          <div class="card-body p-4">
+            <div class="text-center mb-4">
+              <i class="bi bi-laptop display-3 text-primary"></i>
+              <h4 class="fw-bold mt-2">CBT SMP PLUS ANNUUR</h4>
+              <p class="text-muted small">Portal Login Guru & Admin</p>
+            </div>
+
+            <form id="formLogin">
+              <div class="mb-3">
+                <label class="form-label fw-bold">Email</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" id="loginEmail" class="form-control" placeholder="nama@smpannuur.sch.id" required>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+                </div>
+              </div>
+
+              <button type="submit" id="btnLogin" class="btn btn-primary w-100 fw-bold py-2 mt-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Masuk Sistem
+              </button>
+            </form>
+
+            <div class="text-center mt-4">
+              <a href="ujian-siswa.html" class="text-decoration-none small text-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Masuk sebagai Siswa
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
+      authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+      databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "aplikasi-ujian-8e501",
+      storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
+      messagingSenderId: "945781407027",
+      appId: "1:945781407027:web:4672d4c894e143c9b05246",
+      measurementId: "G-CBH4C0BVXD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    document.getElementById("formLogin").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const btn = document.getElementById("btnLogin");
+
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Memeriksa...`;
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
+
+        // Cek data role di node 'pengguna'
+        const snapshot = await get(ref(db, "pengguna/" + uid));
+        
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          sessionStorage.setItem("userLoggedIn", JSON.stringify({ uid, ...userData }));
+          
+          alert(`Selamat datang, ${userData.nama}!`);
+          window.location.href = "index.html";
+        } else {
+          // Jika akun auth ada tapi data di database belum diset, default ke role guru
+          sessionStorage.setItem("userLoggedIn", JSON.stringify({ uid, email, role: "guru", mapel: "" }));
+          window.location.href = "index.html";
+        }
+
+      } catch (error) {
+        console.error("Login Gagal:", error);
+        alert("Email atau password salah! Coba periksa kembali.");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i> Masuk Sistem`;
+      }
+    });
+  </script>
+</body>
+</html>
