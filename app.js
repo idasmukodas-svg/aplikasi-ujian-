@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = snapshot.val();
     daftarSiswa = data ? Object.values(data) : [];
     renderStats();
-    renderTabelSiswa();
+    window.filterDataSiswa();
   });
 
   // 3. Load Realtime Data Hasil Ujian
@@ -405,16 +405,17 @@ function renderTabelPengguna() {
 }
 
 /* ===================================================
-   3. DATA SISWA & REKAP NILAI
+   3. DATA SISWA, FILTER & REKAP NILAI
    =================================================== */
 function handleSimpanSiswa(e) {
   e.preventDefault();
   const nisn = document.getElementById("siswaNisn").value.trim();
   const nama = document.getElementById("siswaNama").value.trim();
   const kelas = document.getElementById("siswaKelas").value.trim();
+  const sesi = document.getElementById("siswaSesi")?.value || "Sesi 1";
   const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
 
-  set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas })
+  set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas, sesi })
     .then(() => {
       alert("Data siswa berhasil disimpan!");
       document.getElementById("formSiswa").reset();
@@ -438,9 +439,10 @@ function importSiswaExcel(event) {
       const nisn = String(row.NISN || row.nisn || "").trim();
       const nama = String(row.NAMA || row.Nama || row.nama || "").trim();
       const kelas = String(row.KELAS || row.Kelas || row.kelas || "").trim();
+      const sesi = String(row.SESI || row.Sesi || row.sesi || "Sesi 1").trim();
       if (nisn && nama) {
         const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
-        set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas });
+        set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas, sesi });
         countAdded++;
       }
     });
@@ -511,23 +513,58 @@ function importExcelSoal(event) {
   reader.readAsArrayBuffer(file);
 }
 
-function renderTabelSiswa() {
+// FUNGSI FILTER DATA SISWA (Kelas, Sesi, & Search)
+window.filterDataSiswa = () => {
+  const filterKelas = document.getElementById("filterKelasSiswa")?.value.toLowerCase().trim() || "";
+  const filterSesi = document.getElementById("filterSesiSiswa")?.value.toLowerCase().trim() || "";
+  const keyword = document.getElementById("searchSiswa")?.value.toLowerCase().trim() || "";
+
+  const hasilFiltered = daftarSiswa.filter(s => {
+    const k = (s.kelas || "").toLowerCase();
+    const e = (s.sesi || "").toLowerCase();
+    const nama = (s.nama || "").toLowerCase();
+    const nisn = (s.nisn || "").toLowerCase();
+
+    // Logika match kelas (Fleksibel: angka romawi VII/VIII/IX atau spesifik "VII A")
+    let matchKelas = true;
+    if (filterKelas) {
+      if (["vii", "viii", "ix"].includes(filterKelas)) {
+        matchKelas = k.startsWith(filterKelas);
+      } else {
+        matchKelas = (k === filterKelas);
+      }
+    }
+
+    const matchSesi = filterSesi ? (e === filterSesi) : true;
+    const matchSearch = keyword ? (nama.includes(keyword) || nisn.includes(keyword)) : true;
+
+    return matchKelas && matchSesi && matchSearch;
+  });
+
+  renderTabelSiswaFiltered(hasilFiltered);
+};
+
+function renderTabelSiswaFiltered(listSiswa) {
   const tbody = document.getElementById("tbodySiswa");
+  const totalBadge = document.getElementById("totalSiswaTampil");
   if (!tbody) return;
+  
+  if (totalBadge) totalBadge.innerText = `${listSiswa.length} Siswa`;
   tbody.innerHTML = "";
 
-  if (daftarSiswa.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada data siswa.</td></tr>`;
+  if (listSiswa.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Data siswa tidak ditemukan.</td></tr>`;
     return;
   }
 
-  daftarSiswa.forEach((s, i) => {
+  listSiswa.forEach((s, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td class="font-monospace">${s.nisn}</td>
       <td class="fw-bold">${s.nama}</td>
-      <td><span class="badge bg-secondary">${s.kelas}</span></td>
+      <td><span class="badge bg-secondary">${s.kelas || '-'}</span></td>
+      <td><span class="badge bg-info text-dark">${s.sesi || 'Sesi 1'}</span></td>
       <td>
         <button class="btn btn-sm btn-outline-danger" onclick="hapusSiswa('${s.nisn}')">
           <i class="bi bi-trash"></i>
@@ -650,8 +687,8 @@ window.hapusSiswa = (nisn) => {
 
 window.downloadTemplateSiswa = () => {
   const data = [
-    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A" },
-    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B" }
+    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A", SESI: "Sesi 1" },
+    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B", SESI: "Sesi 2" }
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
