@@ -196,6 +196,12 @@
           return;
         }
 
+        // --- VALIDASI TAMBAHAN: CEK APAKAH UJIAN AKTIF ATAU NONAKTIF ---
+        if (foundUjian.status !== "aktif") {
+          alert("Maaf, ujian ini sedang dinonaktifkan oleh Guru/Admin!");
+          return;
+        }
+
         if (!foundUjian.soal || foundUjian.soal.length === 0) {
           alert("Ujian ini belum memiliki soal!");
           return;
@@ -286,7 +292,7 @@
               <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Jodohkan pernyataan di kiri dengan pasangan di kanan:</p>
               ${s.pasangan.map((p, pIdx) => `
                 <div class="row align-items-center g-2 mb-3 bg-light p-2 rounded">
-                  <div class="col-md-6 fw-bold">${pIdx + 1}. ${p.kiri}</div>
+                  <div class="col-md-6 fw-bold">${pIdx + 1}.${p.kiri}</div>
                   <div class="col-md-6">
                     <select class="form-select match-select" data-soal-id="${s.id}" data-kiri="${p.kiri}">
                       <option value="">-- Pilih Pasangan --</option>
