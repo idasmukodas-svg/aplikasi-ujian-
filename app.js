@@ -22,12 +22,12 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-// Cek Sesi Login
+// Cek Sesi Login (Wajib Login, Jika Kosong Lempar ke login.html)
 let userSession = null;
-const storedUser = sessionStorage.getItem("userLoggedIn");
+const storedUser = sessionStorage.getItem("userLoggedIn") || localStorage.getItem("cbt_current_user");
+
 if (!storedUser) {
-  // Jika belum ada sesi login, buatkan fallback admin lokal sementara agar tidak mental ke halaman lain
-  userSession = { nama: "Administrator", email: "admin@smpannuur.sch.id", role: "admin" };
+  window.location.href = "login.html";
 } else {
   userSession = JSON.parse(storedUser);
 }
@@ -39,6 +39,7 @@ let daftarPengguna = [];
 let activeUjianId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (!userSession) return;
   renderUserInfoNav();
 
   // 1. Load Realtime Data Ujian dari Firebase
@@ -117,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function renderUserInfoNav() {
   const userDisplayName = document.getElementById("userDisplayName");
-  if (userDisplayName) {
+  if (userDisplayName && userSession) {
     userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'ADMIN' : 'Guru ' + (userSession.mapel || '')})`;
   }
 }
@@ -125,6 +126,11 @@ function renderUserInfoNav() {
 window.logout = () => {
   signOut(auth).then(() => {
     sessionStorage.removeItem("userLoggedIn");
+    localStorage.removeItem("cbt_current_user");
+    window.location.href = "login.html";
+  }).catch(() => {
+    sessionStorage.removeItem("userLoggedIn");
+    localStorage.removeItem("cbt_current_user");
     window.location.href = "login.html";
   });
 };
