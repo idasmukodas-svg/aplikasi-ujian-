@@ -163,15 +163,15 @@
               <div class="col-md-3">
                 <select id="filterKelasSiswa" class="form-select form-select-sm" onchange="filterDataSiswa()">
                   <option value="">-- Semua Kelas --</option>
-                  <option value="VII">Kelas 7 (Semua)</option>
-                  <option value="VIII">Kelas 8 (Semua)</option>
-                  <option value="IX">Kelas 9 (Semua)</option>
-                  <option value="VII A">VII A</option>
-                  <option value="VII B">VII B</option>
-                  <option value="VIII A">VIII A</option>
-                  <option value="VIII B">VIII B</option>
-                  <option value="IX A">IX A</option>
-                  <option value="IX B">IX B</option>
+                  <option value="X">Kelas 10 (Semua)</option>
+                  <option value="XI">Kelas 11 (Semua)</option>
+                  <option value="XII">Kelas 12 (Semua)</option>
+                  <option value="X 1">VII A</option>
+                  <option value="X 2">VII B</option>
+                  <option value="XI 1">VIII A</option>
+                  <option value="XI 2">VIII B</option>
+                  <option value="XII 1">IX A</option>
+                  <option value="XII 2">IX B</option>
                 </select>
               </div>
               <div class="col-md-3">
@@ -226,12 +226,12 @@
                 <div class="d-flex gap-2 justify-content-md-end flex-wrap">
                   <select id="selectFilterKelas" class="form-select form-select-sm style-select w-auto">
                     <option value="">-- Semua Kelas --</option>
-                    <option value="VII A">VII A</option>
-                    <option value="VII B">VII B</option>
-                    <option value="VIII A">VIII A</option>
-                    <option value="VIII B">VIII B</option>
-                    <option value="IX A">IX A</option>
-                    <option value="IX B">IX B</option>
+                    <option value="X 1">X 1</option>
+                    <option value="X 2">X 2</option>
+                    <option value="XI 1">XI 1</option>
+                    <option value="XI 2">XI 2</option>
+                    <option value="XII 1">XII 1</option>
+                    <option value="XII 2">XII 2</option>
                   </select>
                   <select id="selectFilterUjian" class="form-select form-select-sm style-select w-auto">
                     <option value="">-- Semua Ujian --</option>
@@ -318,9 +318,9 @@
               <label class="form-label fw-semibold">Target Kelas</label>
               <select id="ujianKelasTarget" class="form-select">
                 <option value="Semua">Semua Kelas</option>
-                <option value="VII">Kelas VII</option>
-                <option value="VIII">Kelas VIII</option>
-                <option value="IX">Kelas IX</option>
+                <option value="X">Kelas X</option>
+                <option value="XI">Kelas XI</option>
+                <option value="XII">Kelas XII</option>
               </select>
             </div>
             <div class="mb-3">
@@ -429,6 +429,7 @@
                           <option value="B">B</option>
                           <option value="C">C</option>
                           <option value="D">D</option>
+                          <option value="E">E</option>
                         </select>
                       </div>
 
@@ -506,7 +507,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Kelas</label>
-              <input type="text" id="siswaKelas" class="form-control" placeholder="Contoh: IX A" required>
+              <input type="text" id="siswaKelas" class="form-control" placeholder="Contoh: X 1" required>
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Sesi Ujian</label>
