@@ -1,5 +1,5 @@
 /* ===================================================
-   APP.JS - LMS & CBT SMP PLUS ANNUUR (WITH RBAC & AUTH)
+   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH RBAC & AUTH)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -146,21 +146,8 @@ function renderStats() {
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
-function formatDateTimeDisplay(dtStr) {
-  if (!dtStr) return "-";
-  const dt = new Date(dtStr);
-  if (isNaN(dt.getTime())) return dtStr;
-  return dt.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
 /* ===================================================
-   1. KELOLA UJIAN & BANK SOAL
+   1. KELOLA UJIAN & BANK SOAL (SISTEM SAKLAR MANUAL)
    =================================================== */
 function renderTabelUjian() {
   const tbody = document.getElementById("tbodyUjian");
@@ -168,19 +155,16 @@ function renderTabelUjian() {
   tbody.innerHTML = "";
 
   if (daftarUjian.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
     return;
   }
 
   daftarUjian.forEach((u, i) => {
     const jmlSoal = u.soal ? u.soal.length : 0;
     const isAktif = u.status === "aktif";
-    const statusBadge = isAktif 
-      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>` 
+    const statusBadge = isAktif  
+      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>`  
       : `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Nonaktif</span>`;
-    
-    const jadwalText = `<div class="small fw-bold text-primary">${formatDateTimeDisplay(u.waktuMulai)}</div>
-                        <div class="small text-muted">s.d. ${formatDateTimeDisplay(u.waktuSelesai)}</div>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -188,7 +172,6 @@ function renderTabelUjian() {
       <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
       <td><span class="badge bg-dark">${u.kelasTarget || 'Semua'}</span></td>
       <td class="fw-bold">${u.judul || '-'}</td>
-      <td>${jadwalText}</td>
       <td>${u.durasi || 0} Mns</td>
       <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
       <td>
@@ -222,8 +205,6 @@ function handleSimpanUjian(e) {
   const mapelInput = document.getElementById("ujianMapel").value.trim();
   const kelasTarget = document.getElementById("ujianKelasTarget")?.value || "Semua";
   const judul = document.getElementById("ujianJudul").value.trim();
-  const waktuMulai = document.getElementById("ujianWaktuMulai").value;
-  const waktuSelesai = document.getElementById("ujianWaktuSelesai").value;
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
   const status = document.getElementById("ujianStatus").value;
@@ -234,8 +215,6 @@ function handleSimpanUjian(e) {
     mapel: mapelInput, 
     kelasTarget, 
     judul, 
-    waktuMulai, 
-    waktuSelesai, 
     durasi: parseInt(durasi), 
     token, 
     status, 
@@ -244,7 +223,7 @@ function handleSimpanUjian(e) {
 
   set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
-      alert("Jadwal Ujian / Bank Soal Berhasil Disimpan!");
+      alert("Ujian Berhasil Disimpan!");
       const modalEl = document.getElementById("modalUjian");
       if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
     })
@@ -272,7 +251,8 @@ function handleTambahSoal(e) {
       A: document.getElementById("soalA")?.value || "",
       B: document.getElementById("soalB")?.value || "",
       C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || ""
+      D: document.getElementById("soalD")?.value || "",
+      E: document.getElementById("soalE")?.value || ""
     };
     newSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
   } else if (tipe === "pg_kompleks") {
@@ -280,10 +260,11 @@ function handleTambahSoal(e) {
       A: document.getElementById("soalA")?.value || "",
       B: document.getElementById("soalB")?.value || "",
       C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || ""
+      D: document.getElementById("soalD")?.value || "",
+      E: document.getElementById("soalE")?.value || ""
     };
     const checkedKunci = [];
-    ['A', 'B', 'C', 'D'].forEach(opt => {
+    ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
       if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
     });
     newSoal.kunci = checkedKunci;
@@ -478,12 +459,12 @@ function importExcelSoal(event) {
 
       if (tipe === "pg") {
         itemSoal.opsi = {
-          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || "")
+          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || ""), E: String(row.E || "")
         };
         itemSoal.kunci = String(row.Kunci || "A").toUpperCase().trim();
       } else if (tipe === "pg_kompleks") {
         itemSoal.opsi = {
-          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || "")
+          A: String(row.A || ""), B: String(row.B || ""), C: String(row.C || ""), D: String(row.D || ""), E: String(row.E || "")
         };
         itemSoal.kunci = String(row.Kunci || "").split(",").map(k => k.toUpperCase().trim()).filter(k => k);
       } else if (tipe === "mencocokkan") {
@@ -523,11 +504,7 @@ window.filterDataSiswa = () => {
 
     let matchKelas = true;
     if (filterKelas) {
-      if (["vii", "viii", "ix"].includes(filterKelas)) {
-        matchKelas = k.startsWith(filterKelas);
-      } else {
-        matchKelas = (k === filterKelas);
-      }
+      matchKelas = k.startsWith(filterKelas);
     }
 
     const matchSesi = filterSesi ? (e === filterSesi) : true;
@@ -682,8 +659,8 @@ window.hapusSiswa = (nisn) => {
 
 window.downloadTemplateSiswa = () => {
   const data = [
-    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "IX A", SESI: "Sesi 1" },
-    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "IX B", SESI: "Sesi 2" }
+    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "X 1", SESI: "Sesi 1" },
+    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "XI 1", SESI: "Sesi 2" }
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -691,19 +668,11 @@ window.downloadTemplateSiswa = () => {
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
 };
 
-window.exportSiswaExcel = () => {
-  if (daftarSiswa.length === 0) return alert("Tidak ada data siswa.");
-  const ws = XLSX.utils.json_to_sheet(daftarSiswa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Data Siswa");
-  XLSX.writeFile(wb, "Data_Siswa_CBT.xlsx");
-};
-
 window.downloadTemplateSoal = () => {
   const data = [
-    { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", Kunci: "B", Pasangan: "" },
-    { Tipe: "pg_kompleks", Pertanyaan: "Manakah yang merupakan OS?", GambarURL: "", A: "Windows", B: "Linux", C: "Word", D: "Excel", Kunci: "A,B", Pasangan: "" },
-    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", GambarURL: "", A: "", B: "", C: "", D: "", Kunci: "", Pasangan: "CPU=Otak Komputer;RAM=Memori Sementara" }
+    { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", E: "Scanner", Kunci: "B", Pasangan: "" },
+    { Tipe: "pg_kompleks", Pertanyaan: "Manakah yang merupakan OS?", GambarURL: "", A: "Windows", B: "Linux", C: "Word", D: "Excel", E: "MacOS", Kunci: "A,B,E", Pasangan: "" },
+    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", GambarURL: "", A: "", B: "", C: "", D: "", E: "", Kunci: "", Pasangan: "CPU=Otak Komputer;RAM=Memori Sementara" }
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -716,7 +685,7 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
 
   let dataFiltered = hasilUjian.filter(item => {
     let matchKelas = true, matchUjian = true;
-    if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase() === kelasFilter.trim().toLowerCase());
+    if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase().startsWith(kelasFilter.trim().toLowerCase()));
     if (ujianIdFilter) matchUjian = (item.ujianId === ujianIdFilter);
     return matchKelas && matchUjian;
   });
