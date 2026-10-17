@@ -142,7 +142,10 @@
             <h5 class="fw-bold mb-0 text-primary">
               <i class="bi bi-people me-2"></i>Data Siswa Terdaftar
             </h5>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-outline-dark btn-sm" onclick="openModalKelolaKelas()">
+                <i class="bi bi-building-gear me-1"></i>Kelola Kelas
+              </button>
               <button class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSiswa()">
                 <i class="bi bi-download me-1"></i>Template Excel
               </button>
@@ -162,9 +165,6 @@
               <div class="col-md-3">
                 <select id="filterKelasSiswa" class="form-select form-select-sm" onchange="filterDataSiswa()">
                   <option value="">-- Semua Kelas --</option>
-                  <option value="X">Kelas X (Semua)</option>
-                  <option value="XI">Kelas XI (Semua)</option>
-                  <option value="XII">Kelas XII (Semua)</option>
                 </select>
               </div>
               <div class="col-md-3">
@@ -219,9 +219,6 @@
                 <div class="d-flex gap-2 justify-content-md-end flex-wrap">
                   <select id="selectFilterKelas" class="form-select form-select-sm style-select w-auto">
                     <option value="">-- Semua Kelas --</option>
-                    <option value="X">X</option>
-                    <option value="XI">XI</option>
-                    <option value="XII">XII</option>
                   </select>
                   <select id="selectFilterUjian" class="form-select form-select-sm style-select w-auto">
                     <option value="">-- Semua Ujian --</option>
@@ -290,6 +287,29 @@
     </div>
   </div>
 
+  <!-- MODAL: KELOLA KELAS -->
+  <div class="modal fade" id="modalKelolaKelas" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-building-gear me-2"></i>Kelola Daftar Kelas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formTambahKelas" class="mb-3 d-flex gap-2">
+            <input type="text" id="inputNamaKelas" class="form-control" placeholder="Nama Kelas (Contoh: X IPA 1)" required>
+            <button type="submit" class="btn btn-primary text-nowrap"><i class="bi bi-plus-lg me-1"></i>Tambah</button>
+          </form>
+          <hr>
+          <h6 class="fw-semibold text-secondary">Daftar Kelas Terdaftar:</h6>
+          <ul id="listDaftarKelas" class="list-group" style="max-height: 250px; overflow-y: auto;">
+            <!-- Rendered by app.js -->
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: BUAT / EDIT UJIAN -->
   <div class="modal fade" id="modalUjian" tabindex="-1">
     <div class="modal-dialog">
@@ -308,9 +328,6 @@
               <label class="form-label fw-semibold">Target Kelas</label>
               <select id="ujianKelasTarget" class="form-select">
                 <option value="Semua">Semua Kelas</option>
-                <option value="X">Kelas X</option>
-                <option value="XI">Kelas XI</option>
-                <option value="XII">Kelas XII</option>
               </select>
             </div>
             <div class="mb-3">
@@ -491,7 +508,9 @@
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Kelas</label>
-              <input type="text" id="siswaKelas" class="form-control" placeholder="Contoh: X 1" required>
+              <select id="siswaKelas" class="form-select" required>
+                <option value="">-- Pilih Kelas --</option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Sesi Ujian</label>
