@@ -1,5 +1,5 @@
 /* ===================================================
-   APP.JS - LMS & CBT SMAN 1 TARAJU (WITHOUT SESI)
+   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH FILTER REKAP FIX)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hasilUjian = rawHasil;
     }
 
-    renderTabelNilai();
+    window.filterRekapNilai();
   });
 
   // 5. Load Pengguna (Admin Only)
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navGuruTab) navGuruTab.style.display = "none";
   }
 
-  // Event Listeners
+  // Event Listeners Form & Input
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
@@ -112,6 +112,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formTambahKelas")?.addEventListener("submit", handleTambahKelas);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
+
+  // Event Listeners Filter Rekap Nilai
+  document.getElementById("selectFilterKelas")?.addEventListener("change", () => window.filterRekapNilai());
+  document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
 
   document.getElementById("soalTipe")?.addEventListener("change", (e) => {
     window.switchTipeSoal(e.target.value);
@@ -611,16 +615,12 @@ window.filterDataSiswa = () => {
   const keyword = document.getElementById("searchSiswa")?.value.toLowerCase().trim() || "";
 
   const hasilFiltered = daftarSiswa.filter(s => {
-    const k = (s.kelas || "").toLowerCase();
+    const k = (s.kelas || "").toLowerCase().trim();
     const nama = (s.nama || "").toLowerCase();
     const nisn = (s.nisn || "").toLowerCase();
 
-    let matchKelas = true;
-    if (filterKelas) {
-      matchKelas = (k === filterKelas);
-    }
-
-    const matchSearch = keyword ? (nama.includes(keyword) || nisn.includes(keyword)) : true;
+    let matchKelas = filterKelas ? (k === filterKelas) : true;
+    let matchSearch = keyword ? (nama.includes(keyword) || nisn.includes(keyword)) : true;
 
     return matchKelas && matchSearch;
   });
@@ -658,17 +658,35 @@ function renderTabelSiswaFiltered(listSiswa) {
   });
 }
 
-function renderTabelNilai() {
+/* FILTER & RENDER REKAP NILAI (TERHUBUNG KE DROPDOWN) */
+window.filterRekapNilai = () => {
+  const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
+  const ujianSelected = document.getElementById("selectFilterUjian")?.value || "";
+
+  const filteredHasil = hasilUjian.filter(h => {
+    const kelasSiswa = (h.kelas || "").toLowerCase().trim();
+    const ujianId = h.ujianId || "";
+
+    let matchKelas = kelasSelected ? (kelasSiswa === kelasSelected) : true;
+    let matchUjian = ujianSelected ? (ujianId === ujianSelected) : true;
+
+    return matchKelas && matchUjian;
+  });
+
+  renderTabelNilai(filteredHasil);
+};
+
+function renderTabelNilai(listHasil = hasilUjian) {
   const tbody = document.getElementById("tbodyNilai");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (hasilUjian.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada hasil ujian.</td></tr>`;
+  if (listHasil.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada hasil ujian yang sesuai dengan filter.</td></tr>`;
     return;
   }
 
-  hasilUjian.forEach((h, i) => {
+  listHasil.forEach((h, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
@@ -685,6 +703,7 @@ function renderTabelNilai() {
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
+  const currVal = selectUjian.value;
   selectUjian.innerHTML = '<option value="">-- Semua Ujian --</option>';
   daftarUjian.forEach(u => {
     const opt = document.createElement("option");
@@ -692,6 +711,7 @@ function updateFilterUjianDropdown() {
     opt.textContent = `${u.mapel || ''} (${u.kelasTarget || 'Semua'}) - ${u.judul || ''}`;
     selectUjian.appendChild(opt);
   });
+  selectUjian.value = currVal;
 }
 
 /* EXPOSE GLOBALS TO WINDOW */
@@ -753,7 +773,7 @@ window.switchTipeSoal = (tipe) => {
   } else if (tipe === "pg_kompleks") {
     containerPG.classList.remove("d-none");
     containerMencocokkan.classList.add("d-none");
-    boxKunciPG?.classList.add("d-none");
+    boxKunciPG?.add("d-none");
     boxKunciKompleks?.classList.remove("d-none");
   } else if (tipe === "mencocokkan") {
     containerPG.classList.add("d-none");
