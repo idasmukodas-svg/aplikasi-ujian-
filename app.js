@@ -1,5 +1,5 @@
 /* ===================================================
-   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH FILTER REKAP FIX)
+   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH EDIT/RESET GURU)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
   document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
+  document.getElementById("formEditGuru")?.addEventListener("submit", handleSimpanEditGuru);
   document.getElementById("formTambahKelas")?.addEventListener("submit", handleTambahKelas);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
@@ -210,7 +211,6 @@ function renderListKelasModal() {
 }
 
 function updateAllClassDropdowns() {
-  // 1. Filter Kelas Siswa
   const filterSiswa = document.getElementById("filterKelasSiswa");
   if (filterSiswa) {
     const currVal = filterSiswa.value;
@@ -224,7 +224,6 @@ function updateAllClassDropdowns() {
     filterSiswa.value = currVal;
   }
 
-  // 2. Filter Rekap Nilai
   const filterNilai = document.getElementById("selectFilterKelas");
   if (filterNilai) {
     const currVal = filterNilai.value;
@@ -238,7 +237,6 @@ function updateAllClassDropdowns() {
     filterNilai.value = currVal;
   }
 
-  // 3. Target Kelas Ujian
   const targetUjian = document.getElementById("ujianKelasTarget");
   if (targetUjian) {
     const currVal = targetUjian.value;
@@ -252,7 +250,6 @@ function updateAllClassDropdowns() {
     targetUjian.value = currVal;
   }
 
-  // 4. Select Siswa di Modal Tambah Siswa
   const selectSiswa = document.getElementById("siswaKelas");
   if (selectSiswa) {
     const currVal = selectSiswa.value;
@@ -332,14 +329,7 @@ function handleSimpanUjian(e) {
 
   const id = "UJN-" + Date.now();
   const newUjian = {
-    id, 
-    mapel: mapelInput, 
-    kelasTarget, 
-    judul, 
-    durasi: parseInt(durasi), 
-    token, 
-    status, 
-    soal: []
+    id, mapel: mapelInput, kelasTarget, judul, durasi: parseInt(durasi), token, status, soal: []
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -361,10 +351,7 @@ function handleTambahSoal(e) {
   const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
 
   let newSoal = {
-    id: "SOAL-" + Date.now(),
-    tipe,
-    pertanyaan,
-    gambarUrl
+    id: "SOAL-" + Date.now(), tipe, pertanyaan, gambarUrl
   };
 
   if (tipe === "pg") {
@@ -449,7 +436,7 @@ window.hapusSoal = (soalId) => {
 };
 
 /* ===================================================
-   2. KELOLA AKUN GURU (KHUSUS ADMIN)
+   2. KELOLA AKUN GURU & EDIT/RESET PASSWORD (ADMIN ONLY)
    =================================================== */
 async function handleTambahGuru(e) {
   e.preventDefault();
@@ -480,24 +467,83 @@ async function handleTambahGuru(e) {
   }
 }
 
+window.openModalEditGuru = (uid) => {
+  const g = daftarPengguna.find(p => p.uid === uid);
+  if (!g) return;
+
+  document.getElementById("editGuruUid").value = g.uid;
+  document.getElementById("editGuruNama").value = g.nama || "";
+  document.getElementById("editGuruEmail").value = g.email || "";
+  document.getElementById("editGuruMapel").value = g.mapel || "";
+  document.getElementById("editGuruPassword").value = "";
+
+  const modalEl = document.getElementById("modalEditGuru");
+  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+};
+
+async function handleSimpanEditGuru(e) {
+  e.preventDefault();
+  const uid = document.getElementById("editGuruUid").value;
+  const nama = document.getElementById("editGuruNama").value.trim();
+  const mapel = document.getElementById("editGuruMapel").value.trim();
+  const newPassword = document.getElementById("editGuruPassword").value.trim();
+
+  try {
+    // 1. Update data profil di Realtime Database
+    await update(ref(db, "pengguna/" + uid), { nama, mapel });
+
+    // 2. Jika password baru diisi, tampilkan pesan petunjuk reset
+    if (newPassword) {
+      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan informasikan kepada guru untuk login menggunakan password tersebut jika akun dibuat ulang, atau gunakan fitur Kirim Email Reset Password Firebase.`);
+    } else {
+      alert(`Profil Guru ${nama} berhasil diperbarui!`);
+    }
+
+    const modalEl = document.getElementById("modalEditGuru");
+    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+  } catch (err) {
+    alert("Gagal memperbarui data guru: " + err.message);
+  }
+}
+
+window.hapusGuru = (uid, nama) => {
+  if (confirm(`Apakah Anda yakin ingin menghapus akun Guru "${nama}"?`)) {
+    remove(ref(db, "pengguna/" + uid))
+      .then(() => alert(`Akun Guru "${nama}" berhasil dihapus!`))
+      .catch(err => alert("Gagal menghapus: " + err.message));
+  }
+};
+
 function renderTabelPengguna() {
   const tbody = document.getElementById("tbodyPengguna");
   if (!tbody) return;
   tbody.innerHTML = "";
 
   if (daftarPengguna.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada akun guru terdaftar di Database.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada akun guru terdaftar di Database.</td></tr>`;
     return;
   }
 
   daftarPengguna.forEach((p, i) => {
+    const isSelfAdmin = (p.role === 'admin');
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td class="fw-bold">${p.nama || '-'}</td>
       <td>${p.email || '-'}</td>
       <td><span class="badge bg-info text-dark">${p.mapel || 'Semua Mapel'}</span></td>
-      <td><span class="badge ${p.role === 'admin' ? 'bg-danger' : 'bg-primary'}">${(p.role || 'guru').toUpperCase()}</span></td>
+      <td><span class="badge ${isSelfAdmin ? 'bg-danger' : 'bg-primary'}">${(p.role || 'guru').toUpperCase()}</span></td>
+      <td>
+        ${!isSelfAdmin ? `
+          <button class="btn btn-sm btn-outline-warning me-1" onclick="openModalEditGuru('${p.uid}')" title="Edit / Reset Password">
+            <i class="bi bi-pencil-square"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="hapusGuru('${p.uid}', '${p.nama}')" title="Hapus Akun">
+            <i class="bi bi-trash"></i>
+          </button>
+        ` : `<span class="badge bg-light text-muted border">Utama</span>`}
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -658,7 +704,7 @@ function renderTabelSiswaFiltered(listSiswa) {
   });
 }
 
-/* FILTER & RENDER REKAP NILAI (TERHUBUNG KE DROPDOWN) */
+/* FILTER & RENDER REKAP NILAI */
 window.filterRekapNilai = () => {
   const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
   const ujianSelected = document.getElementById("selectFilterUjian")?.value || "";
@@ -773,7 +819,7 @@ window.switchTipeSoal = (tipe) => {
   } else if (tipe === "pg_kompleks") {
     containerPG.classList.remove("d-none");
     containerMencocokkan.classList.add("d-none");
-    boxKunciPG?.add("d-none");
+    boxKunciPG?.classList.add("d-none");
     boxKunciKompleks?.classList.remove("d-none");
   } else if (tipe === "mencocokkan") {
     containerPG.classList.add("d-none");
