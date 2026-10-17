@@ -1,5 +1,5 @@
 /* ===================================================
-   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH RBAC & AUTH)
+   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH RBAC & DYNAMIC CLASS)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -17,12 +17,10 @@ const firebaseConfig = {
   measurementId: "G-CBH4C0BVXD"
 };
 
-// Inisialisasi Firebase Utama
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-// Cek Sesi Login (Wajib Login, Jika Kosong Lempar ke login.html)
 let userSession = null;
 const storedUser = sessionStorage.getItem("userLoggedIn") || localStorage.getItem("cbt_current_user");
 
@@ -36,13 +34,22 @@ let daftarUjian = [];
 let daftarSiswa = [];
 let hasilUjian = [];
 let daftarPengguna = [];
+let daftarKelas = [];
 let activeUjianId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!userSession) return;
   renderUserInfoNav();
 
-  // 1. Load Realtime Data Ujian dari Firebase
+  // 1. Load Realtime Data Kelas
+  onValue(ref(db, "daftarKelas"), (snapshot) => {
+    const data = snapshot.val();
+    daftarKelas = data ? Object.values(data) : [];
+    renderListKelasModal();
+    updateAllClassDropdowns();
+  });
+
+  // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.values(data) : [];
@@ -63,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 2. Load Realtime Data Siswa dari Firebase
+  // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
     daftarSiswa = data ? Object.values(data) : [];
@@ -71,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.filterDataSiswa();
   });
 
-  // 3. Load Realtime Data Hasil Ujian dari Firebase
+  // 4. Load Realtime Hasil Ujian
   onValue(ref(db, "hasilUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawHasil = data ? Object.values(data) : [];
@@ -85,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabelNilai();
   });
 
-  // 4. Load Akun Pengguna / Guru dari Firebase (Khusus Admin)
+  // 5. Load Pengguna (Admin Only)
   if (userSession.role === "admin") {
     onValue(ref(db, "pengguna"), (snapshot) => {
       const data = snapshot.val();
@@ -97,11 +104,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navGuruTab) navGuruTab.style.display = "none";
   }
 
-  // Event Listeners Form & Input
+  // Event Listeners
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
   document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
+  document.getElementById("formTambahKelas")?.addEventListener("submit", handleTambahKelas);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 
@@ -147,7 +155,116 @@ function renderStats() {
 }
 
 /* ===================================================
-   1. KELOLA UJIAN & BANK SOAL (SISTEM SAKLAR MANUAL)
+   KELOLA KELAS DINAMIS
+   =================================================== */
+window.openModalKelolaKelas = () => {
+  const modalEl = document.getElementById("modalKelolaKelas");
+  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+};
+
+function handleTambahKelas(e) {
+  e.preventDefault();
+  const namaKelas = document.getElementById("inputNamaKelas").value.trim();
+  if (!namaKelas) return;
+
+  const cleanKey = namaKelas.replace(/[.#$\[\]]/g, "_");
+  set(ref(db, "daftarKelas/" + cleanKey), { nama: namaKelas })
+    .then(() => {
+      document.getElementById("formTambahKelas").reset();
+    })
+    .catch(err => alert("Gagal menambah kelas: " + err.message));
+}
+
+window.hapusKelas = (namaKelas) => {
+  if (confirm(`Hapus kelas ${namaKelas}?`)) {
+    const cleanKey = namaKelas.replace(/[.#$\[\]]/g, "_");
+    remove(ref(db, "daftarKelas/" + cleanKey));
+  }
+};
+
+function renderListKelasModal() {
+  const listEl = document.getElementById("listDaftarKelas");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  if (daftarKelas.length === 0) {
+    listEl.innerHTML = `<li class="list-group-item text-center text-muted small">Belum ada kelas terdaftar.</li>`;
+    return;
+  }
+
+  daftarKelas.forEach(k => {
+    const li = document.createElement("li");
+    li.className = "list-group-item d-flex justify-content-between align-items-center py-2";
+    li.innerHTML = `
+      <span class="fw-semibold">${k.nama}</span>
+      <button class="btn btn-sm btn-outline-danger" onclick="hapusKelas('${k.nama}')">
+        <i class="bi bi-trash"></i>
+      </button>
+    `;
+    listEl.appendChild(li);
+  });
+}
+
+function updateAllClassDropdowns() {
+  // 1. Filter Kelas Siswa
+  const filterSiswa = document.getElementById("filterKelasSiswa");
+  if (filterSiswa) {
+    const currVal = filterSiswa.value;
+    filterSiswa.innerHTML = '<option value="">-- Semua Kelas --</option>';
+    daftarKelas.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.nama;
+      opt.textContent = k.nama;
+      filterSiswa.appendChild(opt);
+    });
+    filterSiswa.value = currVal;
+  }
+
+  // 2. Filter Rekap Nilai
+  const filterNilai = document.getElementById("selectFilterKelas");
+  if (filterNilai) {
+    const currVal = filterNilai.value;
+    filterNilai.innerHTML = '<option value="">-- Semua Kelas --</option>';
+    daftarKelas.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.nama;
+      opt.textContent = k.nama;
+      filterNilai.appendChild(opt);
+    });
+    filterNilai.value = currVal;
+  }
+
+  // 3. Target Kelas Ujian
+  const targetUjian = document.getElementById("ujianKelasTarget");
+  if (targetUjian) {
+    const currVal = targetUjian.value;
+    targetUjian.innerHTML = '<option value="Semua">Semua Kelas</option>';
+    daftarKelas.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.nama;
+      opt.textContent = k.nama;
+      targetUjian.appendChild(opt);
+    });
+    targetUjian.value = currVal;
+  }
+
+  // 4. Select Siswa di Modal Tambah Siswa
+  const selectSiswa = document.getElementById("siswaKelas");
+  if (selectSiswa) {
+    const currVal = selectSiswa.value;
+    selectSiswa.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+    daftarKelas.forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k.nama;
+      opt.textContent = k.nama;
+      selectSiswa.appendChild(opt);
+    });
+    selectSiswa.value = currVal;
+  }
+}
+
+/* ===================================================
+   1. KELOLA UJIAN & BANK SOAL
    =================================================== */
 function renderTabelUjian() {
   const tbody = document.getElementById("tbodyUjian");
@@ -504,7 +621,7 @@ window.filterDataSiswa = () => {
 
     let matchKelas = true;
     if (filterKelas) {
-      matchKelas = k.startsWith(filterKelas);
+      matchKelas = (k === filterKelas);
     }
 
     const matchSesi = filterSesi ? (e === filterSesi) : true;
@@ -659,8 +776,8 @@ window.hapusSiswa = (nisn) => {
 
 window.downloadTemplateSiswa = () => {
   const data = [
-    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "X 1", SESI: "Sesi 1" },
-    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "XI 1", SESI: "Sesi 2" }
+    { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "X IPA 1", SESI: "Sesi 1" },
+    { NISN: "0081234562", NAMA: "Siti Nurhaliza", KELAS: "XI IPS 1", SESI: "Sesi 2" }
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -685,7 +802,7 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
 
   let dataFiltered = hasilUjian.filter(item => {
     let matchKelas = true, matchUjian = true;
-    if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase().startsWith(kelasFilter.trim().toLowerCase()));
+    if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase() === kelasFilter.trim().toLowerCase());
     if (ujianIdFilter) matchUjian = (item.ujianId === ujianIdFilter);
     return matchKelas && matchUjian;
   });
