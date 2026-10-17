@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ujian Online CBT - Portal Siswa</title>
+  <title>Ujian Online CBT - Portal Siswa SMAN 1 TARAJU</title>
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -50,7 +50,7 @@
   <nav class="navbar navbar-dark bg-primary shadow-sm">
     <div class="container">
       <a class="navbar-brand fw-bold" href="#">
-        <i class="bi bi-mortarboard-fill me-2"></i>CBT SMP PLUS ANNUUR - PORTAL SISWA
+        <i class="bi bi-mortarboard-fill me-2"></i>CBT SMAN 1 TARAJU - PORTAL SISWA
       </a>
       <span id="siswaNavInfo" class="navbar-text text-white fw-bold"></span>
     </div>
@@ -196,7 +196,7 @@
           return;
         }
 
-        // --- VALIDASI TAMBAHAN: CEK APAKAH UJIAN AKTIF ATAU NONAKTIF ---
+        // --- VALIDASI SAKLAR MANUAL: CEK STATUS UJIAN (AKTIF / NONAKTIF) ---
         if (foundUjian.status !== "aktif") {
           alert("Maaf, ujian ini sedang dinonaktifkan oleh Guru/Admin!");
           return;
@@ -244,7 +244,7 @@
       pasangSistemKeamanan();
     }
 
-    // --- RENDER SOAL (ACAK SOAL, OPSI, & GAMBAR) ---
+    // --- RENDER SOAL (ACAK SOAL, OPSI A-E, & GAMBAR) ---
     function renderSoalSiswa(originalListSoal) {
       const container = document.getElementById("containerSoalList");
       container.innerHTML = "";
@@ -266,7 +266,7 @@
         let htmlOption = "";
 
         if (s.tipe === "pg" || s.tipe === "pg_kompleks") {
-          // 2. ACAK URUTAN OPSI JAWABAN (A, B, C, D)
+          // 2. ACAK URUTAN OPSI JAWABAN (Mendukung A, B, C, D, E)
           const keysOpsi = Object.keys(s.opsi || {}).filter(k => s.opsi[k]);
           const keysShuffled = shuffleArray(keysOpsi);
 
@@ -403,7 +403,7 @@
         }
       });
 
-      const nilaiAkhir = Math.round((skorTotal / totalSoal) * 100);
+      const nilaiAkhir = totalSoal > 0 ? Math.round((skorTotal / totalSoal) * 100) : 0;
 
       const hasilRefKey = `${siswaAktif.nisn}_${ujianAktif.id}`;
       const payloadHasil = {
