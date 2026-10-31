@@ -599,14 +599,10 @@ window.cetakKartuUjianSiswa = () => {
     return alert("Tidak ada data siswa untuk dicetak!");
   }
 
-  // URL dasar portal ujian siswa (sesuaikan dengan link Vercel/domain Anda atau gunakan window.location.origin)
   const baseUrl = window.location.origin + "/ujian-siswa.html";
 
   container.innerHTML = "";
-  siswaFiltered.forEach(s => {
-    // Membuat URL QR Code otomatis berdasarkan link portal siswa
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(baseUrl)}`;
-
+  siswaFiltered.forEach((s, index) => {
     const col = document.createElement("div");
     col.className = "col-6";
     col.innerHTML = `
@@ -623,8 +619,8 @@ window.cetakKartuUjianSiswa = () => {
               <tr><td class="py-1">Kelas</td><td class="py-1">: <strong>${s.kelas || '-'}</strong></td></tr>
             </table>
           </div>
-          <div class="col-4 text-center">
-            <img src="${qrCodeUrl}" alt="QR Login" style="width: 75px; height: 75px;" class="border p-1 bg-white">
+          <div class="col-4 text-center d-flex justify-content-center">
+            <div id="qrcode-${index}" class="p-1 bg-white border"></div>
           </div>
         </div>
         <div class="d-flex justify-content-between align-items-end pt-2 border-top mt-1">
@@ -640,8 +636,27 @@ window.cetakKartuUjianSiswa = () => {
     container.appendChild(col);
   });
 
-  window.print();
+  // Render QR code secara lokal untuk setiap kartu yang dicetak
+  siswaFiltered.forEach((s, index) => {
+    const qrContainer = document.getElementById(`qrcode-${index}`);
+    if (qrContainer && window.QRCode) {
+      new QRCode(qrContainer, {
+        text: baseUrl,
+        width: 65,
+        height: 65,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  });
+
+  // Berikan jeda 300ms agar QR code selesai dirender oleh script lokal sebelum dialog print muncul
+  setTimeout(() => {
+    window.print();
+  }, 300);
 };
+
 function importSiswaExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
