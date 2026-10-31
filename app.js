@@ -1,5 +1,5 @@
 /* ===================================================
-   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH EDIT/RESET GURU)
+   APP.JS - LMS & CBT SMAN 1 TARAJU (WITH PRINT CARDS & MULTI-CLASS)
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -237,17 +237,19 @@ function updateAllClassDropdowns() {
     filterNilai.value = currVal;
   }
 
-  const targetUjian = document.getElementById("ujianKelasTarget");
-  if (targetUjian) {
-    const currVal = targetUjian.value;
-    targetUjian.innerHTML = '<option value="Semua">Semua Kelas</option>';
+  // RENDER CHECKBOX MULTI-SELECT KELAS UJIAN
+  const containerCheck = document.getElementById("containerCheckboxKelas");
+  if (containerCheck) {
+    containerCheck.innerHTML = "";
     daftarKelas.forEach(k => {
-      const opt = document.createElement("option");
-      opt.value = k.nama;
-      opt.textContent = k.nama;
-      targetUjian.appendChild(opt);
+      const div = document.createElement("div");
+      div.className = "form-check mb-1";
+      div.innerHTML = `
+        <input class="form-check-input check-kelas-item" type="checkbox" value="${k.nama}" id="checkKelas_${k.nama}">
+        <label class="form-check-label" for="checkKelas_${k.nama}">${k.nama}</label>
+      `;
+      containerCheck.appendChild(div);
     });
-    targetUjian.value = currVal;
   }
 
   const selectSiswa = document.getElementById("siswaKelas");
@@ -265,7 +267,7 @@ function updateAllClassDropdowns() {
 }
 
 /* ===================================================
-   1. KELOLA UJIAN & BANK SOAL
+   1. KELOLA UJIAN & BANK SOAL (MULTI KELAS TARGET)
    =================================================== */
 function renderTabelUjian() {
   const tbody = document.getElementById("tbodyUjian");
@@ -284,11 +286,13 @@ function renderTabelUjian() {
       ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>`  
       : `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Nonaktif</span>`;
 
+    const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
-      <td><span class="badge bg-dark">${u.kelasTarget || 'Semua'}</span></td>
+      <td><span class="badge bg-dark">${displayKelas}</span></td>
       <td class="fw-bold">${u.judul || '-'}</td>
       <td>${u.durasi || 0} Mns</td>
       <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
@@ -321,15 +325,29 @@ window.toggleStatusUjian = (id, currentStatus) => {
 function handleSimpanUjian(e) {
   e.preventDefault();
   const mapelInput = document.getElementById("ujianMapel").value.trim();
-  const kelasTarget = document.getElementById("ujianKelasTarget")?.value || "Semua";
   const judul = document.getElementById("ujianJudul").value.trim();
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
   const status = document.getElementById("ujianStatus").value;
 
+  // AMBIL MULTI-SELECT CHECKBOX KELAS
+  let selectedKelas = [];
+  const checkSemua = document.getElementById("checkKelasSemua");
+  if (checkSemua && checkSemua.checked) {
+    selectedKelas = ["Semua"];
+  } else {
+    document.querySelectorAll(".check-kelas-item:checked").forEach(cb => {
+      selectedKelas.push(cb.value);
+    });
+  }
+
+  if (selectedKelas.length === 0) {
+    return alert("Pilih minimal satu target kelas!");
+  }
+
   const id = "UJN-" + Date.now();
   const newUjian = {
-    id, mapel: mapelInput, kelasTarget, judul, durasi: parseInt(durasi), token, status, soal: []
+    id, mapel: mapelInput, kelasTarget: selectedKelas, judul, durasi: parseInt(durasi), token, status, soal: []
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -489,12 +507,10 @@ async function handleSimpanEditGuru(e) {
   const newPassword = document.getElementById("editGuruPassword").value.trim();
 
   try {
-    // 1. Update data profil di Realtime Database
     await update(ref(db, "pengguna/" + uid), { nama, mapel });
 
-    // 2. Jika password baru diisi, tampilkan pesan petunjuk reset
     if (newPassword) {
-      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan informasikan kepada guru untuk login menggunakan password tersebut jika akun dibuat ulang, atau gunakan fitur Kirim Email Reset Password Firebase.`);
+      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
     } else {
       alert(`Profil Guru ${nama} berhasil diperbarui!`);
     }
@@ -550,7 +566,7 @@ function renderTabelPengguna() {
 }
 
 /* ===================================================
-   3. DATA SISWA, FILTER & REKAP NILAI
+   3. DATA SISWA, CETAK KARTU, FILTER & REKAP NILAI
    =================================================== */
 function handleSimpanSiswa(e) {
   e.preventDefault();
@@ -568,6 +584,51 @@ function handleSimpanSiswa(e) {
     })
     .catch((err) => alert("Gagal menyimpan siswa: " + err.message));
 }
+
+window.cetakKartuUjianSiswa = () => {
+  const filterKelas = document.getElementById("filterKelasSiswa")?.value.toLowerCase().trim() || "";
+  const container = document.getElementById("containerKartuUjian");
+  if (!container) return;
+
+  const siswaFiltered = daftarSiswa.filter(s => {
+    const k = (s.kelas || "").toLowerCase().trim();
+    return filterKelas ? (k === filterKelas) : true;
+  });
+
+  if (siswaFiltered.length === 0) {
+    return alert("Tidak ada data siswa untuk dicetak!");
+  }
+
+  container.innerHTML = "";
+  siswaFiltered.forEach(s => {
+    const col = document.createElement("div");
+    col.className = "col-6";
+    col.innerHTML = `
+      <div class="card card-ujian-box p-3">
+        <div class="text-center border-bottom pb-2 mb-2">
+          <h6 class="fw-bold mb-0">KARTU PESERTA UJIAN CBT</h6>
+          <small class="fw-semibold text-uppercase">SMAN 1 TARAJU</small>
+        </div>
+        <table class="table table-sm table-borderless mb-2 small">
+          <tr><td width="35%">NISN</td><td>: <strong>${s.nisn}</strong></td></tr>
+          <tr><td>Nama</td><td>: <strong>${s.nama}</strong></td></tr>
+          <tr><td>Kelas</td><td>: <strong>${s.kelas || '-'}</strong></td></tr>
+        </table>
+        <div class="d-flex justify-content-between align-items-end pt-2 border-top">
+          <small class="text-muted" style="font-size: 10px;">Portal: ujian-siswa.html</small>
+          <div class="text-center" style="font-size: 10px;">
+            <span>Panitia Ujian</span>
+            <div style="height: 25px;"></div>
+            <span>(........................)</span>
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(col);
+  });
+
+  window.print();
+};
 
 function importSiswaExcel(event) {
   const file = event.target.files[0];
@@ -752,9 +813,10 @@ function updateFilterUjianDropdown() {
   const currVal = selectUjian.value;
   selectUjian.innerHTML = '<option value="">-- Semua Ujian --</option>';
   daftarUjian.forEach(u => {
+    const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
     const opt = document.createElement("option");
     opt.value = u.id;
-    opt.textContent = `${u.mapel || ''} (${u.kelasTarget || 'Semua'}) - ${u.judul || ''}`;
+    opt.textContent = `${u.mapel || ''} (${displayKelas}) - ${u.judul || ''}`;
     selectUjian.appendChild(opt);
   });
   selectUjian.value = currVal;
@@ -793,8 +855,9 @@ window.openModalSoal = (ujianId) => {
   const u = daftarUjian.find(item => item.id === ujianId);
   if (!u) return;
 
+  const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
   const titleEl = document.getElementById("judulUjianSoal");
-  if (titleEl) titleEl.innerText = `${u.mapel} [${u.kelasTarget || 'Semua'}] - ${u.judul}`;
+  if (titleEl) titleEl.innerText = `${u.mapel} [${displayKelas}] - ${u.judul}`;
   document.getElementById("formTambahSoal")?.reset();
   if (window.switchTipeSoal) window.switchTipeSoal("pg");
 
