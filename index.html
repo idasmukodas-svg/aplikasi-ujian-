@@ -14,6 +14,27 @@
     .cursor-pointer { cursor: pointer; }
     .card-stat { transition: transform 0.2s; }
     .card-stat:hover { transform: translateY(-3px); }
+
+    /* CSS CETAK KARTU UJIAN */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printAreaKartu, #printAreaKartu * {
+        visibility: visible;
+      }
+      #printAreaKartu {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      .card-ujian-box {
+        border: 2px solid #000 !important;
+        page-break-inside: avoid;
+        margin-bottom: 15px;
+      }
+    }
   </style>
 </head>
 <body class="bg-light">
@@ -143,6 +164,9 @@
               <i class="bi bi-people me-2"></i>Data Siswa Terdaftar
             </h5>
             <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-outline-primary btn-sm" onclick="cetakKartuUjianSiswa()">
+                <i class="bi bi-printer me-1"></i>Cetak Kartu Ujian
+              </button>
               <button class="btn btn-outline-dark btn-sm" onclick="openModalKelolaKelas()">
                 <i class="bi bi-building-gear me-1"></i>Kelola Kelas
               </button>
@@ -279,6 +303,13 @@
     </div>
   </div>
 
+  <!-- AREA CETAK KARTU UJIAN (TERSEMBUNYI SAAT TAMPILAN MONITOR) -->
+  <div id="printAreaKartu" class="d-none d-print-block container p-4">
+    <div class="row g-3" id="containerKartuUjian">
+      <!-- Rendered by app.js -->
+    </div>
+  </div>
+
   <!-- MODAL: KELOLA KELAS -->
   <div class="modal fade" id="modalKelolaKelas" tabindex="-1">
     <div class="modal-dialog">
@@ -302,7 +333,7 @@
     </div>
   </div>
 
-  <!-- MODAL: BUAT / EDIT UJIAN -->
+  <!-- MODAL: BUAT / EDIT UJIAN (MULTI-SELECT KELAS TARGET) -->
   <div class="modal fade" id="modalUjian" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -316,12 +347,22 @@
               <label class="form-label fw-semibold">Mata Pelajaran</label>
               <input type="text" id="ujianMapel" class="form-control" placeholder="Contoh: Informatika" required>
             </div>
+
+            <!-- CHECKBOX MULTI-SELECT TARGET KELAS -->
             <div class="mb-3">
-              <label class="form-label fw-semibold">Target Kelas</label>
-              <select id="ujianKelasTarget" class="form-select">
-                <option value="Semua">Semua Kelas</option>
-              </select>
+              <label class="form-label fw-semibold d-block">Target Kelas (Bisa Pilih > 1)</label>
+              <div class="border rounded p-3 bg-light" style="max-height: 150px; overflow-y: auto;">
+                <div class="form-check mb-2">
+                  <input class="form-check-input check-kelas-target" type="checkbox" id="checkKelasSemua" value="Semua">
+                  <label class="form-check-label fw-bold" for="checkKelasSemua">Semua Kelas</label>
+                </div>
+                <hr class="my-2">
+                <div id="containerCheckboxKelas">
+                  <!-- Checkbox dinamis rendered by app.js -->
+                </div>
+              </div>
             </div>
+
             <div class="mb-3">
               <label class="form-label fw-semibold">Judul Ujian / Materi</label>
               <input type="text" id="ujianJudul" class="form-control" placeholder="Contoh: Penilaian Tengah Semester" required>
