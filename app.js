@@ -599,26 +599,39 @@ window.cetakKartuUjianSiswa = () => {
     return alert("Tidak ada data siswa untuk dicetak!");
   }
 
+  // URL dasar portal ujian siswa (sesuaikan dengan link Vercel/domain Anda atau gunakan window.location.origin)
+  const baseUrl = window.location.origin + "/ujian-siswa.html";
+
   container.innerHTML = "";
   siswaFiltered.forEach(s => {
+    // Membuat URL QR Code otomatis berdasarkan link portal siswa
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(baseUrl)}`;
+
     const col = document.createElement("div");
     col.className = "col-6";
     col.innerHTML = `
-      <div class="card card-ujian-box p-3">
-        <div class="text-center border-bottom pb-2 mb-2">
-          <h6 class="fw-bold mb-0">KARTU PESERTA UJIAN CBT</h6>
-          <small class="fw-semibold text-uppercase">SMAN 1 TARAJU</small>
+      <div class="card card-ujian-box p-3 mb-2" style="font-size: 11px;">
+        <div class="text-center border-bottom pb-1 mb-2">
+          <h6 class="fw-bold mb-0" style="font-size: 12px;">KARTU PESERTA UJIAN CBT</h6>
+          <small class="fw-semibold text-uppercase text-secondary">SMAN 1 TARAJU</small>
         </div>
-        <table class="table table-sm table-borderless mb-2 small">
-          <tr><td width="35%">NISN</td><td>: <strong>${s.nisn}</strong></td></tr>
-          <tr><td>Nama</td><td>: <strong>${s.nama}</strong></td></tr>
-          <tr><td>Kelas</td><td>: <strong>${s.kelas || '-'}</strong></td></tr>
-        </table>
-        <div class="d-flex justify-content-between align-items-end pt-2 border-top">
-          <small class="text-muted" style="font-size: 10px;">Portal: ujian-siswa.html</small>
-          <div class="text-center" style="font-size: 10px;">
+        <div class="row align-items-center">
+          <div class="col-8">
+            <table class="table table-sm table-borderless mb-1">
+              <tr><td width="30%" class="py-1">NISN</td><td class="py-1">: <strong>${s.nisn}</strong></td></tr>
+              <tr><td class="py-1">Nama</td><td class="py-1">: <strong>${s.nama}</strong></td></tr>
+              <tr><td class="py-1">Kelas</td><td class="py-1">: <strong>${s.kelas || '-'}</strong></td></tr>
+            </table>
+          </div>
+          <div class="col-4 text-center">
+            <img src="${qrCodeUrl}" alt="QR Login" style="width: 75px; height: 75px;" class="border p-1 bg-white">
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-end pt-2 border-top mt-1">
+          <span class="text-muted" style="font-size: 9px;">Scan untuk buka ujian</span>
+          <div class="text-center" style="font-size: 9px;">
             <span>Panitia Ujian</span>
-            <div style="height: 25px;"></div>
+            <div style="height: 18px;"></div>
             <span>(........................)</span>
           </div>
         </div>
@@ -629,7 +642,6 @@ window.cetakKartuUjianSiswa = () => {
 
   window.print();
 };
-
 function importSiswaExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
