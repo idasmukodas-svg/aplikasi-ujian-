@@ -1245,3 +1245,46 @@ document.getElementById("formTambahSoal")?.addEventListener("submit", (e) => {
     })
     .catch((err) => alert("Gagal menyimpan soal: " + err.message));
 });
+/* ===================================================
+   FITUR TAMBAHAN: DOWNLOAD ARSIP SOAL KE EXCEL
+   =================================================== */
+window.downloadArsipSoal = () => {
+  if (!currentUjianActive || !currentUjianActive.soal || currentUjianActive.soal.length === 0) {
+    return alert("Tidak ada soal dalam ujian ini untuk diunduh!");
+  }
+
+  const excelData = currentUjianActive.soal.map((s, index) => {
+    let kunciFormatted = "";
+    if (Array.isArray(s.kunci)) {
+      kunciFormatted = s.kunci.join(", ");
+    } else {
+      kunciFormatted = s.kunci || "";
+    }
+
+    let pasanganFormatted = "";
+    if (s.tipe === "mencocokkan" && s.pasangan) {
+      pasanganFormatted = s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ");
+    }
+
+    return {
+      "No": index + 1,
+      "Tipe": (s.tipe || "pg").toUpperCase(),
+      "Pertanyaan": s.pertanyaan || "",
+      "GambarURL": s.gambarUrl || "",
+      "A": s.opsi ? (s.opsi.A || "") : "",
+      "B": s.opsi ? (s.opsi.B || "") : "",
+      "C": s.opsi ? (s.opsi.C || "") : "",
+      "D": s.opsi ? (s.opsi.D || "") : "",
+      "E": s.opsi ? (s.opsi.E || "") : "",
+      "Kunci": kunciFormatted,
+      "Pasangan": pasanganFormatted
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(excelData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Arsip Soal");
+  
+  const namaFileClean = (currentUjianActive.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
+  XLSX.writeFile(wb, `Arsip_Soal_${namaFileClean}.xlsx`);
+};
