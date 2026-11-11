@@ -447,6 +447,80 @@
         prosesKumpulJawaban();
       }
     };
+    /* ===================================================
+   FITUR PENGAMAN UJIAN SISWA: 
+   1. AUTO-SAVE & RESTORE JAWABAN (ANTI RELOAD)
+   2. SCREEN WAKE LOCK (PREVENT SLEEP)
+   3. DETEKSI PINDAH TAB / KELUAR APLIKASI
+   =================================================== */
+
+let wakeLock = null;
+
+// 1. MENCEGAH LAYAR HP SLEEP / PADAM
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Wake Lock aktif: Layar tidak akan sleep.');
+    }
+  } catch (err) {
+    console.log(`Wake Lock Error: ${err.name}, ${err.message}`);
+  }
+}
+
+// Re-apply Wake Lock jika halaman difokuskan kembali
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible') {
+    await requestWakeLock();
+  }
+});
+
+// Activate Wake Lock saat ujian dimulai
+requestWakeLock();
+
+
+// 2. SISTEM AUTO-SAVE JAWABAN KELOCALSTORAGE (PER UJIAN)
+window.simpanProgressUjianSiswa = function(ujianId, nisn, jawabanObj, sisaWaktuDetik) {
+  if (!ujianId || !nisn) return;
+  const storageKey = `cbt_progress_${ujianId}_${nisn}`;
+  const dataProgress = {
+    jawaban: jawabanObj,
+    sisaWaktu: sisaWaktuDetik,
+    lastUpdate: Date.now()
+  };
+  localStorage.setItem(storageKey, JSON.stringify(dataProgress));
+};
+
+// AMBIL PROGRESS TERAKHIR SAAT HALAMAN DI-RELOAD
+window.muatProgressUjianSiswa = function(ujianId, nisn) {
+  if (!ujianId || !nisn) return null;
+  const storageKey = `cbt_progress_${ujianId}_${nisn}`;
+  const saved = localStorage.getItem(storageKey);
+  return saved ? JSON.parse(saved) : null;
+};
+
+// HAPUS PROGRESS SETELAH UJIAN SELESAI / SUBMIT DILAKUKAN
+window.hapusProgressUjianSiswa = function(ujianId, nisn) {
+  if (!ujianId || !nisn) return;
+  const storageKey = `cbt_progress_${ujianId}_${nisn}`;
+  localStorage.removeItem(storageKey);
+};
+
+
+// 3. DETEKSI KELUAR TAB / PINDAH APLIKASI
+let jumlahPelanggaran = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    jumlahPelanggaran++;
+    alert(`PERINGATAN [${jumlahPelanggaran}]!\nAnda terdeteksi meninggalkan halaman ujian. Tetap di halaman ini agar jawaban Anda tidak dibatalkan!`);
+  }
+});
+
+// Peringatan sebelum halaman di-refresh / ditutup accidental
+window.addEventListener("beforeunload", (e) => {
+  e.preventDefault();
+  e.returnValue = "Apakah Anda yakin ingin menyegarkan halaman? Ujian sedang berlangsung.";
+});
   </script>
 </body>
 </html>
