@@ -1131,7 +1131,6 @@ window.hapusSoalIndeks = (index) => {
 };
 
 // Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
-// Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
 const formTambahSoalEl = document.getElementById("formTambahSoal");
 if (formTambahSoalEl) {
   formTambahSoalEl.onsubmit = (e) => {
@@ -1144,19 +1143,12 @@ if (formTambahSoalEl) {
 
     let itemSoal = {
       id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex]
-        ? currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex].id
+        ? currentUjianActive.soal[currentEditSoalIndex].id
         : "SOAL-" + Date.now(),
       tipe, 
       pertanyaan, 
       gambarUrl
     };
-  
-  let itemSoal = {
-    id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex] 
-      ? currentUjianActive.soal[currentEditSoalIndex].id 
-      : "SOAL-" + Date.now(),
-    tipe, pertanyaan, gambarUrl
-  };
 
   if (tipe === "pg") {
     itemSoal.opsi = {
