@@ -304,12 +304,17 @@ function renderTabelUjian() {
       </td>
       <td><span class="badge bg-primary">${jmlSoal} Soal</span></td>
       <td>
-        <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalSoal('${u.id}')">
-          <i class="bi bi-gear-fill me-1"></i> Soal
-        </button>
-        <button class="btn btn-sm btn-outline-danger" onclick="hapusUjian('${u.id}')">
-          <i class="bi bi-trash"></i>
-        </button>
+        <div class="btn-group btn-group-sm" role="group">
+          <button class="btn btn-outline-primary" onclick="openModalSoal('${u.id}')" title="Kelola Soal">
+            <i class="bi bi-gear-fill"></i> Soal
+          </button>
+          <button class="btn btn-outline-success" onclick="downloadArsipSoalById('${u.id}')" title="Download Arsip Soal">
+            <i class="bi bi-file-earmark-excel"></i>
+          </button>
+          <button class="btn btn-outline-danger" onclick="hapusUjian('${u.id}')" title="Hapus Ujian">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1287,4 +1292,46 @@ window.downloadArsipSoal = () => {
   
   const namaFileClean = (currentUjianActive.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
   XLSX.writeFile(wb, `Arsip_Soal_${namaFileClean}.xlsx`);
+};
+// FUNGSI DOWNLOAD ARSIP SOAL BERDASARKAN ID DARI TABEL UTAMA
+window.downloadArsipSoalById = (ujianId) => {
+  const u = daftarUjian.find(item => item.id === ujianId);
+  if (!u || !u.soal || u.soal.length === 0) {
+    return alert("Ujian ini belum memiliki soal untuk diunduh!");
+  }
+
+  const excelData = u.soal.map((s, index) => {
+    let kunciFormatted = "";
+    if (Array.isArray(s.kunci)) {
+      kunciFormatted = s.kunci.join(", ");
+    } else {
+      kunciFormatted = s.kunci || "";
+    }
+
+    let pasanganFormatted = "";
+    if (s.tipe === "mencocokkan" && s.pasangan) {
+      pasanganFormatted = s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ");
+    }
+
+    return {
+      "No": index + 1,
+      "Tipe": (s.tipe || "pg").toUpperCase(),
+      "Pertanyaan": s.pertanyaan || "",
+      "GambarURL": s.gambarUrl || "",
+      "A": s.opsi ? (s.opsi.A || "") : "",
+      "B": s.opsi ? (s.opsi.B || "") : "",
+      "C": s.opsi ? (s.opsi.C || "") : "",
+      "D": s.opsi ? (s.opsi.D || "") : "",
+      "E": s.opsi ? (s.opsi.E || "") : "",
+      "Kunci": kunciFormatted,
+      "Pasangan": pasanganFormatted
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(excelData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Arsip Soal");
+  
+  const namaFileClean = (u.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
+  XLSX.writeFile(wb, `Arsip_Soal_${u.mapel}_${namaFileClean}.xlsx`);
 };
