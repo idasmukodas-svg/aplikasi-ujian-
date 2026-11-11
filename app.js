@@ -334,6 +334,12 @@ function handleSimpanUjian(e) {
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
   const status = document.getElementById("ujianStatus").value;
+  const pembuatInput = document.getElementById("ujianPembuat").value; // <--- Ambil pilihan guru
+
+  // Validasi pilihan guru pembuat
+  if (!pembuatInput) {
+    return alert("Silakan pilih guru pembuat soal terlebih dahulu!");
+  }
 
   // AMBIL MULTI-SELECT CHECKBOX KELAS
   let selectedKelas = [];
@@ -346,12 +352,10 @@ function handleSimpanUjian(e) {
     });
   }
 
-  // VALIDASI KELAS HARUS DIPILIH DULU
   if (selectedKelas.length === 0) {
     return alert("Pilih minimal satu target kelas!");
   }
 
-  // BUAT OBJEK UJIAN BARU DENGAN CREATEDBY
   const id = "UJN-" + Date.now();
   const newUjian = {
     id, 
@@ -362,7 +366,7 @@ function handleSimpanUjian(e) {
     token, 
     status, 
     soal: [],
-    createdBy: userSession.uid // <--- Penanda pembuat ujian
+    createdBy: pembuatInput // <--- Menyimpan nama/ID guru yang dipilih
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -813,13 +817,15 @@ window.openModalTambahUjian = () => {
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
   
-  if (userSession.role === "guru" && userSession.mapel) {
-    const inputMapel = document.getElementById("ujianMapel");
-    if (inputMapel) {
-      inputMapel.value = userSession.mapel;
-      inputMapel.readOnly = true;
-    }
-  }
+  if (userSession.role === "guru") {
+  daftarUjian = rawList.filter(u => {
+    const matchMapel = u.mapel && userSession.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim();
+    const matchOwner = u.createdBy === userSession.nama || u.createdBy === userSession.uid;
+    return matchMapel && matchOwner;
+  });
+} else {
+  daftarUjian = rawList; // Admin melihat semua
+}
 
   const modalEl = document.getElementById("modalUjian");
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
