@@ -1131,15 +1131,26 @@ window.hapusSoalIndeks = (index) => {
 };
 
 // Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
-document.getElementById("formTambahSoal")?.removeEventListener("submit", handleTambahSoal);
-document.getElementById("formTambahSoal")?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (!currentUjianActiveKey) return alert("Pilih ujian terlebih dahulu!");
+// Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
+const formTambahSoalEl = document.getElementById("formTambahSoal");
+if (formTambahSoalEl) {
+  formTambahSoalEl.onsubmit = (e) => {
+    e.preventDefault();
+    if (!currentUjianActiveKey) return alert("Pilih ujian terlebih dahulu!");
 
-  const tipe = document.getElementById("soalTipe").value;
-  const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
-  const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
+    const tipe = document.getElementById("soalTipe").value;
+    const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
+    const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
 
+    let itemSoal = {
+      id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex]
+        ? currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex].id
+        : "SOAL-" + Date.now(),
+      tipe, 
+      pertanyaan, 
+      gambarUrl
+    };
+  
   let itemSoal = {
     id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex] 
       ? currentUjianActive.soal[currentEditSoalIndex].id 
