@@ -1150,68 +1150,73 @@ if (formTambahSoalEl) {
       gambarUrl
     };
 
-  if (tipe === "pg") {
-    itemSoal.opsi = {
-      A: document.getElementById("soalA")?.value || "",
-      B: document.getElementById("soalB")?.value || "",
-      C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || "",
-      E: document.getElementById("soalE")?.value || ""
-    };
-    itemSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
-  } else if (tipe === "pg_kompleks") {
-    itemSoal.opsi = {
-      A: document.getElementById("soalA")?.value || "",
-      B: document.getElementById("soalB")?.value || "",
-      C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || "",
-      E: document.getElementById("soalE")?.value || ""
-    };
-    const checkedKunci = [];
-    ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
-      if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
-    });
-    itemSoal.kunci = checkedKunci;
-  } else if (tipe === "mencocokkan") {
-    const pasangan = [];
-    for (let i = 1; i <= 3; i++) {
-      const elKiri = document.getElementById(`matchKiri${i}`)?.value.trim();
-      const elKanan = document.getElementById(`matchKanan${i}`)?.value.trim();
-      if (elKiri && elKanan) pasangan.push({ kiri: elKiri, kanan: elKanan });
-    }
-    itemSoal.pasangan = pasangan;
-    itemSoal.kunci = "Sesuai Pasangan";
-  }
-
-  let listSoal = currentUjianActive.soal ? [...currentUjianActive.soal] : [];
-
-  if (currentEditSoalIndex !== null) {
-    // Mode Edit: Timpa soal pada indeks tersebut
-    listSoal[currentEditSoalIndex] = itemSoal;
-    currentEditSoalIndex = null;
-  } else {
-    // Mode Tambah Baru: Masukkan ke array
-    listSoal.push(itemSoal);
-  }
-
-  simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
-    .then(() => {
-      alert(currentEditSoalIndex !== null ? "Perubahan soal berhasil disimpan!" : "Soal berhasil ditambahkan!");
-      e.target.reset();
-      if (window.switchTipeSoal) window.switchTipeSoal("pg");
-
-      // Kembalikan tombol ke mode tambah
-      const btnSubmit = e.target.querySelector('button[type="submit"]');
-      if (btnSubmit) {
-        btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
-        btnSubmit.className = "btn btn-primary w-100";
+    if (tipe === "pg") {
+      itemSoal.opsi = {
+        A: document.getElementById("soalA")?.value || "",
+        B: document.getElementById("soalB")?.value || "",
+        C: document.getElementById("soalC")?.value || "",
+        D: document.getElementById("soalD")?.value || "",
+        E: document.getElementById("soalE")?.value || ""
+      };
+      itemSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
+    } else if (tipe === "pg_kompleks") {
+      itemSoal.opsi = {
+        A: document.getElementById("soalA")?.value || "",
+        B: document.getElementById("soalB")?.value || "",
+        C: document.getElementById("soalC")?.value || "",
+        D: document.getElementById("soalD")?.value || "",
+        E: document.getElementById("soalE")?.value || ""
+      };
+      const checkedKunci = [];
+      ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
+        if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
+      });
+      itemSoal.kunci = checkedKunci;
+    } else if (tipe === "mencocokkan") {
+      const pasangan = [];
+      for (let i = 1; i <= 3; i++) {
+        const elKiri = document.getElementById(`matchKiri${i}`)?.value.trim();
+        const elKanan = document.getElementById(`matchKanan${i}`)?.value.trim();
+        if (elKiri && elKanan) pasangan.push({ kiri: elKiri, kanan: elKanan });
       }
+      itemSoal.pasangan = pasangan;
+      itemSoal.kunci = "Sesuai Pasangan";
+    }
 
-      currentUjianActive.soal = listSoal;
-      window.renderDaftarSoalInteraktif(listSoal);
-    })
-    .catch((err) => alert("Gagal menyimpan soal: " + err.message));
-});
+    let listSoal = currentUjianActive.soal ? [...currentUjianActive.soal] : [];
+
+    // Variabel penyimpan indeks edit sementara sebelum di-reset
+    const isEditMode = currentEditSoalIndex !== null;
+
+    if (isEditMode) {
+      // Mode Edit: Timpa soal pada indeks tersebut
+      listSoal[currentEditSoalIndex] = itemSoal;
+      currentEditSoalIndex = null;
+    } else {
+      // Mode Tambah Baru: Masukkan ke array
+      listSoal.push(itemSoal);
+    }
+
+    simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
+      .then(() => {
+        alert(isEditMode ? "Perubahan soal berhasil disimpan!" : "Soal berhasil ditambahkan!");
+        e.target.reset();
+        if (window.switchTipeSoal) window.switchTipeSoal("pg");
+
+        // Kembalikan tombol ke mode tambah
+        const btnSubmit = e.target.querySelector('button[type="submit"]');
+        if (btnSubmit) {
+          btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
+          btnSubmit.className = "btn btn-primary w-100";
+        }
+
+        currentUjianActive.soal = listSoal;
+        window.renderDaftarSoalInteraktif(listSoal);
+      })
+      .catch((err) => alert("Gagal menyimpan soal: " + err.message));
+  };
+} // <--- KURUNG KURAWAL PENUTUP INI SEBELUMNYA KURANG
+
 /* ===================================================
    FITUR TAMBAHAN: DOWNLOAD ARSIP SOAL KE EXCEL
    =================================================== */
@@ -1255,6 +1260,7 @@ window.downloadArsipSoal = () => {
   const namaFileClean = (currentUjianActive.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
   XLSX.writeFile(wb, `Arsip_Soal_${namaFileClean}.xlsx`);
 };
+
 // FUNGSI DOWNLOAD ARSIP SOAL BERDASARKAN ID DARI TABEL UTAMA
 window.downloadArsipSoalById = (ujianId) => {
   const u = daftarUjian.find(item => item.id === ujianId);
