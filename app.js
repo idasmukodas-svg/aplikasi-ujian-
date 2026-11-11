@@ -817,16 +817,7 @@ window.openModalTambahUjian = () => {
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
   
-  if (userSession.role === "guru") {
-  daftarUjian = rawList.filter(u => {
-    const matchMapel = u.mapel && userSession.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim();
-    const matchOwner = u.createdBy === userSession.nama || u.createdBy === userSession.uid;
-    return matchMapel && matchOwner;
-  });
-} else {
-  daftarUjian = rawList; // Admin melihat semua
-}
-
+  // Perbaikan: Hapus penyaringan rawList yang error, cukup tampilkan modal form ujian baru
   const modalEl = document.getElementById("modalUjian");
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
@@ -880,7 +871,6 @@ window.switchTipeSoal = (tipe) => {
     containerMencocokkan.classList.remove("d-none");
   }
 };
-
 window.hapusSiswa = (nisn) => {
   if (confirm("Hapus siswa ini?")) {
     const cleanKey = String(nisn).replace(/[.#$\[\]]/g, "_");
