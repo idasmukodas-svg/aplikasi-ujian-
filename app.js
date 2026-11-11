@@ -975,3 +975,273 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
   XLSX.utils.book_append_sheet(wb, ws, "Rekap Nilai");
   XLSX.writeFile(wb, `Rekap_Nilai_CBT_${kelasFilter || 'Semua'}.xlsx`);
 };
+/* ===================================================
+   TAMBAHAN FITUR: MODAL KELOLA, LIHAT, & EDIT SOAL
+   =================================================== */
+
+let currentUjianActive = null;
+let currentUjianActiveKey = null;
+let currentEditSoalIndex = null; // Penanda jika sedang mode edit soal
+
+// Buka Modal Kelola Soal Berdasarkan ID Ujian
+window.openModalSoal = (ujianId) => {
+  const u = daftarUjian.find(item => item.id === ujianId);
+  if (!u) return alert("Ujian tidak ditemukan!");
+
+  currentUjianActive = u;
+  currentUjianActiveKey = u.id;
+  currentEditSoalIndex = null; // Reset mode edit
+
+  // Set Judul di Header Modal
+  const judulModal = document.getElementById("judulUjianSoal");
+  if (judulModal) {
+    judulModal.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${u.mapel} - ${u.judul}`;
+  }
+
+  // Reset form tambah/edit soal jika ada
+  const formSoal = document.getElementById("formTambahSoal");
+  if (formSoal) {
+    formSoal.reset();
+    const btnSubmit = formSoal.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+      btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
+      btnSubmit.className = "btn btn-primary w-100";
+    }
+  }
+
+  // Render daftar soal yang sudah ada
+  window.renderDaftarSoalInteraktif(u.soal || []);
+
+  // Tampilkan Modal menggunakan Bootstrap
+  const modalEl = document.getElementById("modalKelolaSoal");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+};
+
+// Render Daftar Soal dengan Tampilan Kartu Interaktif, Badge, Opsi, & Tombol Edit/Hapus
+window.renderDaftarSoalInteraktif = function(daftarSoal) {
+  const container = document.getElementById("listSoalUjian");
+  if (!container) return;
+
+  if (!daftarSoal || daftarSoal.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-4 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+        Belum ada soal dalam ujian ini.
+      </div>`;
+    return;
+  }
+
+  let html = "";
+  daftarSoal.forEach((soal, index) => {
+    // Badge Tipe Soal
+    let badgeTipe = '<span class="badge bg-primary me-1">PG</span>';
+    if (soal.tipe === "pg_kompleks") {
+      badgeTipe = '<span class="badge bg-info text-dark me-1">PG Kompleks</span>';
+    } else if (soal.tipe === "mencocokkan") {
+      badgeTipe = '<span class="badge text-white me-1" style="background-color: #6f42c1;">Menjodohkan</span>';
+    }
+
+    // Detail Opsi Pilihan A-E atau Pasangan Menjodohkan
+    let detailOpsi = "";
+    if ((soal.tipe === "pg" || soal.tipe === "pg_kompleks" || !soal.tipe) && soal.opsi) {
+      detailOpsi = `
+        <ul class="list-unstyled mb-2 text-secondary small ps-1">
+          ${soal.opsi.A ? `<li>• A. ${soal.opsi.A}</li>` : ""}
+          ${soal.opsi.B ? `<li>• B. ${soal.opsi.B}</li>` : ""}
+          ${soal.opsi.C ? `<li>• C. ${soal.opsi.C}</li>` : ""}
+          ${soal.opsi.D ? `<li>• D. ${soal.opsi.D}</li>` : ""}
+          ${soal.opsi.E ? `<li>• E. ${soal.opsi.E}</li>` : ""}
+        </ul>`;
+    } else if (soal.tipe === "mencocokkan" && soal.pasangan) {
+      detailOpsi = `
+        <div class="bg-light p-2 rounded mb-2 border small">
+          <strong>Pasangan:</strong>
+          ${soal.pasangan.map(p => `<div>• ${p.kiri} <i class="bi bi-arrow-right"></i> ${p.kanan}</div>`).join("")}
+        </div>`;
+    }
+
+    // Format Kunci Jawaban
+    let kunciText = Array.isArray(soal.kunci) ? soal.kunci.join(", ") : (soal.kunci || "-");
+
+    html += `
+      <div class="card mb-3 border shadow-sm">
+        <div class="card-body p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <span class="badge bg-dark me-1">Soal ke-${index + 1}</span>
+              ${badgeTipe}
+            </div>
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-warning text-dark px-2" onclick="isiFormEditSoal(${index})" title="Edit Soal">
+                <i class="bi bi-pencil me-1"></i>Edit
+              </button>
+              <button class="btn btn-outline-danger px-2" onclick="hapusSoalIndeks(${index})" title="Hapus Soal">
+                <i class="bi bi-trash me-1"></i>Hapus
+              </button>
+            </div>
+          </div>
+          
+          <p class="fw-semibold text-dark mb-2">${soal.pertanyaan}</p>
+          ${soal.gambarUrl ? `<img src="${soal.gambarUrl}" class="img-fluid rounded mb-2" style="max-height: 150px;">` : ""}
+          
+          ${detailOpsi}
+          
+          <div>
+            <span class="badge bg-success">Kunci: ${kunciText}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+};
+
+// Fungsi Mengisi Form Saat Tombol Edit Soal Ditekan
+window.isiFormEditSoal = (index) => {
+  if (!currentUjianActive || !currentUjianActive.soal || !currentUjianActive.soal[index]) return;
+
+  const soal = currentUjianActive.soal[index];
+  currentEditSoalIndex = index;
+
+  // Set Tipe Soal
+  const selectTipe = document.getElementById("soalTipe");
+  if (selectTipe) {
+    selectTipe.value = soal.tipe || "pg";
+    if (typeof window.switchTipeSoal === "function") {
+      window.switchTipeSoal(soal.tipe || "pg");
+    }
+  }
+
+  // Isi Pertanyaan & Gambar
+  document.getElementById("soalPertanyaan").value = soal.pertanyaan || "";
+  document.getElementById("soalGambarUrl").value = soal.gambarUrl || "";
+
+  // Isi Opsi PG / PG Kompleks
+  if (soal.opsi) {
+    if (document.getElementById("soalA")) document.getElementById("soalA").value = soal.opsi.A || "";
+    if (document.getElementById("soalB")) document.getElementById("soalB").value = soal.opsi.B || "";
+    if (document.getElementById("soalC")) document.getElementById("soalC").value = soal.opsi.C || "";
+    if (document.getElementById("soalD")) document.getElementById("soalD").value = soal.opsi.D || "";
+    if (document.getElementById("soalE")) document.getElementById("soalE").value = soal.opsi.E || "";
+  }
+
+  // Isi Kunci Jawaban
+  if (soal.tipe === "pg" || !soal.tipe) {
+    if (document.getElementById("soalKunciPG")) document.getElementById("soalKunciPG").value = soal.kunci || "A";
+  } else if (soal.tipe === "pg_kompleks") {
+    ["A", "B", "C", "D", "E"].forEach(opt => {
+      const chk = document.getElementById(`kunciKompleks${opt}`);
+      if (chk) {
+        chk.checked = Array.isArray(soal.kunci) ? soal.kunci.includes(opt) : (soal.kunci === opt);
+      }
+    });
+  }
+
+  // Ubah Teks Tombol Submit Form Menjadi Simpan Perubahan
+  const btnSubmit = document.querySelector('#formTambahSoal button[type="submit"]');
+  if (btnSubmit) {
+    btnSubmit.innerHTML = `<i class="bi bi-check-circle me-1"></i>Simpan Perubahan Soal`;
+    btnSubmit.className = "btn btn-warning w-100 fw-bold";
+  }
+};
+
+// Hapus Soal Berdasarkan Indeks
+window.hapusSoalIndeks = (index) => {
+  if (!currentUjianActive || !currentUjianActive.soal) return;
+
+  if (confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
+    let listSoal = [...currentUjianActive.soal];
+    listSoal.splice(index, 1);
+
+    simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
+      .then(() => {
+        currentUjianActive.soal = listSoal;
+        window.renderDaftarSoalInteraktif(listSoal);
+        alert("Soal berhasil dihapus!");
+      })
+      .catch(err => alert("Gagal menghapus soal: " + err.message));
+  }
+};
+
+// Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
+document.getElementById("formTambahSoal")?.removeEventListener("submit", handleTambahSoal);
+document.getElementById("formTambahSoal")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!currentUjianActiveKey) return alert("Pilih ujian terlebih dahulu!");
+
+  const tipe = document.getElementById("soalTipe").value;
+  const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
+  const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
+
+  let itemSoal = {
+    id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex] 
+      ? currentUjianActive.soal[currentEditSoalIndex].id 
+      : "SOAL-" + Date.now(),
+    tipe, pertanyaan, gambarUrl
+  };
+
+  if (tipe === "pg") {
+    itemSoal.opsi = {
+      A: document.getElementById("soalA")?.value || "",
+      B: document.getElementById("soalB")?.value || "",
+      C: document.getElementById("soalC")?.value || "",
+      D: document.getElementById("soalD")?.value || "",
+      E: document.getElementById("soalE")?.value || ""
+    };
+    itemSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
+  } else if (tipe === "pg_kompleks") {
+    itemSoal.opsi = {
+      A: document.getElementById("soalA")?.value || "",
+      B: document.getElementById("soalB")?.value || "",
+      C: document.getElementById("soalC")?.value || "",
+      D: document.getElementById("soalD")?.value || "",
+      E: document.getElementById("soalE")?.value || ""
+    };
+    const checkedKunci = [];
+    ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
+      if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
+    });
+    itemSoal.kunci = checkedKunci;
+  } else if (tipe === "mencocokkan") {
+    const pasangan = [];
+    for (let i = 1; i <= 3; i++) {
+      const elKiri = document.getElementById(`matchKiri${i}`)?.value.trim();
+      const elKanan = document.getElementById(`matchKanan${i}`)?.value.trim();
+      if (elKiri && elKanan) pasangan.push({ kiri: elKiri, kanan: elKanan });
+    }
+    itemSoal.pasangan = pasangan;
+    itemSoal.kunci = "Sesuai Pasangan";
+  }
+
+  let listSoal = currentUjianActive.soal ? [...currentUjianActive.soal] : [];
+
+  if (currentEditSoalIndex !== null) {
+    // Mode Edit: Timpa soal pada indeks tersebut
+    listSoal[currentEditSoalIndex] = itemSoal;
+    currentEditSoalIndex = null;
+  } else {
+    // Mode Tambah Baru: Masukkan ke array
+    listSoal.push(itemSoal);
+  }
+
+  simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
+    .then(() => {
+      alert(currentEditSoalIndex !== null ? "Perubahan soal berhasil disimpan!" : "Soal berhasil ditambahkan!");
+      e.target.reset();
+      if (window.switchTipeSoal) window.switchTipeSoal("pg");
+
+      // Kembalikan tombol ke mode tambah
+      const btnSubmit = e.target.querySelector('button[type="submit"]');
+      if (btnSubmit) {
+        btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
+        btnSubmit.className = "btn btn-primary w-100";
+      }
+
+      currentUjianActive.soal = listSoal;
+      window.renderDaftarSoalInteraktif(listSoal);
+    })
+    .catch((err) => alert("Gagal menyimpan soal: " + err.message));
+});
