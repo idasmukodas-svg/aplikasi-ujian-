@@ -346,13 +346,23 @@ function handleSimpanUjian(e) {
     });
   }
 
+  // VALIDASI KELAS HARUS DIPILIH DULU
   if (selectedKelas.length === 0) {
     return alert("Pilih minimal satu target kelas!");
   }
 
+  // BUAT OBJEK UJIAN BARU DENGAN CREATEDBY
   const id = "UJN-" + Date.now();
   const newUjian = {
-    id, mapel: mapelInput, kelasTarget: selectedKelas, judul, durasi: parseInt(durasi), token, status, soal: []
+    id, 
+    mapel: mapelInput, 
+    kelasTarget: selectedKelas, 
+    judul, 
+    durasi: parseInt(durasi), 
+    token, 
+    status, 
+    soal: [],
+    createdBy: userSession.uid // <--- Penanda pembuat ujian
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -363,63 +373,6 @@ function handleSimpanUjian(e) {
     })
     .catch((err) => alert("Gagal menyimpan: " + err.message));
 }
-
-function handleTambahSoal(e) {
-  e.preventDefault();
-  const u = daftarUjian.find(item => item.id === activeUjianId);
-  if (!u) return alert("Ujian aktif tidak ditemukan!");
-
-  const tipe = document.getElementById("soalTipe").value;
-  const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
-  const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
-
-  let newSoal = {
-    id: "SOAL-" + Date.now(), tipe, pertanyaan, gambarUrl
-  };
-
-  if (tipe === "pg") {
-    newSoal.opsi = {
-      A: document.getElementById("soalA")?.value || "",
-      B: document.getElementById("soalB")?.value || "",
-      C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || "",
-      E: document.getElementById("soalE")?.value || ""
-    };
-    newSoal.kunci = document.getElementById("soalKunciPG")?.value || "A";
-  } else if (tipe === "pg_kompleks") {
-    newSoal.opsi = {
-      A: document.getElementById("soalA")?.value || "",
-      B: document.getElementById("soalB")?.value || "",
-      C: document.getElementById("soalC")?.value || "",
-      D: document.getElementById("soalD")?.value || "",
-      E: document.getElementById("soalE")?.value || ""
-    };
-    const checkedKunci = [];
-    ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
-      if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
-    });
-    newSoal.kunci = checkedKunci;
-  } else if (tipe === "mencocokkan") {
-    const pasangan = [];
-    for (let i = 1; i <= 3; i++) {
-      const elKiri = document.getElementById(`matchKiri${i}`)?.value.trim();
-      const elKanan = document.getElementById(`matchKanan${i}`)?.value.trim();
-      if (elKiri && elKanan) pasangan.push({ kiri: elKiri, kanan: elKanan });
-    }
-    newSoal.pasangan = pasangan;
-  }
-
-  const updatedSoal = u.soal ? [...u.soal, newSoal] : [newSoal];
-
-  simpanSoalUjianAktif(activeUjianId, updatedSoal)
-    .then(() => {
-      alert("Soal berhasil ditambahkan!");
-      document.getElementById("formTambahSoal").reset();
-      if (window.switchTipeSoal) window.switchTipeSoal("pg");
-    })
-    .catch((err) => alert("Gagal menyimpan soal: " + err.message));
-}
-
 function renderDaftarSoal(ujian) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
