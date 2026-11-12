@@ -1205,7 +1205,7 @@ if (formTambahSoalEl) {
       })
       .catch((err) => alert("Gagal menyimpan soal: " + err.message));
   };
-} // <--- KURUNG KURAWAL PENUTUP INI SEBELUMNYA KURANG
+} 
 
 /* ===================================================
    FITUR TAMBAHAN: DOWNLOAD ARSIP SOAL KE EXCEL
@@ -1293,3 +1293,70 @@ window.downloadArsipSoalById = (ujianId) => {
   const namaFileClean = (u.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
   XLSX.writeFile(wb, `Arsip_Soal_${u.mapel}_${namaFileClean}.xlsx`);
 };
+
+// ===================================================
+// FUNGSI PENGISIAN DROPDOWN GURU PEMBUAT SOAL
+// ===================================================
+function updateGuruDropdown() {
+  const selectPembuat = document.getElementById("ujianPembuat");
+  if (!selectPembuat) return;
+
+  const currVal = selectPembuat.value;
+  selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pembuat Soal --</option>';
+
+  if (daftarPengguna && daftarPengguna.length > 0) {
+    daftarPengguna.forEach(p => {
+      if (p.role === "guru" || p.nama) {
+        const opt = document.createElement("option");
+        opt.value = p.nama || p.email;
+        opt.textContent = `${p.nama} (${p.mapel || 'Guru Pengampu'})`;
+        selectPembuat.appendChild(opt);
+      }
+    });
+  } else if (userSession) {
+    const opt = document.createElement("option");
+    opt.value = userSession.nama || userSession.email;
+    opt.textContent = `${userSession.nama || userSession.email} (${userSession.mapel || userSession.role})`;
+    selectPembuat.appendChild(opt);
+  }
+
+  selectPembuat.value = currVal;
+}
+
+// Fungsi untuk memuat dan mengisi dropdown Guru Pembuat Soal dari database Firebase
+function updateGuruDropdown() {
+  const selectPembuat = document.getElementById("ujianPembuat");
+  if (!selectPembuat) return;
+
+  const currVal = selectPembuat.value;
+  selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pembuat Soal --</option>';
+
+  // daftarPengguna di-load dari onValue(ref(db, "pengguna"))
+  if (daftarPengguna && daftarPengguna.length > 0) {
+    daftarPengguna.forEach(p => {
+      // Pastikan mengambil data yang rolenya 'guru' atau memiliki nama
+      if (p.role === "guru" || p.nama) {
+        const opt = document.createElement("option");
+        // Nilai yang disimpan ke database (createdBy) adalah Nama atau Email guru
+        opt.value = p.nama || p.email;
+        opt.textContent = `${p.nama} (${p.mapel || 'Guru Pengampu'})`;
+        selectPembuat.appendChild(opt);
+      }
+    });
+  } else if (userSession) {
+    // Fallback jika data realtime belum siap
+    const opt = document.createElement("option");
+    opt.value = userSession.nama || userSession.email;
+    opt.textContent = `${userSession.nama || userSession.email} (${userSession.mapel || userSession.role})`;
+    selectPembuat.appendChild(opt);
+  }
+
+  selectPembuat.value = currVal;
+}
+// Load Realtime Data Pengguna / Guru dari Firebase
+onValue(ref(db, "pengguna"), (snapshot) => {
+  const data = snapshot.val();
+  // Karena data di database berupa object dengan key unik, ubah ke array menggunakan Object.values()
+  daftarPengguna = data ? Object.values(data) : [];
+  updateGuruDropdown(); // Update dropdown otomatis setiap data guru berubah
+});
