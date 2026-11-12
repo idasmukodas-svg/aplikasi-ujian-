@@ -1340,11 +1340,12 @@ function updateGuruDropdown(mapelUjian = "") {
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
-  // Menyesuaikan dengan cara database dipanggil di aplikasi ini
+  // Menggunakan database reference standar
   const ujianRef = ref(db, `daftarUjian/${ujianId}`);
   
-  // Menggunakan get(child(...)) atau pembacaan standar Firebase
-  get(ujianRef).then((snapshot) => {
+  // Membaca data menggunakan onValue sekali (once) atau mengambil dari array lokal jika ada
+  // Cara aman dengan Firebase standard ref:
+  onValue(ujianRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
       
@@ -1359,9 +1360,7 @@ window.bukaModalEditUjian = (ujianId) => {
     } else {
       alert("Data ujian tidak ditemukan!");
     }
-  }).catch((error) => {
-    alert("Gagal memuat data ujian: " + error.message);
-  });
+  }, { onlyOnce: true });
 };
 window.simpanPerubahanUjian = (e) => {
   if (e) e.preventDefault();
