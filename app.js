@@ -1332,8 +1332,7 @@ function updateGuruDropdown(mapelUjian = "") {
         selectPembuat.appendChild(opt);
       }
     });
-     
-// ==========================================
+     // ==========================================
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
@@ -1386,5 +1385,8 @@ window.simpanPerubahanUjian = (e) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("formEditUjian")?.addEventListener("submit", window.simpanPerubahanUjian);
+  const formEdit = document.getElementById("formEditUjian");
+  if (formEdit) {
+    formEdit.addEventListener("submit", window.simpanPerubahanUjian);
+  }
 });
