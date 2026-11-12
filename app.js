@@ -1343,12 +1343,10 @@ window.bukaModalEditUjian = (ujianId) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
       
-      // Isi form dengan data yang sudah ada di database
       document.getElementById("editUjianId").value = ujianId;
       document.getElementById("editJudulUjian").value = data.judul || "";
       document.getElementById("editDurasiUjian").value = data.durasi || "";
       
-      // Tampilkan modal edit
       const modalEl = document.getElementById("modalEditUjian");
       if (modalEl && window.bootstrap) {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -1373,7 +1371,7 @@ window.simpanPerubahanUjian = (e) => {
     return;
   }
 
-  // Update data ke Firebase Realtime Database
+ // Update data ke Firebase Realtime Database
   update(ref(db, `daftarUjian/${ujianId}`), {
     judul: judulBaru,
     durasi: durasiBaru
@@ -1387,7 +1385,7 @@ window.simpanPerubahanUjian = (e) => {
   }).catch((error) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
-}; // <-- KURUNG INI YANG KURANG UNTUK MENUTUP window.simpanPerubahanUjian
+};
 
 // Daftarkan Event Listener Submit Form Edit Ujian
 document.addEventListener("DOMContentLoaded", () => {
