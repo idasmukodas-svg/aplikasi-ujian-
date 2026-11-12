@@ -3,7 +3,7 @@
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/...";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1340,7 +1340,10 @@ function updateGuruDropdown(mapelUjian = "") {
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
+  // Menyesuaikan dengan cara database dipanggil di aplikasi ini
   const ujianRef = ref(db, `daftarUjian/${ujianId}`);
+  
+  // Menggunakan get(child(...)) atau pembacaan standar Firebase
   get(ujianRef).then((snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
@@ -1360,7 +1363,6 @@ window.bukaModalEditUjian = (ujianId) => {
     alert("Gagal memuat data ujian: " + error.message);
   });
 };
-
 window.simpanPerubahanUjian = (e) => {
   if (e) e.preventDefault();
   
