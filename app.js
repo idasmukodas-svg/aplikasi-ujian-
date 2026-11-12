@@ -315,6 +315,9 @@ function renderTabelUjian() {
           <button class="btn btn-outline-primary" onclick="openModalSoal('${u.id}')" title="Kelola Soal">
             <i class="bi bi-gear-fill"></i> Soal
           </button>
+          <button class="btn btn-outline-warning" onclick="window.bukaModalEditUjian('${u.id}')" title="Edit Ujian">
+           <i class="bi bi-pencil-square"></i>
+          </button>
           <button class="btn btn-outline-success" onclick="downloadArsipSoalById('${u.id}')" title="Download Arsip Soal">
             <i class="bi bi-file-earmark-excel"></i>
           </button>
