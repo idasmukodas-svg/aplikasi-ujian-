@@ -1329,6 +1329,60 @@ function updateGuruDropdown(mapelUjian = "") {
         selectPembuat.appendChild(opt);
       }
     });
+     // ==========================================
+// FUNGSI EDIT UJIAN OLEH GURU / ADMIN
+// ==========================================
+window.bukaModalEditUjian = (ujianId) => {
+  const ujianRef = ref(db, `daftarUjian/${ujianId}`);
+  get(ujianRef).then((snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      
+      // Isi form dengan data yang sudah ada
+      document.getElementById("editUjianId").value = ujianId;
+      document.getElementById("editJudulUjian").value = data.judul || "";
+      document.getElementById("editDurasiUjian").value = data.durasi || "";
+      
+      // Tampilkan modal edit
+      const modalEl = document.getElementById("modalEditUjian");
+      if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }
+    } else {
+      alert("Data ujian tidak ditemukan!");
+    }
+  }).catch((error) => {
+    alert("Gagal memuat data ujian: " + error.message);
+  });
+};
+
+window.simpanPerubahanUjian = (e) => {
+  if (e) e.preventDefault();
+  
+  const ujianId = document.getElementById("editUjianId").value;
+  const judulBaru = document.getElementById("editJudulUjian").value.trim();
+  const durasiBaru = document.getElementById("editDurasiUjian").value.trim();
+
+  if (!ujianId || !judulBaru || !durasiBaru) {
+    alert("Mohon lengkapi semua data!");
+    return;
+  }
+
+  // Update data ke Firebase Realtime Database
+  update(ref(db, `daftarUjian/${ujianId}`), {
+    judul: judulBaru,
+    durasi: durasiBaru
+  }).then(() => {
+    alert("Ujian berhasil diperbarui!");
+    const modalEl = document.getElementById("modalEditUjian");
+    if (modalEl && window.bootstrap) {
+      bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+    if (typeof muatDaftarUjian === 'function') muatDaftarUjian();
+  }).catch((error) => {
+    alert("Gagal memperbarui ujian: " + error.message);
+  });
+};
   }
 
   // Fallback jika daftarPengguna dari Firebase kosong
