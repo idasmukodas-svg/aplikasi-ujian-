@@ -1332,7 +1332,11 @@ function updateGuruDropdown(mapelUjian = "") {
         selectPembuat.appendChild(opt);
       }
     });
-     // ==========================================
+  }
+} // <-- INI TANDA TUTUP YANG SEBELUMNYA KURANG UNTUK FUNGSI updateGuruDropdown
+
+
+// ==========================================
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
