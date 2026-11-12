@@ -817,7 +817,9 @@ window.openModalTambahUjian = () => {
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
   
-  // Perbaikan: Hapus penyaringan rawList yang error, cukup tampilkan modal form ujian baru
+  // Panggil fungsi updateGuruDropdown agar daftar guru langsung terisi saat modal dibuka
+  updateGuruDropdown();
+
   const modalEl = document.getElementById("modalUjian");
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
@@ -1295,25 +1297,35 @@ window.downloadArsipSoalById = (ujianId) => {
 };
 
 // ===================================================
-// FUNGSI PENGISIAN DROPDOWN GURU PEMBUAT SOAL
+// FUNGSI PENGISIAN DROPDOWN GURU PEMBUAT SOAL (FILTERED)
 // ===================================================
-function updateGuruDropdown() {
+function updateGuruDropdown(mapelUjian = "") {
   const selectPembuat = document.getElementById("ujianPembuat");
   if (!selectPembuat) return;
 
   const currVal = selectPembuat.value;
-  selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pembuat Soal --</option>';
+  selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pengampu --</option>';
+
+  const addedNames = new Set();
 
   if (daftarPengguna && daftarPengguna.length > 0) {
     daftarPengguna.forEach(p => {
-      if (p.role === "guru" || p.nama) {
+      // Pastikan hanya mengambil user yang rolenya benar-benar 'guru'
+      const isGuru = p.role && p.role.toLowerCase() === "guru";
+      
+      // Jika mapel ujian dipilih, kita bisa sesuaikan atau tampilkan semua guru yang aktif
+      if (isGuru && p.nama && !addedNames.has(p.nama)) {
+        addedNames.add(p.nama);
         const opt = document.createElement("option");
-        opt.value = p.nama || p.email;
-        opt.textContent = `${p.nama} (${p.mapel || 'Guru Pengampu'})`;
+        opt.value = p.nama; // Nilai yang disimpan adalah nama guru
+        opt.textContent = `${p.nama} - ${p.mapel || 'Guru Pengampu'}`;
         selectPembuat.appendChild(opt);
       }
     });
-  } else if (userSession) {
+  }
+
+  // Fallback jika daftarPengguna dari Firebase kosong
+  if (addedNames.size === 0 && userSession) {
     const opt = document.createElement("option");
     opt.value = userSession.nama || userSession.email;
     opt.textContent = `${userSession.nama || userSession.email} (${userSession.mapel || userSession.role})`;
@@ -1322,5 +1334,4 @@ function updateGuruDropdown() {
 
   selectPembuat.value = currVal;
 }
-
 
