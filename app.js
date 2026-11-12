@@ -1382,6 +1382,7 @@ window.simpanPerubahanUjian = (e) => {
       bootstrap.Modal.getInstance(modalEl)?.hide();
     }
     if (typeof renderTabelUjian === 'function') renderTabelUjian();
+  if (typeof renderTabelUjian === 'function') renderTabelUjian();
   }).catch((error) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
