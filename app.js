@@ -1387,7 +1387,7 @@ window.simpanPerubahanUjian = (e) => {
   }).catch((error) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
-};
+}; // <-- KURUNG INI YANG KURANG UNTUK MENUTUP window.simpanPerubahanUjian
 
 // Daftarkan Event Listener Submit Form Edit Ujian
 document.addEventListener("DOMContentLoaded", () => {
