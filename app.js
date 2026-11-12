@@ -1333,6 +1333,8 @@ function updateGuruDropdown(mapelUjian = "") {
       }
     });
      // ==========================================
+     
+// ==========================================
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
@@ -1341,7 +1343,7 @@ window.bukaModalEditUjian = (ujianId) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
       
-      // Isi form dengan data yang sudah ada
+      // Isi form dengan data yang sudah ada di database
       document.getElementById("editUjianId").value = ujianId;
       document.getElementById("editJudulUjian").value = data.judul || "";
       document.getElementById("editDurasiUjian").value = data.durasi || "";
@@ -1381,21 +1383,13 @@ window.simpanPerubahanUjian = (e) => {
     if (modalEl && window.bootstrap) {
       bootstrap.Modal.getInstance(modalEl)?.hide();
     }
-    if (typeof muatDaftarUjian === 'function') muatDaftarUjian();
+    if (typeof renderTabelUjian === 'function') renderTabelUjian();
   }).catch((error) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
 };
-  }
 
-  // Fallback jika daftarPengguna dari Firebase kosong
-  if (addedNames.size === 0 && userSession) {
-    const opt = document.createElement("option");
-    opt.value = userSession.nama || userSession.email;
-    opt.textContent = `${userSession.nama || userSession.email} (${userSession.mapel || userSession.role})`;
-    selectPembuat.appendChild(opt);
-  }
-
-  selectPembuat.value = currVal;
-}
-
+// Daftarkan Event Listener Submit Form Edit Ujian
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("formEditUjian")?.addEventListener("submit", window.simpanPerubahanUjian);
+});
