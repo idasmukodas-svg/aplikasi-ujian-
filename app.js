@@ -103,7 +103,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const navGuruTab = document.getElementById("navGuruTab");
     if (navGuruTab) navGuruTab.style.display = "none";
   }
-
+// Fungsi penanganan form tambah soal
+function handleTambahSoal(e) {
+  if (e) e.preventDefault();
+  
+  // Ambil data dari form tambah soal dan simpan ke database Firebase
+  const soalTeks = document.getElementById("soalTeks")?.value;
+  // ... logika penyimpanan soal ke node daftarUjian/${activeUjianId}/soal ...
+}
   // Event Listeners Form & Input
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
