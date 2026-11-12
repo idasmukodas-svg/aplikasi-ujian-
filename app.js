@@ -1371,7 +1371,7 @@ window.simpanPerubahanUjian = (e) => {
     return;
   }
 
- // Update data ke Firebase Realtime Database
+  // Update data ke Firebase Realtime Database
   update(ref(db, `daftarUjian/${ujianId}`), {
     judul: judulBaru,
     durasi: durasiBaru
@@ -1382,7 +1382,6 @@ window.simpanPerubahanUjian = (e) => {
       bootstrap.Modal.getInstance(modalEl)?.hide();
     }
     if (typeof renderTabelUjian === 'function') renderTabelUjian();
-  if (typeof renderTabelUjian === 'function') renderTabelUjian();
   }).catch((error) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
