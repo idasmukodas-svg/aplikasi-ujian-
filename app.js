@@ -1370,7 +1370,6 @@ window.simpanPerubahanUjian = (e) => {
     return;
   }
 
-  // Update data ke Firebase Realtime Database
   update(ref(db, `daftarUjian/${ujianId}`), {
     judul: judulBaru,
     durasi: durasiBaru
@@ -1386,7 +1385,6 @@ window.simpanPerubahanUjian = (e) => {
   });
 };
 
-// Daftarkan Event Listener Submit Form Edit Ujian
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formEditUjian")?.addEventListener("submit", window.simpanPerubahanUjian);
 });
