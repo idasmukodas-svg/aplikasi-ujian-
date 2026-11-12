@@ -1332,7 +1332,6 @@ function updateGuruDropdown(mapelUjian = "") {
         selectPembuat.appendChild(opt);
       }
     });
-     // ==========================================
      
 // ==========================================
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
