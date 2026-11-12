@@ -1340,11 +1340,10 @@ function updateGuruDropdown(mapelUjian = "") {
 // FUNGSI EDIT UJIAN OLEH GURU / ADMIN
 // ==========================================
 window.bukaModalEditUjian = (ujianId) => {
-  // Menggunakan db.ref() standar yang sudah ada di aplikasi
-  db.ref(`daftarUjian/${ujianId}`).once("value").then((snapshot) => {
+  const ujianRef = ref(db, `daftarUjian/${ujianId}`);
+  get(ujianRef).then((snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-      
       document.getElementById("editUjianId").value = ujianId;
       document.getElementById("editJudulUjian").value = data.judul || "";
       document.getElementById("editDurasiUjian").value = data.durasi || "";
