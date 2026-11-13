@@ -118,6 +118,11 @@
           <i class="bi bi-person-badge-fill me-1"></i>Kelola Akun Guru
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+  <button class="nav-link fw-semibold" id="tabMonitoring" data-bs-toggle="pill" data-bs-target="#contentMonitoring" type="button" role="tab">
+    <i class="bi bi-eye-fill me-1"></i>Monitoring Ujian
+  </button>
+      </li>
     </ul>
 
     <!-- KONTEN TAB -->
@@ -670,7 +675,44 @@
     </div>
   </div>
 </div>
-
+<!-- TAB CONTENT: MONITORING UJIAN & RESET PESERTA -->
+<div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+      <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Pengawasan & Reset Peserta Ujian</h5>
+    </div>
+    <div class="card-body">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Pilih Jadwal Ujian:</label>
+          <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
+            <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle border">
+          <thead class="table-dark">
+            <tr>
+              <th>No</th>
+              <th>NISN</th>
+              <th>Nama Siswa</th>
+              <th>Kelas</th>
+              <th>Status Sesi</th>
+              <th>Waktu Mulai</th>
+              <th class="text-center">Aksi / Reset</th>
+            </tr>
+          </thead>
+          <tbody id="tabelMonitoringBody">
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- App JS -->
