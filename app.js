@@ -1406,3 +1406,82 @@ window.resetStatusPeserta = async (ujianId, nisn) => {
     }
   }
 };
+// --- LOAD PILIHAN UJIAN DI MENU MONITORING ---
+window.loadDaftarUjianMonitoring = () => {
+  const selectUjian = document.getElementById("selectUjianMonitoring");
+  if (!selectUjian) return;
+
+  db.ref("daftarUjian").on("value", (snapshot) => {
+    selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnap) => {
+        const ujianId = childSnap.key;
+        const data = childSnap.val();
+        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel} - ${data.judul} (Token: ${data.token})</option>`;
+      });
+    }
+  });
+};
+
+// --- LOAD DATA STATUS PESERTA SECARA REAL-TIME ---
+window.loadDataMonitoring = () => {
+  const ujianId = document.getElementById("selectUjianMonitoring").value;
+  const tbody = document.getElementById("tabelMonitoringBody");
+  
+  if (!ujianId) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+    return;
+  }
+
+  // Ambil data statusPeserta dari Firebase secara real-time
+  db.ref(`statusPeserta/${ujianId}`).on("value", (snapshot) => {
+    tbody.innerHTML = "";
+    if (!snapshot.exists()) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
+      return;
+    }
+
+    let no = 1;
+    snapshot.forEach((childSnap) => {
+      const nisn = childSnap.key;
+      const s = childSnap.val();
+
+      let badgeStatus = "";
+      if (s.status === "sedang_mengerjakan") {
+        badgeStatus = `<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Sedang Mengerjakan</span>`;
+      } else if (s.status === "terlempar") {
+        badgeStatus = `<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Terlempar / Terkunci</span>`;
+      } else if (s.status === "selesai") {
+        badgeStatus = `<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Selesai</span>`;
+      } else {
+        badgeStatus = `<span class="badge bg-secondary">${s.status}</span>`;
+      }
+
+      // Tombol Reset hanya aktif jika statusnya terkunci/terlempar atau sedang mengerjakan
+      let tombolAksi = `
+        <button class="btn btn-sm btn-danger fw-bold" onclick="resetStatusPeserta('${ujianId}', '${nisn}')">
+          <i class="bi bi-arrow-clockwise me-1"></i>Reset Peserta
+        </button>
+      `;
+
+      tbody.innerHTML += `
+        <tr>
+          <td>${no++}</td>
+          <td>${s.nisn}</td>
+          <td class="fw-bold">${s.nama}</td>
+          <td>${s.kelas}</td>
+          <td>${badgeStatus}</td>
+          <td>${s.waktuMulai || '-'}</td>
+          <td class="text-center">${tombolAksi}</td>
+        </tr>
+      `;
+    });
+  });
+};
+
+// Panggil fungsi saat halaman admin dimuat
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("selectUjianMonitoring")) {
+    window.loadDaftarUjianMonitoring();
+  }
+});
