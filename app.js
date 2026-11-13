@@ -794,7 +794,7 @@ function renderTabelNilai(listHasil = hasilUjian) {
 
   listHasil.forEach((h, i) => {
     // h.id atau key unik dari Firebase hasil ujian
-    const resultId = h.id; 
+    const resultId = h.id;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -810,20 +810,7 @@ function renderTabelNilai(listHasil = hasilUjian) {
         </button>
       </td>
     `;
-    tbody.appendChild(tr);
-  });
-}
-
-  listHasil.forEach((h, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td class="font-monospace">${h.nisn || '-'}</td>
-      <td class="fw-bold">${h.nama || '-'} <span class="badge bg-light text-dark border ms-1">${h.kelas || '-'}</span></td>
-      <td>${h.mapel || '-'} - ${h.judul || '-'}</td>
-      <td><span class="badge bg-success fs-6">${h.nilai || 0}</span></td>
-      <td class="small text-muted">${h.waktuSelesai || '-'}</td>
-    `;
+    
     tbody.appendChild(tr);
   });
 
