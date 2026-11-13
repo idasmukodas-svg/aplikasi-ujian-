@@ -1560,3 +1560,20 @@ window.updateFilterUjianDropdown = async function() {
     console.error("Gagal memuat dropdown ujian:", error);
   }
 };
+
+// Panggil otomatis saat tombol/tab Monitoring Ujian diklik
+document.addEventListener("DOMContentLoaded", () => {
+  const tabMonitoring = document.querySelector('[onclick*="Monitoring"], button:has-text("Monitoring Ujian"), .btn-monitoring, [href*="monitoring"]');
+  
+  // Cari semua elemen yang berhubungan dengan tab monitoring dan pasang event listener
+  document.querySelectorAll("button, a, div").forEach(el => {
+    if (el.textContent && el.textContent.includes("Monitoring Ujian")) {
+      el.addEventListener("click", () => {
+        setTimeout(window.updateFilterUjianDropdown, 300);
+      });
+    }
+  });
+  
+  // Jalankan sekali saat halaman pertama kali dibuka jika elemennya sudah ada
+  setTimeout(window.updateFilterUjianDropdown, 500);
+});
