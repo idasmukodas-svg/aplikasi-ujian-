@@ -1535,45 +1535,22 @@ window.hapusHasilUjian = async (resultId) => {
   }
 };
 };
-window.updateFilterUjianDropdown = async function() {
+window.updateFilterUjianDropdown = function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
   selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
   
-  try {
-    const snapshot = await get(ref(db, "dattarUjian"));
-    if (snapshot.exists()) {
-      const dataUjian = snapshot.val();
-      
-      Object.values(dataUjian).forEach(ujian => {
-        const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-        if (namaUjian) {
-          const opt = document.createElement("option");
-          opt.value = namaUjian;
-          opt.textContent = namaUjian;
-          selectUjian.appendChild(opt);
-        }
-      });
-    }
-  } catch (error) {
-    console.error("Gagal memuat dropdown ujian:", error);
-  }
-};
-
-// Panggil otomatis saat tombol/tab Monitoring Ujian diklik
-document.addEventListener("DOMContentLoaded", () => {
-  const tabMonitoring = document.querySelector('[onclick*="Monitoring"], button:has-text("Monitoring Ujian"), .btn-monitoring, [href*="monitoring"]');
+  // Membaca langsung dari variabel daftarUjian yang sudah ditarik di baris 58/60
+  const sumberData = typeof daftarUjian !== 'undefined' ? daftarUjian : [];
   
-  // Cari semua elemen yang berhubungan dengan tab monitoring dan pasang event listener
-  document.querySelectorAll("button, a, div").forEach(el => {
-    if (el.textContent && el.textContent.includes("Monitoring Ujian")) {
-      el.addEventListener("click", () => {
-        setTimeout(window.updateFilterUjianDropdown, 300);
-      });
+  sumberData.forEach(ujian => {
+    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+    if (namaUjian) {
+      const opt = document.createElement("option");
+      opt.value = namaUjian;
+      opt.textContent = namaUjian;
+      selectUjian.appendChild(opt);
     }
   });
-  
-  // Jalankan sekali saat halaman pertama kali dibuka jika elemennya sudah ada
-  setTimeout(window.updateFilterUjianDropdown, 500);
-});
+};
