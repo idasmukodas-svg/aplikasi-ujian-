@@ -1535,28 +1535,27 @@ window.hapusHasilUjian = async (resultId) => {
   }
 };
 };
-window.updateFilterUjianDropdown = function() {
+window.updateFilterUjianDropdown = async function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  const sumberUjian = typeof daftarUjian !== 'undefined' ? daftarUjian : [];
-  
-  sumberUjian.forEach(ujian => {
-    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-    if (namaUjian) {
-      const opt = document.createElement("option");
-      opt.value = namaUjian;
-      opt.textContent = namaUjian;
-      selectUjian.appendChild(opt);
+  try {
+    const snapshot = await get(ref(db, "dattarUjian"));
+    if (snapshot.exists()) {
+      const dataUjian = snapshot.val();
+      Object.values(dataUjian).forEach(ujian => {
+        const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+        if (namaUjian) {
+          const opt = document.createElement("option");
+          opt.value = namaUjian;
+          opt.textContent = namaUjian;
+          selectUjian.appendChild(opt);
+        }
+      });
     }
-  });
-};
-// Listener untuk mendeteksi saat tab Monitoring Ujian diklik
-document.addEventListener("click", function(event) {
-  const target = event.target.closest("button, a, div");
-  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
-    setTimeout(window.updateFilterUjianDropdown, 200);
+  } catch (error) {
+    console.error("Gagal memuat dropdown ujian:", error);
   }
-});
+};
