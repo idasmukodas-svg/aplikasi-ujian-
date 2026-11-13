@@ -1535,3 +1535,23 @@ window.hapusHasilUjian = async (resultId) => {
   }
 };
 };
+window.updateFilterUjianDropdown = function() {
+  const selectUjian = document.getElementById("selectFilterUjian");
+  if (!selectUjian) return;
+  
+  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
+  
+  // Membaca langsung dari data ujian yang sudah ada di memori aplikasi
+  const sumberUjian = typeof daftarUjian !== 'undefined' ? daftarUjian : (window.semuaUjian || []);
+  const dataArray = Array.isArray(sumberUjian) ? sumberUjian : Object.values(sumberUjian);
+  
+  dataArray.forEach(ujian => {
+    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+    if (namaUjian) {
+      const opt = document.createElement("option");
+      opt.value = namaUjian;
+      opt.textContent = namaUjian;
+      selectUjian.appendChild(opt);
+    }
+  });
+};
