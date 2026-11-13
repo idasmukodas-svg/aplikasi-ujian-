@@ -1411,13 +1411,13 @@ window.loadDaftarUjianMonitoring = () => {
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
 
-  db.ref("daftarUjian").on("value", (snapshot) => {
+  onValue(ref(db, "daftarUjian"), (snapshot) => {
     selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
     if (snapshot.exists()) {
       snapshot.forEach((childSnap) => {
         const ujianId = childSnap.key;
         const data = childSnap.val();
-        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel} - ${data.judul} (Token: ${data.token})</option>`;
+        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel || 'Mapel'} - ${data.judul || 'Ujian'} (Token: ${data.token || '-'})</option>`;
       });
     }
   });
@@ -1433,8 +1433,7 @@ window.loadDataMonitoring = () => {
     return;
   }
 
-  // Ambil data statusPeserta dari Firebase secara real-time
-  db.ref(`statusPeserta/${ujianId}`).on("value", (snapshot) => {
+  onValue(ref(db, `statusPeserta/${ujianId}`), (snapshot) => {
     tbody.innerHTML = "";
     if (!snapshot.exists()) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
@@ -1457,7 +1456,6 @@ window.loadDataMonitoring = () => {
         badgeStatus = `<span class="badge bg-secondary">${s.status}</span>`;
       }
 
-      // Tombol Reset hanya aktif jika statusnya terkunci/terlempar atau sedang mengerjakan
       let tombolAksi = `
         <button class="btn btn-sm btn-danger fw-bold" onclick="resetStatusPeserta('${ujianId}', '${nisn}')">
           <i class="bi bi-arrow-clockwise me-1"></i>Reset Peserta
@@ -1479,9 +1477,12 @@ window.loadDataMonitoring = () => {
   });
 };
 
-// Panggil fungsi saat halaman admin dimuat
+// Panggil otomatis saat tab Monitoring diklik atau halaman dimuat
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("selectUjianMonitoring")) {
-    window.loadDaftarUjianMonitoring();
+  const tabMonitoring = document.getElementById("tabMonitoring");
+  if (tabMonitoring) {
+    tabMonitoring.addEventListener("click", () => {
+      window.loadDaftarUjianMonitoring();
+    });
   }
 });
