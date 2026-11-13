@@ -1539,12 +1539,12 @@ window.updateFilterUjianDropdown = function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
-  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
+  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  // Membaca langsung dari variabel daftarUjian yang sudah ditarik di baris 58/60
-  const sumberData = typeof daftarUjian !== 'undefined' ? daftarUjian : [];
+  // Mengambil data dari variabel list ujian yang sudah dimuat sistem
+  const sumberUjian = typeof daftarUjian !== 'undefined' ? daftarUjian : [];
   
-  sumberData.forEach(ujian => {
+  sumberUjian.forEach(ujian => {
     const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
     if (namaUjian) {
       const opt = document.createElement("option");
