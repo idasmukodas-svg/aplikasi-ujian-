@@ -1539,12 +1539,16 @@ window.updateFilterUjianDropdown = async function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
+  // Kosongkan dan beri teks default
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
   try {
+    // Ambil langsung dari database Firebase (node 'dattarUjian')
     const snapshot = await get(ref(db, "dattarUjian"));
     if (snapshot.exists()) {
       const dataUjian = snapshot.val();
+      
+      // Masukkan data ke dropdown
       Object.values(dataUjian).forEach(ujian => {
         const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
         if (namaUjian) {
@@ -1556,6 +1560,14 @@ window.updateFilterUjianDropdown = async function() {
       });
     }
   } catch (error) {
-    console.error("Gagal memuat dropdown ujian:", error);
+    console.error("Gagal memuat dropdown:", error);
   }
 };
+
+// Panggil otomatis saat tab Monitoring Ujian diklik
+document.addEventListener("click", function(event) {
+  const target = event.target.closest("button, a, div");
+  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
+    setTimeout(window.updateFilterUjianDropdown, 300);
+  }
+});
