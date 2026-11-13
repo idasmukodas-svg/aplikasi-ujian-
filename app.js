@@ -817,16 +817,19 @@ function renderTabelNilai(listHasil = hasilUjian) {
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
-  const currVal = selectUjian.value;
-  selectUjian.innerHTML = '<option value="">-- Semua Ujian --</option>';
-  daftarUjian.forEach(u => {
-    const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
-    const opt = document.createElement("option");
-    opt.value = u.id;
-    opt.textContent = `${u.mapel || ''} (${displayKelas}) - ${u.judul || ''}`;
-    selectUjian.appendChild(opt);
+  
+  // Ambil daftar unik ujian dari data yang ada
+  const daftarUjian = [...new Set(hasilUjian.map(h => h.judul))];
+  selectUjian.innerHTML = `<option value="">-- Semua Ujian --</option>`;
+  
+  daftarUjian.forEach(judul => {
+    if (judul) {
+      const opt = document.createElement("option");
+      opt.value = judul;
+      opt.textContent = judul;
+      selectUjian.appendChild(opt);
+    }
   });
-  selectUjian.value = currVal;
 }
 
 /* EXPOSE GLOBALS TO WINDOW */
