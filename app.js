@@ -1539,9 +1539,8 @@ window.updateFilterUjianDropdown = function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
-  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
+  selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  // Mengambil data dari variabel list ujian yang sudah dimuat sistem
   const sumberUjian = typeof daftarUjian !== 'undefined' ? daftarUjian : [];
   
   sumberUjian.forEach(ujian => {
