@@ -3,7 +3,7 @@
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -1392,3 +1392,17 @@ document.addEventListener("DOMContentLoaded", () => {
     formEdit.addEventListener("submit", window.simpanPerubahanUjian);
   }
 });
+// ==========================================
+// FUNGSI RESET STATUS PESERTA OLEH ADMIN
+// ==========================================
+window.resetStatusPeserta = async (ujianId, nisn) => {
+  if (confirm(`Yakin ingin mereset status siswa dengan NISN ${nisn}? Siswa akan diizinkan masuk kembali menggunakan token ujian.`)) {
+    try {
+      await remove(ref(db, `statusPeserta/${ujianId}/${nisn}`));
+      alert("Status peserta berhasil direset! Siswa kini dapat login kembali.");
+      if (typeof renderTabelMonitoring === 'function') renderTabelMonitoring();
+    } catch (error) {
+      alert("Gagal mereset status: " + error.message);
+    }
+  }
+};
