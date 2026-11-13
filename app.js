@@ -1553,3 +1553,10 @@ window.updateFilterUjianDropdown = function() {
     }
   });
 };
+// Listener untuk mendeteksi saat tab Monitoring Ujian diklik
+document.addEventListener("click", function(event) {
+  const target = event.target.closest("button, a, div");
+  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
+    setTimeout(window.updateFilterUjianDropdown, 200);
+  }
+});
