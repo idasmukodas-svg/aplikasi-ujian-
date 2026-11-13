@@ -90,6 +90,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.filterRekapNilai();
+     if (typeof updateFilterUjianDropdown === "function") {
+      updateFilterUjianDropdown();
+    }
   });
 
   // 5. Load Pengguna (Admin Only)
