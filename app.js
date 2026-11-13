@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       daftarUjian = rawList;
     }
+     window.daftarUjian = daftarUjian;
 
     renderStats();
     renderTabelUjian();
