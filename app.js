@@ -826,7 +826,6 @@ function renderTabelNilai(listHasil = hasilUjian) {
     `;
     tbody.appendChild(tr);
   });
-}
 
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
