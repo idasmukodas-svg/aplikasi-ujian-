@@ -81,8 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // 4. Load Realtime Hasil Ujian
   onValue(ref(db, "hasilUjian"), (snapshot) => {
     const data = snapshot.val();
-    const rawHasil = data ? Object.values(data) : [];
-
+    const rawHasil = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
+     
     if (userSession.role === "guru" && userSession.mapel) {
       hasilUjian = rawHasil.filter(h => h.mapel && h.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
     } else {
@@ -788,9 +788,31 @@ function renderTabelNilai(listHasil = hasilUjian) {
   tbody.innerHTML = "";
 
   if (listHasil.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada hasil ujian yang sesuai dengan filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada hasil ujian yang sesuai dengan filter.</td></tr>`;
     return;
   }
+
+  listHasil.forEach((h, i) => {
+    // h.id atau key unik dari Firebase hasil ujian
+    const resultId = h.id; 
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td class="font-monospace">${h.nisn || '-'}</td>
+      <td class="fw-bold">${h.nama || '-'} <span class="badge bg-light text-dark border ms-1">${h.kelas || '-'}</span></td>
+      <td>${h.mapel || '-'} - ${h.judul || '-'}</td>
+      <td><span class="badge bg-success fs-6">${h.nilai || 0}</span></td>
+      <td class="small text-muted">${h.waktuSelesai || '-'}</td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-danger fw-bold" onclick="hapusHasilUjian('${resultId}')">
+          <i class="bi bi-trash-fill me-1"></i>Hapus
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
   listHasil.forEach((h, i) => {
     const tr = document.createElement("tr");
