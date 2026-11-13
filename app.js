@@ -168,6 +168,23 @@ function renderStats() {
   if (statSiswa) statSiswa.innerText = daftarSiswa.length;
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
+function updateFilterUjianDropdown() {
+  const selectUjian = document.getElementById("selectFilterUjian");
+  if (!selectUjian) return;
+  
+  // Ambil daftar unik ujian dari data yang ada
+  const daftarUjian = [...new Set(hasilUjian.map(h => h.judul))];
+  selectUjian.innerHTML = `<option value="">-- Semua Ujian --</option>`;
+  
+  daftarUjian.forEach(judul => {
+    if (judul) {
+      const opt = document.createElement("option");
+      opt.value = judul;
+      opt.textContent = judul;
+      selectUjian.appendChild(opt);
+    }
+  });
+}
 
 /* ===================================================
    KELOLA KELAS DINAMIS
@@ -817,23 +834,6 @@ function renderTabelNilai(listHasil = hasilUjian) {
     tbody.appendChild(tr);
   });
 
-function updateFilterUjianDropdown() {
-  const selectUjian = document.getElementById("selectFilterUjian");
-  if (!selectUjian) return;
-  
-  // Ambil daftar unik ujian dari data yang ada
-  const daftarUjian = [...new Set(hasilUjian.map(h => h.judul))];
-  selectUjian.innerHTML = `<option value="">-- Semua Ujian --</option>`;
-  
-  daftarUjian.forEach(judul => {
-    if (judul) {
-      const opt = document.createElement("option");
-      opt.value = judul;
-      opt.textContent = judul;
-      selectUjian.appendChild(opt);
-    }
-  });
-}
 
 /* EXPOSE GLOBALS TO WINDOW */
 window.openModalTambahUjian = () => {
