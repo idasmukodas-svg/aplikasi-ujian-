@@ -1423,6 +1423,23 @@ window.loadDaftarUjianMonitoring = () => {
   });
 };
 
+// --- LOAD PILIHAN UJIAN DI MENU MONITORING ---
+window.loadDaftarUjianMonitoring = () => {
+  const selectUjian = document.getElementById("selectUjianMonitoring");
+  if (!selectUjian) return;
+
+  onValue(ref(db, "daftarUjian"), (snapshot) => {
+    selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnap) => {
+        const ujianId = childSnap.key;
+        const data = childSnap.val();
+        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel || 'Mapel'} - ${data.judul || 'Ujian'} (Token: ${data.token || '-'})</option>`;
+      });
+    }
+  });
+};
+
 // --- LOAD DATA STATUS PESERTA SECARA REAL-TIME ---
 window.loadDataMonitoring = () => {
   const ujianId = document.getElementById("selectUjianMonitoring").value;
@@ -1477,7 +1494,7 @@ window.loadDataMonitoring = () => {
   });
 };
 
-// Panggil otomatis saat tab Monitoring diklik atau halaman dimuat
+// Panggil otomatis saat tab Monitoring diklik
 document.addEventListener("DOMContentLoaded", () => {
   const tabMonitoring = document.getElementById("tabMonitoring");
   if (tabMonitoring) {
