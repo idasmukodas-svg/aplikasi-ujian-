@@ -1527,4 +1527,3 @@ window.hapusHasilUjian = async (resultId) => {
       alert("Terjadi kesalahan saat menghapus data.");
     }
   }
-};
