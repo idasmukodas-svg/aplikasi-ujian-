@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderStats();
     renderTabelUjian();
-    updateFilterUjianDropdown();
+    updateFilterUjianDropdown(); // Panggil fungsi dropdown
 
     if (activeUjianId) {
       const activeUjian = daftarUjian.find(u => u.id === activeUjianId);
@@ -71,6 +71,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // TAMBAHAN PENGAWAS KLIK TAB MONITORING UJIAN
+  // Memastikan dropdown terisi begitu tab "Monitoring Ujian" diklik oleh user
+  document.addEventListener("click", function(event) {
+    const target = event.target.closest("button, a, div");
+    if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
+      setTimeout(updateFilterUjianDropdown, 150);
+    }
+  });
+   
   // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
