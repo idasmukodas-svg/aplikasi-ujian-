@@ -324,12 +324,11 @@ function updateAllClassDropdowns() {
       const opt = document.createElement("option");
       opt.value = k.nama;
       opt.textContent = k.nama;
-      selectSiswa.appendChild(opt);
+      selectSiswa.appendChild(opt); // Pastikan ini selectSiswa, bukan selectSisiwa
     });
     selectSiswa.value = currVal;
   }
-}
-
+   
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL (MULTI KELAS TARGET)
    =================================================== */
