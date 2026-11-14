@@ -413,7 +413,7 @@ window.toggleStatusUjian = (id, currentStatus) => {
   update(ref(db, `daftarUjian/${id}`), { status: newStatus })
     .catch((err) => alert("Gagal mengubah status ujian: " + err.message));
 };
-
+   
 function handleSimpanUjian(e) {
   e.preventDefault();
   const mapelInput = document.getElementById("ujianMapel").value.trim();
