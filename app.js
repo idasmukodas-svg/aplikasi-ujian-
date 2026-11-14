@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAllClassDropdowns();
   });
 
-  // 2. Load Realtime Data Ujian
+// 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.values(data) : [];
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       daftarUjian = rawList;
     }
-     window.daftarUjian = daftarUjian;
+    window.daftarUjian = daftarUjian;
 
     renderStats();
     renderTabelUjian();
@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.filterRekapNilai();
-     if (typeof updateFilterUjianDropdown === "function") {
+    if (typeof updateFilterUjianDropdown === "function") {
       updateFilterUjianDropdown();
     }
   });
@@ -107,6 +107,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const navGuruTab = document.getElementById("navGuruTab");
     if (navGuruTab) navGuruTab.style.display = "none";
   }
+});
+
 // Fungsi penanganan form tambah soal
 function handleTambahSoal(e) {
   if (e) e.preventDefault();
@@ -115,7 +117,9 @@ function handleTambahSoal(e) {
   const soalTeks = document.getElementById("soalTeks")?.value;
   // ... logika penyimpanan soal ke node daftarUjian/${activeUjianId}/soal ...
 }
-  // Event Listeners Form & Input
+
+// Event Listeners Form & Input
+document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
   document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
@@ -169,11 +173,26 @@ function renderStats() {
   if (statSiswa) statSiswa.innerText = daftarSiswa.length;
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
+
+// Perbaikan fungsi dropdown agar berjalan sempurna
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
-  // Ambil daftar unik ujian dari data yang ada
+  selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
+  
+  const sumberUjian = window.daftarUjian || [];
+  
+  sumberUjian.forEach(ujian => {
+    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+    if (namaUjian) {
+      const opt = document.createElement("option");
+      opt.value = namaUjian;
+      opt.textContent = namaUjian;
+      selectUjian.appendChild(opt);
+    }
+  });
+}  // Ambil daftar unik ujian dari data yang ada
   const daftarUjian = [...new Set(hasilUjian.map(h => h.judul))];
   selectUjian.innerHTML = `<option value="">-- Semua Ujian --</option>`;
   
