@@ -219,6 +219,7 @@ function updateFilterUjianDropdown() {
     opt.value = namaUjian;
     opt.textContent = namaUjian;
     selectUjian.appendChild(opt);
+   }
   });
 }
 
