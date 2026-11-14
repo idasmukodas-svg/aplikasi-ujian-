@@ -52,7 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
-    const rawList = data ? Object.values(data) : [];
+    
+    // Perbaikan: Ubah Object Firebase menjadi Array dan pastikan ID-nya tersimpan
+    const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
     if (userSession.role === "guru" && userSession.mapel) {
       daftarUjian = rawList.filter(u => u.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
@@ -70,7 +72,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeUjian) renderDaftarSoal(activeUjian);
     }
   });
-
 // Panggil dropdown saat tab Monitoring Ujian diklik
 document.addEventListener("click", function(event) {
   const target = event.target.closest("button, a, div");
