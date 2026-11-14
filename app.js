@@ -193,13 +193,14 @@ function updateFilterUjianDropdown() {
     }
   });
 }  // Ambil daftar unik ujian dari data yang ada
-const selectUjian = document.getElementById("selectFilterUjian");
-if (selectUjian) {
-  const unikUjian = [...new Set(hasilUjian.map(h => h.judul))];
-  selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>' + 
-    unikUjian.map(judul => `<option value="${judul}">${judul}</option>`).join('');
-}  
-  daftarUjian.forEach(judul => {
+// Ambil daftar unik ujian dari data yang ada
+  selectUjian = document.getElementById("selectFilterUjian");
+  if (selectUjian) {
+    unikUjian = [...new Set(hasilUjian.map(h => h.judul))];
+    selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>' + 
+      unikUjian.map(judul => `<option value="${judul}">${judul}</option>`).join('');
+  } 
+daftarUjian.forEach(judul => {
     if (judul) {
       const opt = document.createElement("option");
       opt.value = judul;
