@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAllClassDropdowns();
   });
 
-// 2. Load Realtime Data Ujian
+  // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.values(data) : [];
@@ -174,7 +174,7 @@ function renderStats() {
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
-// Perbaikan fungsi dropdown agar berjalan sempurna
+// Fungsi dropdown ujian yang sudah dibersihkan dan disatukan
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
@@ -189,22 +189,6 @@ function updateFilterUjianDropdown() {
       const opt = document.createElement("option");
       opt.value = namaUjian;
       opt.textContent = namaUjian;
-      selectUjian.appendChild(opt);
-    }
-  });
-}  // Ambil daftar unik ujian dari data yang ada
-// Ambil daftar unik ujian dari data yang ada
-  selectUjian = document.getElementById("selectFilterUjian");
-  if (selectUjian) {
-    unikUjian = [...new Set(hasilUjian.map(h => h.judul))];
-    selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>' + 
-      unikUjian.map(judul => `<option value="${judul}">${judul}</option>`).join('');
-  } 
-daftarUjian.forEach(judul => {
-    if (judul) {
-      const opt = document.createElement("option");
-      opt.value = judul;
-      opt.textContent = judul;
       selectUjian.appendChild(opt);
     }
   });
