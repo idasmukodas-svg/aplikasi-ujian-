@@ -173,7 +173,7 @@ function renderTabelPengguna() {
   tbody.innerHTML = "";
   
   if (daftarPengguna.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada data pengguna.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada data akun guru/pengguna.</td></tr>`;
     return;
   }
 
@@ -181,14 +181,25 @@ function renderTabelPengguna() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${p.nama || '-'}</td>
+      <td class="fw-semibold">${p.nama || '-'}</td>
       <td>${p.email || '-'}</td>
-      <td><span class="badge bg-secondary">${p.role || '-'}</span></td>
-      <td>${p.mapel || '-'}</td>
+      <td><span class="badge bg-secondary">${p.mapel || '-'}</span></td>
+      <td><span class="badge bg-info text-dark">${p.role || '-'}</span></td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <button class="btn btn-outline-warning" onclick="bukaModalEditGuru('${p.id}')" title="Edit Akun">
+            <i class="bi bi-pencil-square"></i>
+          </button>
+          <button class="btn btn-outline-danger" onclick="hapusGuru('${p.id}')" title="Hapus Akun">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </td>
     `;
     tbody.appendChild(tr);
   });
 }
+
 window.logout = () => {
   signOut(auth).then(() => {
     sessionStorage.removeItem("userLoggedIn");
