@@ -181,18 +181,23 @@ function updateFilterUjianDropdown() {
   
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  // Ambil referensi dari daftar ujian global atau hasil ujian
-  const sumberUjian = window.daftarUjian || [];
+  // Gabungkan sumber data dari window.daftarUjian atau hasilUjian agar pasti terisi
+  let sumberJudul = [];
   
-  // Masukkan pilihan ke dropdown secara dinamis
-  sumberUjian.forEach(ujian => {
-    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-    if (namaUjian) {
-      const opt = document.createElement("option");
-      opt.value = namaUjian;
-      opt.textContent = namaUjian;
-      selectUjian.appendChild(opt);
-    }
+  if (window.daftarUjian && window.daftarUjian.length > 0) {
+    sumberJudul = window.daftarUjian.map(u => u.judul || u.mapel || u.namaUjian);
+  } else if (typeof hasilUjian !== 'undefined' && hasilUjian.length > 0) {
+    sumberJudul = hasilUjian.map(h => h.judul || h.mapel);
+  }
+  
+  // Hapus duplikat data supaya rapi
+  const daftarUnik = [...new Set(sumberJudul)].filter(Boolean);
+  
+  daftarUnik.forEach(namaUjian => {
+    const opt = document.createElement("option");
+    opt.value = namaUjian;
+    opt.textContent = namaUjian;
+    selectUjian.appendChild(opt);
   });
 }
 
