@@ -190,15 +190,19 @@ function updateFilterUjianDropdown() {
   
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  // Gabungkan sumber data dari window.daftarUjian atau hasilUjian agar pasti terisi
-  let sumberJudul = [];
+  const sumberUjian = window.daftarUjian || [];
   
-  if (window.daftarUjian && window.daftarUjian.length > 0) {
-    sumberJudul = window.daftarUjian.map(u => u.judul || u.mapel || u.namaUjian);
-  } else if (typeof hasilUjian !== 'undefined' && hasilUjian.length > 0) {
-    sumberJudul = hasilUjian.map(h => h.judul || h.mapel);
-  }
-  
+  sumberUjian.forEach(ujian => {
+    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+    if (namaUjian) {
+      const opt = document.createElement("option");
+      opt.value = namaUjian;
+      opt.textContent = namaUjian;
+      selectUjian.appendChild(opt);
+    }
+  });
+}
+
   // Hapus duplikat data supaya rapi
   const daftarUnik = [...new Set(sumberJudul)].filter(Boolean);
   
