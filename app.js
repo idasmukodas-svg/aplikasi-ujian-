@@ -211,18 +211,6 @@ function updateFilterUjianDropdown() {
   });
 }
 
-  // Hapus duplikat data supaya rapi
-  const daftarUnik = [...new Set(sumberJudul)].filter(Boolean);
-  
-  daftarUnik.forEach(namaUjian => {
-    const opt = document.createElement("option");
-    opt.value = namaUjian;
-    opt.textContent = namaUjian;
-    selectUjian.appendChild(opt);
-   }
-  });
-}
-
 /* ===================================================
    KELOLA KELAS DINAMIS
    =================================================== */
