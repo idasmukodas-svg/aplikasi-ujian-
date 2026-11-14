@@ -353,8 +353,8 @@ function updateAllClassDropdowns() {
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL (MULTI KELAS TARGET)
    =================================================== */
-function renderTabelUjian() {
-  const tbody = document.getElementById("tbodyUjian");
+window.renderTabelUjian = function() {
+   const tbody = document.getElementById("tbodyUjian");
   if (!tbody) return;
   tbody.innerHTML = "";
 
