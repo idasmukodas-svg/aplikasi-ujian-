@@ -167,7 +167,28 @@ function renderUserInfoNav() {
     userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'ADMIN' : 'Guru ' + (userSession.mapel || '')})`;
   }
 }
+function renderTabelPengguna() {
+  const tbody = document.getElementById("tbodyPengguna");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  
+  if (daftarPengguna.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Belum ada data pengguna.</td></tr>`;
+    return;
+  }
 
+  daftarPengguna.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${p.nama || '-'}</td>
+      <td>${p.email || '-'}</td>
+      <td><span class="badge bg-secondary">${p.role || '-'}</span></td>
+      <td>${p.mapel || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 window.logout = () => {
   signOut(auth).then(() => {
     sessionStorage.removeItem("userLoggedIn");
