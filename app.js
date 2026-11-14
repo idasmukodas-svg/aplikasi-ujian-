@@ -407,7 +407,60 @@ window.renderTabelUjian = function() {
     tbody.appendChild(tr);
   });
 }
+window.handleSimpanUjian = function(event) {
+  if (event) event.preventDefault();
+  
+  // Ambil data dari form modal pembuatan/edit ujian
+  const judul = document.getElementById("inputJudulUjian")?.value || "";
+  const mapel = document.getElementById("inputMapelUjian")?.value || "";
+  const durasi = document.getElementById("inputDurasiUjian")?.value || 60;
+  const token = document.getElementById("inputTokenUjian")?.value || "";
 
+  // Validasi sederhana
+  if (!judul || !mapel) {
+    alert("Judul dan Mata Pelajaran wajib diisi!");
+    return;
+  }
+
+  // Logika penyimpanan ke Firebase Realtime Database
+  // Sesuaikan path referensi database Anda (misal: "daftarUjian")
+  const ujianData = {
+    judul: judul,
+    mapel: mapel,
+    durasi: Number(durasi),
+    token: token,
+    status: "nonaktif"
+  };
+
+  // Jika sedang mode edit (ada ID aktif) atau tambah baru
+  const activeId = window.activeEditUjianId; 
+  if (activeId) {
+    update(ref(db, `daftarUjian/${activeId}`), ujianData)
+      .then(() => {
+        alert("Ujian berhasil diperbarui!");
+        // Tutup modal jika ada
+        const modalEl = document.getElementById("modalUjian");
+        if (modalEl && window.bootstrap) {
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) modal.hide();
+        }
+      })
+      .catch((err) => alert("Gagal memperbarui ujian: " + err.message));
+  } else {
+    // Tambah baru menggunakan push
+    const newRef = push(ref(db, "daftarUjian"));
+    set(newRef, ujianData)
+      .then(() => {
+        alert("Ujian baru berhasil ditambahkan!");
+        const modalEl = document.getElementById("modalUjian");
+        if (modalEl && window.bootstrap) {
+          const modal = bootstrap.Modal.getInstance(modalEl);
+          if (modal) modal.hide();
+        }
+      })
+      .catch((err) => alert("Gagal menyimpan ujian: " + err.message));
+  }
+};
 window.toggleStatusUjian = (id, currentStatus) => {
   const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
   update(ref(db, `daftarUjian/${id}`), { status: newStatus })
@@ -580,7 +633,7 @@ window.hapusGuru = (uid, nama) => {
   }
 };
 
-function renderTabelPengguna() {
+ renderTabelPengguna() {
   const tbody = document.getElementById("tbodyPengguna");
   if (!tbody) return;
   tbody.innerHTML = "";
