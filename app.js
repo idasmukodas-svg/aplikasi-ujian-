@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderStats();
     renderTabelUjian();
-    updateFilterUjianDropdown(); // Panggil fungsi dropdown
+    updateFilterUjianDropdown();
 
     if (activeUjianId) {
       const activeUjian = daftarUjian.find(u => u.id === activeUjianId);
@@ -71,6 +71,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+// Panggil dropdown saat tab Monitoring Ujian diklik
+document.addEventListener("click", function(event) {
+  const target = event.target.closest("button, a, div");
+  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
+    setTimeout(updateFilterUjianDropdown, 150);
+  }
+});
+   
   // TAMBAHAN PENGAWAS KLIK TAB MONITORING UJIAN
   // Memastikan dropdown terisi begitu tab "Monitoring Ujian" diklik oleh user
   document.addEventListener("click", function(event) {
