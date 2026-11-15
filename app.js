@@ -852,26 +852,27 @@ window.openModalTambahUjian = () => {
   
   updateGuruDropdown();
 
-  // Otomatis isi dan kunci pengampu jika yang login adalah Guru
+  // Targetkan langsung ke "ujianPembuat" sesuai form ujian Anda
+  const selectPembuat = document.getElementById("ujianPembuat");
+
   if (userSession.role !== "admin") {
-    const selectGuru = document.getElementById("ujianGuru") || document.getElementById("selectGuruUjian") || document.querySelector("#formUjian select[name*='guru'], #formUjian select[id*='Guru']");
-    if (selectGuru) {
+    if (selectPembuat) {
       const namaGuru = userSession.nama || userSession.username || "";
+      
       // Pastikan nama guru ada di dalam opsi dropdown, jika belum ada tambahkan
-      let opsiAda = Array.from(selectGuru.options).some(opt => opt.value === namaGuru);
+      let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value === namaGuru);
       if (!opsiAda && namaGuru) {
         const opt = document.createElement("option");
         opt.value = namaGuru;
         opt.textContent = namaGuru;
-        selectGuru.appendChild(opt);
+        selectPembuat.appendChild(opt);
       }
-      selectGuru.value = namaGuru;
-      selectGuru.disabled = true; // Kunci agar guru tidak salah pilih nama guru lain
+      selectPembuat.value = namaGuru;
+      selectPembuat.disabled = true; // Kunci agar guru tidak perlu memilih lagi
     }
   } else {
     // Jika Admin, pastikan dropdown terbuka bebas
-    const selectGuru = document.getElementById("ujianGuru") || document.getElementById("selectGuruUjian") || document.querySelector("#formUjian select[name*='guru'], #formUjian select[id*='Guru']");
-    if (selectGuru) selectGuru.disabled = false;
+    if (selectPembuat) selectPembuat.disabled = false;
   }
 
   const modalEl = document.getElementById("modalUjian");
