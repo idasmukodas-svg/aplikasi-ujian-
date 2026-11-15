@@ -1655,16 +1655,15 @@ window.updateFilterUjianDropdown = function() {
   const sumberUjian = window.daftarUjian || [];
   
   // Masukkan data ke dropdown
-  sumberUjian.forEach(ujian => {
-    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-    if (namaUjian) {
-      const opt = document.createElement("option");
-      opt.value = namaUjian;
-      opt.textContent = namaUjian;
-      selectUjian.appendChild(opt);
-    }
-  });
-};
+sumberUjian.forEach(ujian => {
+  const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+  if (namaUjian) {
+    const opt = document.createElement("option");
+    opt.value = namaUjian;
+    opt.textContent = namaUjian;
+    selectUjian.appendChild(opt);
+  }
+});
 
 // Panggil otomatis saat tab Monitoring Ujian diklik
 document.addEventListener("click", function(event) {
