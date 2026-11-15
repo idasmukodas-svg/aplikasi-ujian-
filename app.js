@@ -1672,5 +1672,4 @@ document.addEventListener("click", function(event) {
   if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
     setTimeout(window.updateFilterUjianDropdown, 200);
   }
-  });
 });
