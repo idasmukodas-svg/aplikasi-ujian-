@@ -905,6 +905,22 @@ window.downloadTemplateSiswa = () => {
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
 };
 
+window.openModalEditGuru = (uid) => {
+  const g = daftarPengguna.find(p => p.uid === uid);
+  if (!g) return alert("Data guru tidak ditemukan!");
+
+  document.getElementById("editGuruUid").value = g.uid;
+  document.getElementById("editGuruNama").value = g.nama || "";
+  document.getElementById("editGuruEmail").value = g.email || "";
+  document.getElementById("editGuruMapel").value = g.mapel || "";
+  document.getElementById("editGuruPassword").value = "";
+
+  const modalEl = document.getElementById("modalEditGuru");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+};
+
 window.downloadTemplateSoal = () => {
   const data = [
     { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", E: "Scanner", Kunci: "B", Pasangan: "" },
