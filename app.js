@@ -1428,9 +1428,15 @@ window.updateFilterUjianDropdown = function() {
   });
 };
 
+function handleTambahSoal(e) {
+  if (e) e.preventDefault();
+  // Fungsi penanganan form tambah soal interaktif
+}
+
 document.addEventListener("click", function(event) {
   const target = event.target.closest("button, a, div");
   if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
     setTimeout(window.updateFilterUjianDropdown, 200);
   }
 });
+
