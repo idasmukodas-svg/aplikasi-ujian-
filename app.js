@@ -1626,14 +1626,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 // --- FUNGSI HAPUS HASIL UJIAN SISWA ---
 window.hapusHasilUjian = async (resultId) => {
   if (confirm("Apakah Anda yakin ingin menghapus data hasil ujian siswa ini?")) {
     try {
-      // Sesuaikan path database hasil ujian Anda, contoh: "hasilUjian/{resultId}"
       await remove(ref(db, `hasilUjian/${resultId}`));
       alert("Data hasil ujian berhasil dihapus.");
-      // Panggil ulang fungsi pemuat data rekap jika ada
       if (typeof loadRekapNilai === "function") {
         loadRekapNilai();
       }
@@ -1643,27 +1642,24 @@ window.hapusHasilUjian = async (resultId) => {
     }
   }
 };
-};
+
 window.updateFilterUjianDropdown = function() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
-  // Kosongkan dan beri teks default
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
   
-  // Ambil data dari variabel global yang sudah dimuat sebelumnya
   const sumberUjian = window.daftarUjian || [];
   
- // Masukkan data ke dropdown
-sumberUjian.forEach(ujian => {
-  const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-  if (namaUjian) {
-    const opt = document.createElement("option");
-    opt.value = namaUjian;
-    opt.textContent = namaUjian;
-    selectUjian.appendChild(opt);
-  }
-});
+  sumberUjian.forEach(ujian => {
+    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
+    if (namaUjian) {
+      const opt = document.createElement("option");
+      opt.value = namaUjian;
+      opt.textContent = namaUjian;
+      selectUjian.appendChild(opt);
+    }
+  });
 };
 
 // Panggil otomatis saat tab Monitoring Ujian diklik
