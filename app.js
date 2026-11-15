@@ -941,28 +941,80 @@ window.hapusUjian = (id) => {
   if (confirm("Hapus ujian beserta seluruh soalnya?")) remove(ref(db, "daftarUjian/" + id));
 };
 
-window.openModalSoal = (ujianId) => {
-  const u = daftarUjian.find(item => item.id === ujianId);
-  if (!u) return alert("Ujian tidak ditemukan!");
+window.openModalTambahUjian = () => {
+  document.getElementById("formUjian")?.reset();
+  
+  const tokenEl = document.getElementById("ujianToken");
+  if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
+  
+  updateGuruDropdown();
 
-  currentUjianActive = u;
-  currentUjianActiveKey = u.id;
-  currentEditSoalIndex = null;
+  const selectPembuat = document.getElementById("ujianPembuat");
+  const mapelInput = document.getElementById("ujianMapel");
 
-  const judulModal = document.getElementById("judulUjianSoal");
-  if (judulModal) {
-    judulModal.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${u.mapel} - ${u.judul}`;
-  }
+  if (window.userSession && window.userSession.role !== "admin") {
+    const namaGuru = window.userSession.nama || window.userSession.username || "";
+    const mapelGuru = window.userSession.mapel || "";
+    const kelasGuru = window.userSession.kelas || []; 
 
-  const formSoal = document.getElementById("formTambahSoal");
-  if (formSoal) {
-    formSoal.reset();
-    const btnSubmit = formSoal.querySelector('button[type="submit"]');
-    if (btnSubmit) {
-      btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
-      btnSubmit.className = "btn btn-primary w-100";
+    // 1. Kunci nama pembuat ujian
+    if (selectPembuat) {
+      let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value === namaGuru);
+      if (!opsiAda && namaGuru) {
+        const opt = document.createElement("option");
+        opt.value = namaGuru;
+        opt.textContent = namaGuru;
+        selectPembuat.appendChild(opt);
+      }
+      selectPembuat.value = namaGuru;
+      selectPembuat.disabled = true;
     }
+
+    // 2. Mapel: Jika akun lama belum ada mapelnya, biarkan guru memilih manual. Jika sudah ada, kunci otomatis.
+    if (mapelInput) {
+      if (mapelGuru) {
+        mapelInput.value = mapelGuru;
+        mapelInput.disabled = true; 
+      } else {
+        mapelInput.value = "";
+        mapelInput.disabled = false; // Aman untuk 44 akun lama yang belum terset mapelnya
+      }
+    }
+
+    // 3. Kelas Target: Reset checkbox dulu
+    document.querySelectorAll(".check-kelas-item").forEach(cb => cb.checked = false);
+    const checkSemua = document.getElementById("checkKelasSemua");
+    if (checkSemua) checkSemua.checked = false;
+
+    if (Array.isArray(kelasGuru) && kelasGuru.length > 0) {
+      kelasGuru.forEach(k => {
+        const cb = document.querySelector(`.check-kelas-item[value="${k}"]`);
+        if (cb) cb.checked = true;
+      });
+    } else if (typeof kelasGuru === "string" && kelasGuru) {
+      if (kelasGuru.toLowerCase() === "semua" && checkSemua) {
+        checkSemua.checked = true;
+        checkSemua.dispatchEvent(new Event('change'));
+      } else {
+        const cb = document.querySelector(`.check-kelas-item[value="${kelasGuru}"]`);
+        if (cb) cb.checked = true;
+      }
+    }
+    // Jika data kelas kosong (akun lama), biarkan guru mencentang kelas secara manual seperti biasa.
+
+  } else {
+    // Jika Admin yang buka
+    if (selectPembuat) selectPembuat.disabled = false;
+    if (mapelInput) {
+      mapelInput.value = "";
+      mapelInput.disabled = false;
+    }
+    document.querySelectorAll(".check-kelas-item").forEach(cb => cb.checked = false);
   }
+
+  const modalEl = document.getElementById("modalUjian");
+  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+};
 
   window.renderDaftarSoalInteraktif(u.soal || []);
 
