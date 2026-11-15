@@ -3,7 +3,7 @@
    =================================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, get, update, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -52,8 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
-    
-    // Perbaikan: Ubah Object Firebase menjadi Array dan pastikan ID-nya tersimpan
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
     if (userSession.role === "guru" && userSession.mapel) {
@@ -72,23 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeUjian) renderDaftarSoal(activeUjian);
     }
   });
-// Panggil dropdown saat tab Monitoring Ujian diklik
-document.addEventListener("click", function(event) {
-  const target = event.target.closest("button, a, div");
-  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
-    setTimeout(updateFilterUjianDropdown, 150);
-  }
-});
-   
-  // TAMBAHAN PENGAWAS KLIK TAB MONITORING UJIAN
-  // Memastikan dropdown terisi begitu tab "Monitoring Ujian" diklik oleh user
-  document.addEventListener("click", function(event) {
-    const target = event.target.closest("button, a, div");
-    if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
-      setTimeout(updateFilterUjianDropdown, 150);
-    }
-  });
-   
+
   // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
@@ -127,15 +109,6 @@ document.addEventListener("click", function(event) {
   }
 });
 
-// Fungsi penanganan form tambah soal
-function handleTambahSoal(e) {
-  if (e) e.preventDefault();
-  
-  // Ambil data dari form tambah soal dan simpan ke database Firebase
-  const soalTeks = document.getElementById("soalTeks")?.value;
-  // ... logika penyimpanan soal ke node daftarUjian/${activeUjianId}/soal ...
-}
-
 // Event Listeners Form & Input
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
@@ -168,38 +141,6 @@ function renderUserInfoNav() {
     userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'ADMIN' : 'Guru ' + (userSession.mapel || '')})`;
   }
 }
-function renderTabelPengguna() {
-  const tbody = document.getElementById("tbodyPengguna");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  
-  if (daftarPengguna.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada data akun guru/pengguna.</td></tr>`;
-    return;
-  }
-
-  daftarPengguna.forEach((p, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td class="fw-semibold">${p.nama || '-'}</td>
-      <td>${p.email || '-'}</td>
-      <td><span class="badge bg-secondary">${p.mapel || '-'}</span></td>
-      <td><span class="badge bg-info text-dark">${p.role || '-'}</span></td>
-      <td>
-        <div class="btn-group btn-group-sm" role="group">
-          <button class="btn btn-outline-warning" onclick="bukaModalEditGuru('${p.id}')" title="Edit Akun">
-            <i class="bi bi-pencil-square"></i>
-          </button>
-          <button class="btn btn-outline-danger" onclick="hapusGuru('${p.id}')" title="Hapus Akun">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
 
 window.logout = () => {
   signOut(auth).then(() => {
@@ -224,13 +165,11 @@ function renderStats() {
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
-// Fungsi dropdown ujian yang sudah dibersihkan dan disatukan
 function updateFilterUjianDropdown() {
   const selectUjian = document.getElementById("selectFilterUjian");
   if (!selectUjian) return;
   
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
-  
   const sumberUjian = window.daftarUjian || [];
   
   sumberUjian.forEach(ujian => {
@@ -322,7 +261,6 @@ function updateAllClassDropdowns() {
     filterNilai.value = currVal;
   }
 
-  // RENDER CHECKBOX MULTI-SELECT KELAS UJIAN
   const containerCheck = document.getElementById("containerCheckboxKelas");
   if (containerCheck) {
     containerCheck.innerHTML = "";
@@ -345,16 +283,17 @@ function updateAllClassDropdowns() {
       const opt = document.createElement("option");
       opt.value = k.nama;
       opt.textContent = k.nama;
-      selectSiswa.appendChild(opt); // Pastikan ini selectSiswa, bukan selectSisiwa
+      selectSiswa.appendChild(opt);
     });
     selectSiswa.value = currVal;
   }
-   
+}
+
 /* ===================================================
-   1. KELOLA UJIAN & BANK SOAL (MULTI KELAS TARGET)
+   1. KELOLA UJIAN & BANK SOAL
    =================================================== */
 window.renderTabelUjian = function() {
-   const tbody = document.getElementById("tbodyUjian");
+  const tbody = document.getElementById("tbodyUjian");
   if (!tbody) return;
   tbody.innerHTML = "";
 
@@ -406,67 +345,8 @@ window.renderTabelUjian = function() {
     `;
     tbody.appendChild(tr);
   });
-}
-window.handleSimpanUjian = function(event) {
-  if (event) event.preventDefault();
-  
-  // Ambil data dari form modal pembuatan/edit ujian
-  const judul = document.getElementById("inputJudulUjian")?.value || "";
-  const mapel = document.getElementById("inputMapelUjian")?.value || "";
-  const durasi = document.getElementById("inputDurasiUjian")?.value || 60;
-  const token = document.getElementById("inputTokenUjian")?.value || "";
-
-  // Validasi sederhana
-  if (!judul || !mapel) {
-    alert("Judul dan Mata Pelajaran wajib diisi!");
-    return;
-  }
-
-  // Logika penyimpanan ke Firebase Realtime Database
-  // Sesuaikan path referensi database Anda (misal: "daftarUjian")
-  const ujianData = {
-    judul: judul,
-    mapel: mapel,
-    durasi: Number(durasi),
-    token: token,
-    status: "nonaktif"
-  };
-
-  // Jika sedang mode edit (ada ID aktif) atau tambah baru
-  const activeId = window.activeEditUjianId; 
-  if (activeId) {
-    update(ref(db, `daftarUjian/${activeId}`), ujianData)
-      .then(() => {
-        alert("Ujian berhasil diperbarui!");
-        // Tutup modal jika ada
-        const modalEl = document.getElementById("modalUjian");
-        if (modalEl && window.bootstrap) {
-          const modal = bootstrap.Modal.getInstance(modalEl);
-          if (modal) modal.hide();
-        }
-      })
-      .catch((err) => alert("Gagal memperbarui ujian: " + err.message));
-  } else {
-    // Tambah baru menggunakan push
-    const newRef = push(ref(db, "daftarUjian"));
-    set(newRef, ujianData)
-      .then(() => {
-        alert("Ujian baru berhasil ditambahkan!");
-        const modalEl = document.getElementById("modalUjian");
-        if (modalEl && window.bootstrap) {
-          const modal = bootstrap.Modal.getInstance(modalEl);
-          if (modal) modal.hide();
-        }
-      })
-      .catch((err) => alert("Gagal menyimpan ujian: " + err.message));
-  }
 };
-window.toggleStatusUjian = (id, currentStatus) => {
-  const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
-  update(ref(db, `daftarUjian/${id}`), { status: newStatus })
-    .catch((err) => alert("Gagal mengubah status ujian: " + err.message));
-};
-   
+
 function handleSimpanUjian(e) {
   e.preventDefault();
   const mapelInput = document.getElementById("ujianMapel").value.trim();
@@ -474,14 +354,12 @@ function handleSimpanUjian(e) {
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
   const status = document.getElementById("ujianStatus").value;
-  const pembuatInput = document.getElementById("ujianPembuat").value; // <--- Ambil pilihan guru
+  const pembuatInput = document.getElementById("ujianPembuat").value;
 
-  // Validasi pilihan guru pembuat
   if (!pembuatInput) {
     return alert("Silakan pilih guru pembuat soal terlebih dahulu!");
   }
 
-  // AMBIL MULTI-SELECT CHECKBOX KELAS
   let selectedKelas = [];
   const checkSemua = document.getElementById("checkKelasSemua");
   if (checkSemua && checkSemua.checked) {
@@ -506,7 +384,7 @@ function handleSimpanUjian(e) {
     token, 
     status, 
     soal: [],
-    createdBy: pembuatInput // <--- Menyimpan nama/ID guru yang dipilih
+    createdBy: pembuatInput
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -517,6 +395,13 @@ function handleSimpanUjian(e) {
     })
     .catch((err) => alert("Gagal menyimpan: " + err.message));
 }
+
+window.toggleStatusUjian = (id, currentStatus) => {
+  const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
+  update(ref(db, `daftarUjian/${id}`), { status: newStatus })
+    .catch((err) => alert("Gagal mengubah status ujian: " + err.message));
+};
+
 function renderDaftarSoal(ujian) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
@@ -556,7 +441,7 @@ window.hapusSoal = (soalId) => {
 };
 
 /* ===================================================
-   2. KELOLA AKUN GURU & EDIT/RESET PASSWORD (ADMIN ONLY)
+   2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
 async function handleTambahGuru(e) {
   e.preventDefault();
@@ -623,6 +508,7 @@ async function handleSimpanEditGuru(e) {
   } catch (err) {
     alert("Gagal memperbarui data guru: " + err.message);
   }
+}
 
 window.hapusGuru = (uid, nama) => {
   if (confirm(`Apakah Anda yakin ingin menghapus akun Guru "${nama}"?`)) {
@@ -633,7 +519,7 @@ window.hapusGuru = (uid, nama) => {
 };
 
 window.renderTabelPengguna = function() {
-   const tbody = document.getElementById("tbodyPengguna");
+  const tbody = document.getElementById("tbodyPengguna");
   if (!tbody) return;
   tbody.innerHTML = "";
 
@@ -664,7 +550,7 @@ window.renderTabelPengguna = function() {
     `;
     tbody.appendChild(tr);
   });
-}
+};
 
 /* ===================================================
    3. DATA SISWA, CETAK KARTU, FILTER & REKAP NILAI
@@ -737,7 +623,6 @@ window.cetakKartuUjianSiswa = () => {
     container.appendChild(col);
   });
 
-  // Render QR code secara lokal untuk setiap kartu yang dicetak
   siswaFiltered.forEach((s, index) => {
     const qrContainer = document.getElementById(`qrcode-${index}`);
     if (qrContainer && window.QRCode) {
@@ -752,7 +637,6 @@ window.cetakKartuUjianSiswa = () => {
     }
   });
 
-  // Berikan jeda 300ms agar QR code selesai dirender oleh script lokal sebelum dialog print muncul
   setTimeout(() => {
     window.print();
   }, 300);
@@ -893,7 +777,6 @@ function renderTabelSiswaFiltered(listSiswa) {
   });
 }
 
-/* FILTER & RENDER REKAP NILAI */
 window.filterRekapNilai = () => {
   const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
   const ujianSelected = document.getElementById("selectFilterUjian")?.value || "";
@@ -922,9 +805,7 @@ function renderTabelNilai(listHasil = hasilUjian) {
   }
 
   listHasil.forEach((h, i) => {
-    // h.id atau key unik dari Firebase hasil ujian
     const resultId = h.id;
-
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
@@ -939,18 +820,15 @@ function renderTabelNilai(listHasil = hasilUjian) {
         </button>
       </td>
     `;
-    
     tbody.appendChild(tr);
   });
-
+}
 
 /* EXPOSE GLOBALS TO WINDOW */
 window.openModalTambahUjian = () => {
   document.getElementById("formUjian")?.reset();
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
-  
-  // Panggil fungsi updateGuruDropdown agar daftar guru langsung terisi saat modal dibuka
   updateGuruDropdown();
 
   const modalEl = document.getElementById("modalUjian");
@@ -968,20 +846,34 @@ window.hapusUjian = (id) => {
 };
 
 window.openModalSoal = (ujianId) => {
-  activeUjianId = ujianId;
   const u = daftarUjian.find(item => item.id === ujianId);
-  if (!u) return;
+  if (!u) return alert("Ujian tidak ditemukan!");
 
-  const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
-  const titleEl = document.getElementById("judulUjianSoal");
-  if (titleEl) titleEl.innerText = `${u.mapel} [${displayKelas}] - ${u.judul}`;
-  document.getElementById("formTambahSoal")?.reset();
-  if (window.switchTipeSoal) window.switchTipeSoal("pg");
+  currentUjianActive = u;
+  currentUjianActiveKey = u.id;
+  currentEditSoalIndex = null;
 
-  renderDaftarSoal(u);
+  const judulModal = document.getElementById("judulUjianSoal");
+  if (judulModal) {
+    judulModal.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${u.mapel} - ${u.judul}`;
+  }
+
+  const formSoal = document.getElementById("formTambahSoal");
+  if (formSoal) {
+    formSoal.reset();
+    const btnSubmit = formSoal.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+      btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
+      btnSubmit.className = "btn btn-primary w-100";
+    }
+  }
+
+  window.renderDaftarSoalInteraktif(u.soal || []);
 
   const modalEl = document.getElementById("modalKelolaSoal");
-  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
 };
 
 window.switchTipeSoal = (tipe) => {
@@ -1006,6 +898,7 @@ window.switchTipeSoal = (tipe) => {
     containerMencocokkan.classList.remove("d-none");
   }
 };
+
 window.hapusSiswa = (nisn) => {
   if (confirm("Hapus siswa ini?")) {
     const cleanKey = String(nisn).replace(/[.#$\[\]]/g, "_");
@@ -1064,51 +957,11 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
   XLSX.utils.book_append_sheet(wb, ws, "Rekap Nilai");
   XLSX.writeFile(wb, `Rekap_Nilai_CBT_${kelasFilter || 'Semua'}.xlsx`);
 };
-/* ===================================================
-   TAMBAHAN FITUR: MODAL KELOLA, LIHAT, & EDIT SOAL
-   =================================================== */
 
 let currentUjianActive = null;
 let currentUjianActiveKey = null;
-let currentEditSoalIndex = null; // Penanda jika sedang mode edit soal
+let currentEditSoalIndex = null;
 
-// Buka Modal Kelola Soal Berdasarkan ID Ujian
-window.openModalSoal = (ujianId) => {
-  const u = daftarUjian.find(item => item.id === ujianId);
-  if (!u) return alert("Ujian tidak ditemukan!");
-
-  currentUjianActive = u;
-  currentUjianActiveKey = u.id;
-  currentEditSoalIndex = null; // Reset mode edit
-
-  // Set Judul di Header Modal
-  const judulModal = document.getElementById("judulUjianSoal");
-  if (judulModal) {
-    judulModal.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${u.mapel} - ${u.judul}`;
-  }
-
-  // Reset form tambah/edit soal jika ada
-  const formSoal = document.getElementById("formTambahSoal");
-  if (formSoal) {
-    formSoal.reset();
-    const btnSubmit = formSoal.querySelector('button[type="submit"]');
-    if (btnSubmit) {
-      btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
-      btnSubmit.className = "btn btn-primary w-100";
-    }
-  }
-
-  // Render daftar soal yang sudah ada
-  window.renderDaftarSoalInteraktif(u.soal || []);
-
-  // Tampilkan Modal menggunakan Bootstrap
-  const modalEl = document.getElementById("modalKelolaSoal");
-  if (modalEl && window.bootstrap) {
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-  }
-};
-
-// Render Daftar Soal dengan Tampilan Kartu Interaktif, Badge, Opsi, & Tombol Edit/Hapus
 window.renderDaftarSoalInteraktif = function(daftarSoal) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
@@ -1124,7 +977,6 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
 
   let html = "";
   daftarSoal.forEach((soal, index) => {
-    // Badge Tipe Soal
     let badgeTipe = '<span class="badge bg-primary me-1">PG</span>';
     if (soal.tipe === "pg_kompleks") {
       badgeTipe = '<span class="badge bg-info text-dark me-1">PG Kompleks</span>';
@@ -1132,7 +984,6 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
       badgeTipe = '<span class="badge text-white me-1" style="background-color: #6f42c1;">Menjodohkan</span>';
     }
 
-    // Detail Opsi Pilihan A-E atau Pasangan Menjodohkan
     let detailOpsi = "";
     if ((soal.tipe === "pg" || soal.tipe === "pg_kompleks" || !soal.tipe) && soal.opsi) {
       detailOpsi = `
@@ -1151,7 +1002,6 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
         </div>`;
     }
 
-    // Format Kunci Jawaban
     let kunciText = Array.isArray(soal.kunci) ? soal.kunci.join(", ") : (soal.kunci || "-");
 
     html += `
@@ -1174,12 +1024,8 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
           
           <p class="fw-semibold text-dark mb-2">${soal.pertanyaan}</p>
           ${soal.gambarUrl ? `<img src="${soal.gambarUrl}" class="img-fluid rounded mb-2" style="max-height: 150px;">` : ""}
-          
           ${detailOpsi}
-          
-          <div>
-            <span class="badge bg-success">Kunci: ${kunciText}</span>
-          </div>
+          <div><span class="badge bg-success">Kunci: ${kunciText}</span></div>
         </div>
       </div>
     `;
@@ -1188,14 +1034,12 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
   container.innerHTML = html;
 };
 
-// Fungsi Mengisi Form Saat Tombol Edit Soal Ditekan
 window.isiFormEditSoal = (index) => {
   if (!currentUjianActive || !currentUjianActive.soal || !currentUjianActive.soal[index]) return;
 
   const soal = currentUjianActive.soal[index];
   currentEditSoalIndex = index;
 
-  // Set Tipe Soal
   const selectTipe = document.getElementById("soalTipe");
   if (selectTipe) {
     selectTipe.value = soal.tipe || "pg";
@@ -1204,11 +1048,9 @@ window.isiFormEditSoal = (index) => {
     }
   }
 
-  // Isi Pertanyaan & Gambar
   document.getElementById("soalPertanyaan").value = soal.pertanyaan || "";
   document.getElementById("soalGambarUrl").value = soal.gambarUrl || "";
 
-  // Isi Opsi PG / PG Kompleks
   if (soal.opsi) {
     if (document.getElementById("soalA")) document.getElementById("soalA").value = soal.opsi.A || "";
     if (document.getElementById("soalB")) document.getElementById("soalB").value = soal.opsi.B || "";
@@ -1217,7 +1059,6 @@ window.isiFormEditSoal = (index) => {
     if (document.getElementById("soalE")) document.getElementById("soalE").value = soal.opsi.E || "";
   }
 
-  // Isi Kunci Jawaban
   if (soal.tipe === "pg" || !soal.tipe) {
     if (document.getElementById("soalKunciPG")) document.getElementById("soalKunciPG").value = soal.kunci || "A";
   } else if (soal.tipe === "pg_kompleks") {
@@ -1229,7 +1070,6 @@ window.isiFormEditSoal = (index) => {
     });
   }
 
-  // Ubah Teks Tombol Submit Form Menjadi Simpan Perubahan
   const btnSubmit = document.querySelector('#formTambahSoal button[type="submit"]');
   if (btnSubmit) {
     btnSubmit.innerHTML = `<i class="bi bi-check-circle me-1"></i>Simpan Perubahan Soal`;
@@ -1237,7 +1077,6 @@ window.isiFormEditSoal = (index) => {
   }
 };
 
-// Hapus Soal Berdasarkan Indeks
 window.hapusSoalIndeks = (index) => {
   if (!currentUjianActive || !currentUjianActive.soal) return;
 
@@ -1255,7 +1094,6 @@ window.hapusSoalIndeks = (index) => {
   }
 };
 
-// Modifikasi Listener Submit Form Soal (Mendukung Tambah & Edit Sekaligus)
 const formTambahSoalEl = document.getElementById("formTambahSoal");
 if (formTambahSoalEl) {
   formTambahSoalEl.onsubmit = (e) => {
@@ -1309,16 +1147,12 @@ if (formTambahSoalEl) {
     }
 
     let listSoal = currentUjianActive.soal ? [...currentUjianActive.soal] : [];
-
-    // Variabel penyimpan indeks edit sementara sebelum di-reset
     const isEditMode = currentEditSoalIndex !== null;
 
     if (isEditMode) {
-      // Mode Edit: Timpa soal pada indeks tersebut
       listSoal[currentEditSoalIndex] = itemSoal;
       currentEditSoalIndex = null;
     } else {
-      // Mode Tambah Baru: Masukkan ke array
       listSoal.push(itemSoal);
     }
 
@@ -1328,7 +1162,6 @@ if (formTambahSoalEl) {
         e.target.reset();
         if (window.switchTipeSoal) window.switchTipeSoal("pg");
 
-        // Kembalikan tombol ke mode tambah
         const btnSubmit = e.target.querySelector('button[type="submit"]');
         if (btnSubmit) {
           btnSubmit.innerHTML = `<i class="bi bi-plus-circle me-1"></i>Tambahkan Soal`;
@@ -1340,28 +1173,16 @@ if (formTambahSoalEl) {
       })
       .catch((err) => alert("Gagal menyimpan soal: " + err.message));
   };
-} 
+}
 
-/* ===================================================
-   FITUR TAMBAHAN: DOWNLOAD ARSIP SOAL KE EXCEL
-   =================================================== */
 window.downloadArsipSoal = () => {
   if (!currentUjianActive || !currentUjianActive.soal || currentUjianActive.soal.length === 0) {
     return alert("Tidak ada soal dalam ujian ini untuk diunduh!");
   }
 
   const excelData = currentUjianActive.soal.map((s, index) => {
-    let kunciFormatted = "";
-    if (Array.isArray(s.kunci)) {
-      kunciFormatted = s.kunci.join(", ");
-    } else {
-      kunciFormatted = s.kunci || "";
-    }
-
-    let pasanganFormatted = "";
-    if (s.tipe === "mencocokkan" && s.pasangan) {
-      pasanganFormatted = s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ");
-    }
+    let kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
+    let pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
 
     return {
       "No": index + 1,
@@ -1386,7 +1207,6 @@ window.downloadArsipSoal = () => {
   XLSX.writeFile(wb, `Arsip_Soal_${namaFileClean}.xlsx`);
 };
 
-// FUNGSI DOWNLOAD ARSIP SOAL BERDASARKAN ID DARI TABEL UTAMA
 window.downloadArsipSoalById = (ujianId) => {
   const u = daftarUjian.find(item => item.id === ujianId);
   if (!u || !u.soal || u.soal.length === 0) {
@@ -1394,17 +1214,8 @@ window.downloadArsipSoalById = (ujianId) => {
   }
 
   const excelData = u.soal.map((s, index) => {
-    let kunciFormatted = "";
-    if (Array.isArray(s.kunci)) {
-      kunciFormatted = s.kunci.join(", ");
-    } else {
-      kunciFormatted = s.kunci || "";
-    }
-
-    let pasanganFormatted = "";
-    if (s.tipe === "mencocokkan" && s.pasangan) {
-      pasanganFormatted = s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ");
-    }
+    let kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
+    let pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
 
     return {
       "No": index + 1,
@@ -1429,39 +1240,28 @@ window.downloadArsipSoalById = (ujianId) => {
   XLSX.writeFile(wb, `Arsip_Soal_${u.mapel}_${namaFileClean}.xlsx`);
 };
 
-// ===================================================
-// FUNGSI PENGISIAN DROPDOWN GURU PEMBUAT SOAL (FILTERED)
-// ===================================================
-function updateGuruDropdown(mapelUjian = "") {
+function updateGuruDropdown() {
   const selectPembuat = document.getElementById("ujianPembuat");
   if (!selectPembuat) return;
 
   const currVal = selectPembuat.value;
   selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pengampu --</option>';
-
   const addedNames = new Set();
 
   if (daftarPengguna && daftarPengguna.length > 0) {
     daftarPengguna.forEach(p => {
-      // Pastikan hanya mengambil user yang rolenya benar-benar 'guru'
       const isGuru = p.role && p.role.toLowerCase() === "guru";
-      
-      // Jika mapel ujian dipilih, kita bisa sesuaikan atau tampilkan semua guru yang aktif
       if (isGuru && p.nama && !addedNames.has(p.nama)) {
         addedNames.add(p.nama);
         const opt = document.createElement("option");
-        opt.value = p.nama; // Nilai yang disimpan adalah nama guru
+        opt.value = p.nama;
         opt.textContent = `${p.nama} - ${p.mapel || 'Guru Pengampu'}`;
         selectPembuat.appendChild(opt);
       }
     });
   }
-} // <-- INI TANDA TUTUP YANG SEBELUMNYA KURANG UNTUK FUNGSI updateGuruDropdown
+}
 
-
-// ==========================================
-// FUNGSI EDIT UJIAN OLEH GURU / ADMIN
-// ==========================================
 window.bukaModalEditUjian = (ujianId) => {
   const ujianRef = ref(db, `daftarUjian/${ujianId}`);
   get(ujianRef).then((snapshot) => {
@@ -1482,6 +1282,7 @@ window.bukaModalEditUjian = (ujianId) => {
     alert("Gagal memuat data ujian: " + error.message);
   });
 };
+
 window.simpanPerubahanUjian = (e) => {
   if (e) e.preventDefault();
   
@@ -1515,9 +1316,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formEdit.addEventListener("submit", window.simpanPerubahanUjian);
   }
 });
-// ==========================================
-// FUNGSI RESET STATUS PESERTA OLEH ADMIN
-// ==========================================
+
 window.resetStatusPeserta = async (ujianId, nisn) => {
   if (confirm(`Yakin ingin mereset status siswa dengan NISN ${nisn}? Siswa akan diizinkan masuk kembali menggunakan token ujian.`)) {
     try {
@@ -1529,7 +1328,7 @@ window.resetStatusPeserta = async (ujianId, nisn) => {
     }
   }
 };
-// --- LOAD PILIHAN UJIAN DI MENU MONITORING ---
+
 window.loadDaftarUjianMonitoring = () => {
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
@@ -1546,40 +1345,6 @@ window.loadDaftarUjianMonitoring = () => {
   });
 };
 
-// --- LOAD PILIHAN UJIAN DI MENU MONITORING ---
-window.loadDaftarUjianMonitoring = () => {
-  const selectUjian = document.getElementById("selectUjianMonitoring");
-  if (!selectUjian) return;
-
-  onValue(ref(db, "daftarUjian"), (snapshot) => {
-    selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnap) => {
-        const ujianId = childSnap.key;
-        const data = childSnap.val();
-        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel || 'Mapel'} - ${data.judul || 'Ujian'} (Token: ${data.token || '-'})</option>`;
-      });
-    }
-  });
-};
-// --- LOAD PILIHAN UJIAN DI MENU MONITORING ---
-window.loadDaftarUjianMonitoring = () => {
-  const selectUjian = document.getElementById("selectUjianMonitoring");
-  if (!selectUjian) return;
-
-  onValue(ref(db, "daftarUjian"), (snapshot) => {
-    selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnap) => {
-        const ujianId = childSnap.key;
-        const data = childSnap.val();
-        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel || 'Mapel'} - ${data.judul || 'Ujian'} (Token: ${data.token || '-'})</option>`;
-      });
-    }
-  });
-};
-
-// --- LOAD DATA STATUS PESERTA SECARA REAL-TIME ---
 window.loadDataMonitoring = () => {
   const ujianId = document.getElementById("selectUjianMonitoring").value;
   const tbody = document.getElementById("tabelMonitoringBody");
@@ -1633,7 +1398,6 @@ window.loadDataMonitoring = () => {
   });
 };
 
-// Panggil otomatis saat tab Monitoring diklik
 document.addEventListener("DOMContentLoaded", () => {
   const tabMonitoring = document.getElementById("tabMonitoring");
   if (tabMonitoring) {
@@ -1643,7 +1407,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// --- FUNGSI HAPUS HASIL UJIAN SISWA ---
 window.hapusHasilUjian = async (resultId) => {
   if (confirm("Apakah Anda yakin ingin menghapus data hasil ujian siswa ini?")) {
     try {
@@ -1664,7 +1427,6 @@ window.updateFilterUjianDropdown = function() {
   if (!selectUjian) return;
   
   selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
-  
   const sumberUjian = window.daftarUjian || [];
   
   sumberUjian.forEach(ujian => {
@@ -1678,7 +1440,6 @@ window.updateFilterUjianDropdown = function() {
   });
 };
 
-// Panggil otomatis saat tab Monitoring Ujian diklik
 document.addEventListener("click", function(event) {
   const target = event.target.closest("button, a, div");
   if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
