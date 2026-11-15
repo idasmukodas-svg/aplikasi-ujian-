@@ -438,17 +438,27 @@ function handleSimpanUjian(e) {
     .then(() => {
       alert("Ujian Berhasil Disimpan!");
       const modalEl = document.getElementById("modalUjian");
-      if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+      if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+      }
+      
+      // Segarkan tampilan tabel agar ujian baru langsung muncul
+      if (typeof window.renderTabelUjian === "function") {
+        window.renderTabelUjian();
+      }
     })
-    .catch((err) => alert("Gagal menyimpan: " + err.message));
+    .catch((err) => {
+      alert("Gagal menyimpan: " + err.message);
+    });
 }
 
 window.toggleStatusUjian = (id, currentStatus) => {
   const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
   update(ref(db, `daftarUjian/${id}`), { status: newStatus })
-    .catch((err) => alert("Gagal mengubah status ujian: " + err.message));
+    .catch((err) => {
+      alert("Gagal mengubah status ujian: " + err.message);
+    });
 };
-
 function renderDaftarSoal(ujian) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
