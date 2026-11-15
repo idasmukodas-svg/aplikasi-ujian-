@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderTabelNilai(filteredHasil);
 };
-
+     
   // 5. Load Pengguna (Admin Only)
   if (userSession.role === "admin") {
     onValue(ref(db, "pengguna"), (snapshot) => {
