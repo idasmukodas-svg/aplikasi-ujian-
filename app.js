@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hasilUjian = rawHasil;
     }
 
-    window.filterRekapNilai = () => {
+  window.filterRekapNilai = () => {
   const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
   const ujianSelected = document.getElementById("selectFilterUjian")?.value.toLowerCase().trim() || "";
 
