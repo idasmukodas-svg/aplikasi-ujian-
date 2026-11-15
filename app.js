@@ -442,7 +442,14 @@ function handleSimpanUjian(e) {
         bootstrap.Modal.getInstance(modalEl)?.hide();
       }
       
-      // Segarkan tampilan tabel agar ujian baru langsung muncul
+      // Masukkan data secara instan ke array lokal agar langsung tampil di tabel
+      if (Array.isArray(window.daftarUjian)) {
+        window.daftarUjian.push(newUjian);
+      } else if (typeof daftarUjian !== 'undefined' && Array.isArray(daftarUjian)) {
+        daftarUjian.push(newUjian);
+      }
+
+      // Segarkan tampilan tabel
       if (typeof window.renderTabelUjian === "function") {
         window.renderTabelUjian();
       }
@@ -450,7 +457,15 @@ function handleSimpanUjian(e) {
     .catch((err) => {
       alert("Gagal menyimpan: " + err.message);
     });
-}
+} // <-- Kurung kurawal penutup untuk fungsi handleSimpanUjian
+
+window.toggleStatusUjian = (id, currentStatus) => {
+  const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
+  update(ref(db, `daftarUjian/${id}`), { status: newStatus })
+    .catch((err) => {
+      alert("Gagal mengubah status ujian: " + err.message);
+    });
+};
 
 window.toggleStatusUjian = (id, currentStatus) => {
   const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
