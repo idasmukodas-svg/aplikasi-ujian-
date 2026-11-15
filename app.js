@@ -1654,7 +1654,7 @@ window.updateFilterUjianDropdown = function() {
   // Ambil data dari variabel global yang sudah dimuat sebelumnya
   const sumberUjian = window.daftarUjian || [];
   
-  // Masukkan data ke dropdown
+ // Masukkan data ke dropdown
 sumberUjian.forEach(ujian => {
   const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
   if (namaUjian) {
@@ -1664,6 +1664,7 @@ sumberUjian.forEach(ujian => {
     selectUjian.appendChild(opt);
   }
 });
+};
 
 // Panggil otomatis saat tab Monitoring Ujian diklik
 document.addEventListener("click", function(event) {
