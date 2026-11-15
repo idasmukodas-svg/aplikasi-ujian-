@@ -90,11 +90,24 @@ document.addEventListener("DOMContentLoaded", () => {
       hasilUjian = rawHasil;
     }
 
-    window.filterRekapNilai();
-    if (typeof updateFilterUjianDropdown === "function") {
-      updateFilterUjianDropdown();
-    }
+    window.filterRekapNilai = () => {
+  const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
+  const ujianSelected = document.getElementById("selectFilterUjian")?.value.toLowerCase().trim() || "";
+
+  const filteredHasil = hasilUjian.filter(h => {
+    const kelasSiswa = (h.kelas || "").toLowerCase().trim();
+    const judulUjian = (h.judul || "").toLowerCase().trim();
+    const mapelUjian = (h.mapel || "").toLowerCase().trim();
+    const idUjian = (h.ujianId || "").toLowerCase().trim();
+
+    let matchKelas = kelasSelected ? (kelasSiswa === kelasSelected || kelasSiswa.includes(kelasSelected) || kelasSelected.includes(kelasSiswa)) : true;
+    let matchUjian = ujianSelected ? (judulUjian.includes(ujianSelected) || mapelUjian.includes(ujianSelected) || idUjian === ujianSelected) : true;
+
+    return matchKelas && matchUjian;
   });
+
+  renderTabelNilai(filteredHasil);
+};
 
   // 5. Load Pengguna (Admin Only)
   if (userSession.role === "admin") {
