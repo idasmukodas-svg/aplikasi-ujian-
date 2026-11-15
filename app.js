@@ -2,7 +2,7 @@
    APP.JS - LMS & CBT SMAN 1 TARAJU (WITH PRINT CARDS & MULTI-CLASS)
    =================================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, get, update, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -443,49 +443,37 @@ window.hapusSoal = (soalId) => {
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
-async function handleTambahGuru(e) {
-  e.preventDefault();
-  const nama = document.getElementById("guruNama").value.trim();
-  const email = document.getElementById("guruEmail").value.trim();
-  const password = document.getElementById("guruPassword").value;
-  const mapel = document.getElementById("guruMapel").value.trim();
-
-  try {
-    const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
-    const secondaryAuth = getAuth(secondaryApp);
-
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    const uid = cred.user.uid;
-
-    const dataPengguna = { uid, nama, email, mapel, role: "guru" };
-    await set(ref(db, "pengguna/" + uid), dataPengguna);
-    await secondaryAuth.signOut();
-
-    alert(`Akun Guru ${nama} berhasil dibuat!`);
-    document.getElementById("formTambahGuru").reset();
-    const modalEl = document.getElementById("modalTambahGuru");
-    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
-
-  } catch (err) {
-    console.error("Gagal buat guru:", err);
-    alert("Gagal membuat akun guru: " + err.message);
-  }
-}
-
-window.openModalEditGuru = (uid) => {
-  const g = daftarPengguna.find(p => p.uid === uid);
-  if (!g) return;
-
-  document.getElementById("editGuruUid").value = g.uid;
-  document.getElementById("editGuruNama").value = g.nama || "";
-  document.getElementById("editGuruEmail").value = g.email || "";
-  document.getElementById("editGuruMapel").value = g.mapel || "";
-  document.getElementById("editGuruPassword").value = "";
-
-  const modalEl = document.getElementById("modalEditGuru");
-  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-};
-
+   async function handleTambahGuru(e) {
+     e.preventDefault();
+     const nama = document.getElementById("guruNama").value.trim();
+     const email = document.getElementById("guruEmail").value.trim();
+     const password = document.getElementById("guruPassword").value;
+     const mapel = document.getElementById("guruMapel").value.trim();
+   
+     try {
+       const secondaryApp = getApps().find(app => app.name === "SecondaryApp") 
+         ? getApp("SecondaryApp") 
+         : initializeApp(firebaseConfig, "SecondaryApp");
+         
+       const secondaryAuth = getAuth(secondaryApp);
+   
+       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+       const uid = cred.user.uid;
+   
+       const dataPengguna = { uid, nama, email, mapel, role: "guru" };
+       await set(ref(db, "pengguna/" + uid), dataPengguna);
+       await secondaryAuth.signOut();
+   
+       alert(`Akun Guru ${nama} berhasil dibuat!`);
+       document.getElementById("formTambahGuru").reset();
+       const modalEl = document.getElementById("modalTambahGuru");
+       if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+   
+     } catch (err) {
+       console.error("Gagal buat guru:", err);
+       alert("Gagal membuat akun guru: " + err.message);
+     }
+   }
 async function handleSimpanEditGuru(e) {
   e.preventDefault();
   const uid = document.getElementById("editGuruUid").value;
