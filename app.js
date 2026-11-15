@@ -373,10 +373,22 @@ function handleSimpanUjian(e) {
   const durasi = document.getElementById("ujianDurasi").value;
   const token = document.getElementById("ujianToken").value.trim();
   const status = document.getElementById("ujianStatus").value;
-  const pembuatInput = document.getElementById("ujianPembuat").value;
+  
+  // Tentukan pembuat: otomatis dari userSession jika Guru, atau dari dropdown jika Admin
+  let pembuatInput = "";
+  let usernamePembuat = "";
+
+  if (window.userSession && window.userSession.role !== "admin") {
+    pembuatInput = window.userSession.nama || window.userSession.username || "Guru";
+    usernamePembuat = window.userSession.username || window.userSession.nama || "";
+  } else {
+    const selectPembuat = document.getElementById("ujianPembuat");
+    pembuatInput = selectPembuat ? selectPembuat.value : "";
+    usernamePembuat = pembuatInput;
+  }
 
   if (!pembuatInput) {
-    return alert("Silakan pilih guru pembuat soal terlebih dahulu!");
+    return alert("Identitas pembuat ujian tidak valid!");
   }
 
   let selectedKelas = [];
@@ -403,7 +415,8 @@ function handleSimpanUjian(e) {
     token, 
     status, 
     soal: [],
-    createdBy: pembuatInput
+    createdBy: pembuatInput,
+    pembuatUsername: usernamePembuat
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
