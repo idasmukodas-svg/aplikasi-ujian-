@@ -316,12 +316,27 @@ window.renderTabelUjian = function() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (daftarUjian.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
+  // Filter data berdasarkan siapa yang login
+  let dataTampil = daftarUjian;
+  if (window.userSession && window.userSession.role !== "admin") {
+    const namaLogin = (window.userSession.nama || "").toLowerCase().trim();
+    const usernameLogin = (window.userSession.username || "").toLowerCase().trim();
+
+    dataTampil = daftarUjian.filter(u => {
+      const pembuat = (u.createdBy || "").toLowerCase().trim();
+      const usernamePembuat = (u.pembuatUsername || "").toLowerCase().trim();
+      
+      // Cocokkan apakah ujian ini dibuat oleh guru yang sedang login
+      return (pembuat === namaLogin || pembuat === usernameLogin || usernamePembuat === usernameLogin || usernamePembuat === namaLogin);
+    });
+  }
+
+  if (dataTampil.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal yang Anda buat.</td></tr>`;
     return;
   }
 
-  daftarUjian.forEach((u, i) => {
+  dataTampil.forEach((u, i) => {
     const jmlSoal = u.soal ? u.soal.length : 0;
     const isAktif = u.status === "aktif";
     const statusBadge = isAktif  
