@@ -623,7 +623,6 @@ async function handleSimpanEditGuru(e) {
   } catch (err) {
     alert("Gagal memperbarui data guru: " + err.message);
   }
-}
 
 window.hapusGuru = (uid, nama) => {
   if (confirm(`Apakah Anda yakin ingin menghapus akun Guru "${nama}"?`)) {
