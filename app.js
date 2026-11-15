@@ -316,18 +316,30 @@ window.renderTabelUjian = function() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
+  // Ambil sumber data dengan aman
+  const dataSumber = Array.isArray(window.daftarUjian) ? window.daftarUjian : (typeof daftarUjian !== 'undefined' && Array.isArray(daftarUjian) ? daftarUjian : []);
+
+  if (dataSumber.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
+    return;
+  }
+
   // Filter data berdasarkan siapa yang login
-  let dataTampil = daftarUjian;
+  let dataTampil = dataSumber;
   if (window.userSession && window.userSession.role !== "admin") {
     const namaLogin = (window.userSession.nama || "").toLowerCase().trim();
     const usernameLogin = (window.userSession.username || "").toLowerCase().trim();
 
-    dataTampil = daftarUjian.filter(u => {
+    dataTampil = dataSumber.filter(u => {
       const pembuat = (u.createdBy || "").toLowerCase().trim();
       const usernamePembuat = (u.pembuatUsername || "").toLowerCase().trim();
       
-      // Cocokkan apakah ujian ini dibuat oleh guru yang sedang login
-      return (pembuat === namaLogin || pembuat === usernameLogin || usernamePembuat === usernameLogin || usernamePembuat === namaLogin);
+      // Jika salah satu cocok dengan akun yang login, atau jika data lama belum ada pembuatnya
+      return (
+        !pembuat || // Cadangan untuk data lama
+        (namaLogin && (pembuat.includes(namaLogin) || usernamePembuat.includes(namaLogin))) ||
+        (usernameLogin && (pembuat.includes(usernameLogin) || usernamePembuat.includes(usernameLogin)))
+      );
     });
   }
 
