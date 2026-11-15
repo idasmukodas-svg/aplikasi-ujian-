@@ -632,8 +632,8 @@ window.hapusGuru = (uid, nama) => {
   }
 };
 
- renderTabelPengguna() {
-  const tbody = document.getElementById("tbodyPengguna");
+window.renderTabelPengguna = function() {
+   const tbody = document.getElementById("tbodyPengguna");
   if (!tbody) return;
   tbody.innerHTML = "";
 
