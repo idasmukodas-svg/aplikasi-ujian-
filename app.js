@@ -910,10 +910,29 @@ window.openModalTambahUjian = () => {
   const selectPembuat = document.getElementById("ujianPembuat");
   const mapelInput = document.getElementById("ujianMapel");
 
-  if (window.userSession && window.userSession.role !== "admin") {
-    const namaGuru = window.userSession.nama || window.userSession.username || "";
-    const mapelGuru = window.userSession.mapel || "";
-    const kelasGuru = window.userSession.kelas || []; 
+  // Ambil data sesi aktif atau data guru aktif dari localStorage
+  let currentTeacher = null;
+  try {
+    // Coba ambil dari localStorage yang biasa dipakai di aplikasi Anda
+    const savedUser = localStorage.getItem("userSession") || localStorage.getItem("currentUser") || localStorage.getItem("dataGuruActive");
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      currentTeacher = Array.isArray(parsed) ? parsed[0] : parsed;
+    }
+  } catch (e) {
+    console.error("Gagal membaca sesi:", e);
+  }
+
+  // Jika tidak ketemu di localStorage, coba cek variabel global window.userSession
+  if (!currentTeacher && window.userSession) {
+    currentTeacher = window.userSession;
+  }
+
+  // Jika ditemukan data guru yang sedang login (bukan admin)
+  if (currentTeacher && currentTeacher.role !== "admin") {
+    const namaGuru = currentTeacher.nama || currentTeacher.username || "";
+    const mapelGuru = currentTeacher.mapel || "";
+    const kelasGuru = currentTeacher.kelas || []; 
 
     // 1. Kunci nama pembuat ujian
     if (selectPembuat) {
@@ -928,18 +947,18 @@ window.openModalTambahUjian = () => {
       selectPembuat.disabled = true;
     }
 
-    // 2. Mapel: Jika akun lama belum ada mapelnya, biarkan guru memilih manual. Jika sudah ada, kunci otomatis.
+    // 2. Mapel: Isi otomatis dan kunci
     if (mapelInput) {
       if (mapelGuru) {
         mapelInput.value = mapelGuru;
         mapelInput.disabled = true; 
       } else {
         mapelInput.value = "";
-        mapelInput.disabled = false; // Aman untuk 44 akun lama yang belum terset mapelnya
+        mapelInput.disabled = false; 
       }
     }
 
-    // 3. Kelas Target: Reset checkbox dulu
+    // 3. Kelas Target: Reset dan centang otomatis
     document.querySelectorAll(".check-kelas-item").forEach(cb => cb.checked = false);
     const checkSemua = document.getElementById("checkKelasSemua");
     if (checkSemua) checkSemua.checked = false;
@@ -960,7 +979,7 @@ window.openModalTambahUjian = () => {
     }
 
   } else {
-    // Jika Admin yang buka
+    // Jika Admin atau data tidak ditemukan
     if (selectPembuat) selectPembuat.disabled = false;
     if (mapelInput) {
       mapelInput.value = "";
