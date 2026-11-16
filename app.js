@@ -1022,7 +1022,6 @@ window.openModalTambahUjian = () => {
   if (modalEl && window.bootstrap) {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
-};
 
 window.switchTipeSoal = (tipe) => {
   const containerPG = document.getElementById("containerPG");
