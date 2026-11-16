@@ -983,6 +983,31 @@ window.openModalTambahUjian = () => {
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
+window.openModalSoal = (idUjian) => {
+  // Pastikan daftarUjian tersedia dan cari ujian berdasarkan ID
+  if (typeof daftarUjian === 'undefined') {
+    return alert("Data ujian belum dimuat, silakan refresh halaman.");
+  }
+  
+  const u = daftarUjian.find(item => item.id === idUjian);
+  if (!u) return alert("Ujian tidak ditemukan!");
+
+  // Simpan referensi ujian aktif
+  currentUjianActive = u;
+  currentUjianActiveKey = idUjian;
+
+  // Render daftar soal ke dalam modal
+  if (typeof window.renderDaftarSoalInteraktif === "function") {
+    window.renderDaftarSoalInteraktif(u.soal || []);
+  }
+
+  // Buka modal kelola soal
+  const modalKelola = document.getElementById("modalKelolaSoal");
+  if (modalKelola && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalKelola).show();
+  }
+};
+
 window.openModalTambahSiswa = () => {
   document.getElementById("formSiswa")?.reset();
   const modalEl = document.getElementById("modalSiswa");
