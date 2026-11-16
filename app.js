@@ -910,28 +910,46 @@ window.openModalTambahUjian = () => {
   const selectPembuat = document.getElementById("ujianPembuat");
   const mapelInput = document.getElementById("ujianMapel");
 
-  // Ambil sesi login yang sedang aktif (pastikan mengambil dari variabel sesi login yang benar)
-  let currentTeacher = window.userSession || window.currentUser;
+  // Ambil teks nama dan mapel langsung dari header web yang sedang login
+  // Contoh format di header: "Ali Sya'ban Hanapiah (Guru Pendidikan Jasmani Olahraga dan Kesehatan)"
+  let namaGuru = "";
+  let mapelGuru = "";
+
+  const headerUserEl = document.querySelector("header") || document.querySelector(".navbar") || document.body;
+  // Cari teks di dalam elemen navbar/header yang memuat info login
+  const infoTextEl = Array.from(headerUserEl.querySelectorAll("*")).find(el => el.textContent && el.textContent.includes("(Guru"));
   
-  // Jika tidak ada di variabel global, coba ambil dari localStorage tapi pastikan sesuai akun login
-  if (!currentTeacher) {
+  if (infoTextEl) {
+    const textFull = infoTextEl.textContent.trim();
+    // Ekstraksi nama (sebelum tanda kurung)
+    const matchNama = textFull.match(/^([^(]+)/);
+    if (matchNama) namaGuru = matchNama[1].trim();
+
+    // Ekstraksi mapel di dalam kurung (setelah kata "Guru")
+    const matchMapel = textFull.match(/Guru\s+([^)]+)/i);
+    if (matchMapel) mapelGuru = matchMapel[1].trim();
+  }
+
+  // Fallback jika tidak ketemu di header, coba cek localStorage
+  if (!namaGuru) {
     try {
-      const saved = localStorage.getItem("userSession") || localStorage.getItem("currentUser");
-      if (saved) currentTeacher = JSON.parse(saved);
+      const saved = localStorage.getItem("userSession") || localStorage.getItem("currentUser") || localStorage.getItem("dataGuruActive");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const data = Array.isArray(parsed) ? parsed[0] : parsed;
+        namaGuru = data.nama || data.username || "";
+        mapelGuru = data.mapel || data.mataPelajaran || "";
+      }
     } catch (e) {}
   }
 
-  // Jika yang login adalah guru (bukan admin)
-  if (currentTeacher && currentTeacher.role !== "admin") {
-    // Ambil nama dan mapel dari data guru yang benar-benar login
-    const namaGuru = currentTeacher.nama || currentTeacher.namaLengkap || "";
-    const mapelGuru = currentTeacher.mapel || currentTeacher.mataPelajaran || "";
-    const kelasGuru = currentTeacher.kelas || []; 
-
+  // Jika nama guru berhasil didapatkan (artinya yang login adalah guru)
+  if (namaGuru && namaGuru.toLowerCase() !== "administrator utama" && namaGuru.toLowerCase() !== "admin") {
+    
     // 1. Kunci nama pembuat ujian
     if (selectPembuat) {
       let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value.toLowerCase() === namaGuru.toLowerCase());
-      if (!opsiAda && namaGuru) {
+      if (!opsiAda) {
         const opt = document.createElement("option");
         opt.value = namaGuru;
         opt.textContent = namaGuru;
@@ -941,7 +959,7 @@ window.openModalTambahUjian = () => {
       selectPembuat.disabled = true;
     }
 
-    // 2. Mapel: Isi otomatis sesuai mapel guru yang login & kunci
+    // 2. Mapel: Isi otomatis sesuai mapel guru & kunci
     if (mapelInput) {
       if (mapelGuru) {
         mapelInput.value = mapelGuru;
@@ -952,26 +970,6 @@ window.openModalTambahUjian = () => {
       }
     }
 
-    // 3. Kelas Target: Reset dan centang otomatis
-    document.querySelectorAll(".check-kelas-item").forEach(cb => cb.checked = false);
-    const checkSemua = document.getElementById("checkKelasSemua");
-    if (checkSemua) checkSemua.checked = false;
-
-    if (Array.isArray(kelasGuru) && kelasGuru.length > 0) {
-      kelasGuru.forEach(k => {
-        const cb = document.querySelector(`.check-kelas-item[value="${k}"]`);
-        if (cb) cb.checked = true;
-      });
-    } else if (typeof kelasGuru === "string" && kelasGuru) {
-      if (kelasGuru.toLowerCase() === "semua" && checkSemua) {
-        checkSemua.checked = true;
-        checkSemua.dispatchEvent(new Event('change'));
-      } else {
-        const cb = document.querySelector(`.check-kelas-item[value="${kelasGuru}"]`);
-        if (cb) cb.checked = true;
-      }
-    }
-
   } else {
     // Jika Admin
     if (selectPembuat) selectPembuat.disabled = false;
@@ -979,7 +977,6 @@ window.openModalTambahUjian = () => {
       mapelInput.value = "";
       mapelInput.disabled = false;
     }
-    document.querySelectorAll(".check-kelas-item").forEach(cb => cb.checked = false);
   }
 
   const modalEl = document.getElementById("modalUjian");
