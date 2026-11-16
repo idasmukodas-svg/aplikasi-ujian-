@@ -899,55 +899,13 @@ function renderTabelNilai(listHasil = hasilUjian) {
 /* EXPOSE GLOBALS TO WINDOW */
 window.openModalTambahUjian = () => {
   document.getElementById("formUjian")?.reset();
+  
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
   
-  updateGuruDropdown();
-
-  // Targetkan langsung ke "ujianPembuat" sesuai form ujian Anda
-  const selectPembuat = document.getElementById("ujianPembuat");
-
-  if (userSession.role !== "admin") {
-    if (selectPembuat) {
-      const namaGuru = userSession.nama || userSession.username || "";
-      
-      // Pastikan nama guru ada di dalam opsi dropdown, jika belum ada tambahkan
-      let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value === namaGuru);
-      if (!opsiAda && namaGuru) {
-        const opt = document.createElement("option");
-        opt.value = namaGuru;
-        opt.textContent = namaGuru;
-        selectPembuat.appendChild(opt);
-      }
-      selectPembuat.value = namaGuru;
-      selectPembuat.disabled = true; // Kunci agar guru tidak perlu memilih lagi
-    }
-  } else {
-    // Jika Admin, pastikan dropdown terbuka bebas
-    if (selectPembuat) selectPembuat.disabled = false;
+  if (typeof updateGuruDropdown === "function") {
+    updateGuruDropdown();
   }
-
-  const modalEl = document.getElementById("modalUjian");
-  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-};
-
-window.openModalTambahSiswa = () => {
-  document.getElementById("formSiswa")?.reset();
-  const modalEl = document.getElementById("modalSiswa");
-  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-};
-
-window.hapusUjian = (id) => {
-  if (confirm("Hapus ujian beserta seluruh soalnya?")) remove(ref(db, "daftarUjian/" + id));
-};
-
-window.openModalTambahUjian = () => {
-  document.getElementById("formUjian")?.reset();
-  
-  const tokenEl = document.getElementById("ujianToken");
-  if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
-  
-  updateGuruDropdown();
 
   const selectPembuat = document.getElementById("ujianPembuat");
   const mapelInput = document.getElementById("ujianMapel");
@@ -1000,7 +958,6 @@ window.openModalTambahUjian = () => {
         if (cb) cb.checked = true;
       }
     }
-    // Jika data kelas kosong (akun lama), biarkan guru mencentang kelas secara manual seperti biasa.
 
   } else {
     // Jika Admin yang buka
@@ -1016,12 +973,15 @@ window.openModalTambahUjian = () => {
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
-  window.renderDaftarSoalInteraktif(u.soal || []);
+window.openModalTambahSiswa = () => {
+  document.getElementById("formSiswa")?.reset();
+  const modalEl = document.getElementById("modalSiswa");
+  if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+};
 
-  const modalEl = document.getElementById("modalKelolaSoal");
-  if (modalEl && window.bootstrap) {
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-  }
+window.hapusUjian = (id) => {
+  if (confirm("Hapus ujian beserta seluruh soalnya?")) remove(ref(db, "daftarUjian/" + id));
+};
 
 window.switchTipeSoal = (tipe) => {
   const containerPG = document.getElementById("containerPG");
