@@ -910,33 +910,27 @@ window.openModalTambahUjian = () => {
   const selectPembuat = document.getElementById("ujianPembuat");
   const mapelInput = document.getElementById("ujianMapel");
 
-  // Ambil data sesi aktif atau data guru aktif dari localStorage
-  let currentTeacher = null;
-  try {
-    // Coba ambil dari localStorage yang biasa dipakai di aplikasi Anda
-    const savedUser = localStorage.getItem("userSession") || localStorage.getItem("currentUser") || localStorage.getItem("dataGuruActive");
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      currentTeacher = Array.isArray(parsed) ? parsed[0] : parsed;
-    }
-  } catch (e) {
-    console.error("Gagal membaca sesi:", e);
+  // Ambil sesi login yang sedang aktif (pastikan mengambil dari variabel sesi login yang benar)
+  let currentTeacher = window.userSession || window.currentUser;
+  
+  // Jika tidak ada di variabel global, coba ambil dari localStorage tapi pastikan sesuai akun login
+  if (!currentTeacher) {
+    try {
+      const saved = localStorage.getItem("userSession") || localStorage.getItem("currentUser");
+      if (saved) currentTeacher = JSON.parse(saved);
+    } catch (e) {}
   }
 
-  // Jika tidak ketemu di localStorage, coba cek variabel global window.userSession
-  if (!currentTeacher && window.userSession) {
-    currentTeacher = window.userSession;
-  }
-
-  // Jika ditemukan data guru yang sedang login (bukan admin)
+  // Jika yang login adalah guru (bukan admin)
   if (currentTeacher && currentTeacher.role !== "admin") {
-    const namaGuru = currentTeacher.nama || currentTeacher.username || "";
-    const mapelGuru = currentTeacher.mapel || "";
+    // Ambil nama dan mapel dari data guru yang benar-benar login
+    const namaGuru = currentTeacher.nama || currentTeacher.namaLengkap || "";
+    const mapelGuru = currentTeacher.mapel || currentTeacher.mataPelajaran || "";
     const kelasGuru = currentTeacher.kelas || []; 
 
     // 1. Kunci nama pembuat ujian
     if (selectPembuat) {
-      let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value === namaGuru);
+      let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value.toLowerCase() === namaGuru.toLowerCase());
       if (!opsiAda && namaGuru) {
         const opt = document.createElement("option");
         opt.value = namaGuru;
@@ -947,7 +941,7 @@ window.openModalTambahUjian = () => {
       selectPembuat.disabled = true;
     }
 
-    // 2. Mapel: Isi otomatis dan kunci
+    // 2. Mapel: Isi otomatis sesuai mapel guru yang login & kunci
     if (mapelInput) {
       if (mapelGuru) {
         mapelInput.value = mapelGuru;
@@ -979,7 +973,7 @@ window.openModalTambahUjian = () => {
     }
 
   } else {
-    // Jika Admin atau data tidak ditemukan
+    // Jika Admin
     if (selectPembuat) selectPembuat.disabled = false;
     if (mapelInput) {
       mapelInput.value = "";
