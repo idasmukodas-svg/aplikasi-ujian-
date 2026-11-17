@@ -1129,6 +1129,34 @@ window.openModalEditGuru = (uid) => {
   }
 };
 
+window.openModalTambahGuru = () => {
+  const formEl = document.getElementById("formTambahGuru");
+  if (formEl) formEl.reset();
+  
+  // Render pilihan checkbox kelas secara dinamis berdasarkan data kelas yang ada
+  const container = document.getElementById("containerTambahKelasGuru");
+  if (container) {
+    container.innerHTML = "";
+    if (window.daftarKelas && window.daftarKelas.length > 0) {
+      window.daftarKelas.forEach(k => {
+        container.innerHTML += `
+          <div class="form-check">
+            <input class="form-check-input guruKelasCheckbox" type="checkbox" value="${k.nama}" id="tambahKls_${k.nama}">
+            <label class="form-check-label" for="tambahKls_${k.nama}">${k.nama}</label>
+          </div>
+        `;
+      });
+    } else {
+      container.innerHTML = `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
+    }
+  }
+
+  const modalEl = document.getElementById("modalTambahGuru");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+};
+
 window.downloadTemplateSoal = () => {
   const data = [
     { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", E: "Scanner", Kunci: "B", Pasangan: "" },
