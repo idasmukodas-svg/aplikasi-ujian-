@@ -543,7 +543,15 @@ async function handleTambahGuru(e) {
   const email = document.getElementById("guruEmail").value.trim();
   const password = document.getElementById("guruPassword").value;
   const mapel = document.getElementById("guruMapel").value.trim();
-  
+  <!-- Contoh di Modal Edit Guru (HTML) -->
+
+     <div class="mb-3">
+    <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+    <div id="containerEditKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+        <!-- Checkbox kelas akan dirender otomatis di sini -->
+    </div>
+</div>
+   
   // Ambil data kelas yang diampu dari checkbox di form tambah guru
   const kelasDiampu = [];
   document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
@@ -1102,11 +1110,26 @@ window.openModalEditGuru = (uid) => {
   document.getElementById("editGuruMapel").value = g.mapel || "";
   document.getElementById("editGuruPassword").value = "";
 
-  // Otomatis centang checkbox kelas sesuai data yang diampu sebelumnya
-  const kelasDiampuDb = g.kelasDiampu || [];
-  document.querySelectorAll('.editGuruKelasCheckbox').forEach((checkbox) => {
-    checkbox.checked = kelasDiampuDb.includes(checkbox.value);
-  });
+  // Render pilihan checkbox kelas berdasarkan daftarKelas global
+  const container = document.getElementById("containerEditKelasGuru");
+  if (container) {
+    container.innerHTML = "";
+    const kelasDiampuDb = g.kelasDiampu || [];
+
+    if (window.daftarKelas && window.daftarKelas.length > 0) {
+      window.daftarKelas.forEach(k => {
+        const isChecked = kelasDiampuDb.includes(k.nama) ? "checked" : "";
+        container.innerHTML += `
+          <div class="form-check">
+            <input class="form-check-input editGuruKelasCheckbox" type="checkbox" value="${k.nama}" id="editKls_${k.nama}" ${isChecked}>
+            <label class="form-check-label" for="editKls_${k.nama}">${k.nama}</label>
+          </div>
+        `;
+      });
+    } else {
+      container.innerHTML = `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
+    }
+  }
 
   const modalEl = document.getElementById("modalEditGuru");
   if (modalEl && window.bootstrap) {
