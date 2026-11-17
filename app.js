@@ -62,48 +62,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-  // 2. Load Realtime Data Ujian
-  // Helper terpusat untuk mengecek hak akses ujian berdasarkan mapel & kelas yang diampu guru
-  const cekAksesUjianGuru = (u) => {
-    if (!userSession || userSession.role === "admin") return true;
-
-    const namaLogin = (userSession.nama || "").toLowerCase().trim();
-    const usernameLogin = (userSession.username || "").toLowerCase().trim();
-    const mapelGuru = (userSession.mapel || userSession.mataPelajaran || "").toLowerCase().trim();
-    const kelasDiampu = Array.isArray(userSession.kelasDiampu) ? userSession.kelasDiampu : [];
-
-    const pembuat = (u.createdBy || "").toLowerCase().trim();
-    const usernamePembuat = (u.pembuatUsername || "").toLowerCase().trim();
-    const mapelUjian = (u.mapel || "").toLowerCase().trim();
-    const targetUjian = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
-
-    const isPembuat =
-      (namaLogin && (pembuat === namaLogin || usernamePembuat === namaLogin)) ||
-      (usernameLogin && (pembuat === usernameLogin || usernamePembuat === usernameLogin));
-
-    const cocokKelas =
-      kelasDiampu.length === 0 ||
-      targetUjian.includes("Semua") ||
-      targetUjian.some((k) => kelasDiampu.includes(k));
-
-    if (isPembuat) return cocokKelas;
-
-    if (mapelGuru && mapelUjian === mapelGuru) {
-      return cocokKelas;
-    }
-
-    return false;
-  };
-
-  // 2. Load Realtime Data Ujian
+  // 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
-    // Cek sesi login user
     const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
 
-    if (session.role === "guru") {
+    // Jika Admin, tampilkan seluruh ujian tanpa filter
+    if (!session || session.role === "admin") {
+      daftarUjian = rawList;
+    } else {
+      // Jika Guru, filter ketat berdasarkan Mapel DAN Kelas yang Diampu
       const mapelGuru = (session.mapel || session.mataPelajaran || "").toLowerCase().trim();
       const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
       const namaGuru = (session.nama || "").toLowerCase().trim();
@@ -114,7 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
         const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
 
-        // 1. Cek apakah ujian ini dibuat sendiri oleh guru yang bersangkutan
+        // 1. Cek apakah dibuat sendiri oleh guru tersebut
         const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) || 
                               (usernameGuru && pembuatUjian.includes(usernameGuru));
         if (dibuatSendiri) return true;
@@ -122,17 +92,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 2. Cek kecocokan Mata Pelajaran
         const cocokMapel = !mapelGuru || mapelUjian === mapelGuru || mapelUjian.includes(mapelGuru) || mapelGuru.includes(mapelUjian);
 
-        // 3. Cek kecocokan Kelas yang Diampu
+        // 3. Cek kecocokan Kelas Target dengan Kelas yang Diampu guru
         const cocokKelas = kelasDiampu.length === 0 || 
                            targetKelas.includes("Semua") || 
                            targetKelas.some(k => kelasDiampu.includes(k));
 
-        // Ujian lolos jika Mapel cocok DAN Kelas target masuk dalam daftar kelas yang diampu guru
+        // Ujian hanya lolos jika Mapel cocok DAN Kelas target masuk dalam daftar kelas diampu
         return cocokMapel && cocokKelas;
       });
-    } else {
-      // Jika Admin, tampilkan semua tanpa filter
-      daftarUjian = rawList;
     }
 
     window.daftarUjian = daftarUjian;
@@ -152,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
-   
+
   // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
