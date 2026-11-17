@@ -537,49 +537,40 @@ window.hapusSoal = (soalId) => {
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
-   async function handleTambahGuru(e) {
-     e.preventDefault();
-     const nama = document.getElementById("guruNama").value.trim();
-     const email = document.getElementById("guruEmail").value.trim();
-     const password = document.getElementById("guruPassword").value;
-     const mapel = document.getElementById("guruMapel").value.trim();
-     
-     // AMBIL DATA KELAS YANG DIAMPU (Contoh dari checkbox yang dicentang)
-     const kelasDiampu = [];
-     document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
-         kelasDiampu.push(checkbox.value);
-     });
+   async function handleSimpanEditGuru(e) {
+  e.preventDefault();
+  const uid = document.getElementById("editGuruUid").value;
+  const nama = document.getElementById("editGuruNama").value.trim();
+  const mapel = document.getElementById("editGuruMapel").value.trim();
+  const newPassword = document.getElementById("editGuruPassword").value.trim();
 
-     if (kelasDiampu.length === 0) {
-         alert("Pilih minimal satu kelas yang diampu oleh guru ini!");
-         return;
-     }
-   
-     try {
-       const secondaryApp = getApps().find(app => app.name === "SecondaryApp") 
-         ? getApp("SecondaryApp") 
-         : initializeApp(firebaseConfig, "SecondaryApp");
-         
-       const secondaryAuth = getAuth(secondaryApp);
-   
-       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-       const uid = cred.user.uid;
-   
-       // MASUKKAN kelasDiampu KE DALAM OBJEK DATABASE
-       const dataPengguna = { uid, nama, email, mapel, kelasDiampu, role: "guru" };
-       await set(ref(db, "pengguna/" + uid), dataPengguna);
-       await secondaryAuth.signOut();
-   
-       alert(`Akun Guru ${nama} berhasil dibuat!`);
-       document.getElementById("formTambahGuru").reset();
-       const modalEl = document.getElementById("modalTambahGuru");
-       if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
-   
-     } catch (err) {
-       console.error("Gagal buat guru:", err);
-       alert("Gagal membuat akun guru: " + err.message);
-     }
-   }
+  // Ambil pembaruan kelas yang diampu dari form edit
+  const kelasDiampu = [];
+  document.querySelectorAll('.editGuruKelasCheckbox:checked').forEach((checkbox) => {
+      kelasDiampu.push(checkbox.value);
+  });
+
+  try {
+    // Update data di database termasuk kelasDiampu
+    await update(ref(db, "pengguna/" + uid), { 
+      nama, 
+      mapel, 
+      kelasDiampu 
+    });
+
+    if (newPassword) {
+      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
+    } else {
+      alert(`Profil Guru ${nama} berhasil diperbarui!`);
+    }
+
+    const modalEl = document.getElementById("modalEditGuru");
+    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+  } catch (err) {
+    alert("Gagal memperbarui data guru: " + err.message);
+  }
+}
 
 window.hapusGuru = (uid, nama) => {
   if (confirm(`Apakah Anda yakin ingin menghapus akun Guru "${nama}"?`)) {
