@@ -40,7 +40,7 @@
     }
   </style>
 </head>
-  <body class="bg-light">
+<body class="bg-light">
 
   <!-- NAVBAR -->
   <nav class="navbar navbar-dark bg-primary px-3 shadow-sm">
@@ -96,6 +96,19 @@
       </div>
     </div>
 
+    <!-- TOMBOL AKSI MANAJEMEN ADMIN -->
+    <div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
+      <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+        <i class="bi bi-person-plus me-1"></i> Tambah Guru
+      </button>
+      <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalTambahKelas">
+        <i class="bi bi-building me-1"></i> Kelola Kelas
+      </button>
+      <button class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#modalMapel">
+        <i class="bi bi-book me-1"></i> Kelola Mata Pelajaran
+      </button>
+    </div>
+
     <!-- NAVIGASI TAB UTAMA -->
     <ul class="nav nav-pills bg-white p-2 rounded shadow-sm mb-4" id="mainTab" role="tablist">
       <li class="nav-item" role="presentation">
@@ -119,30 +132,15 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
-  <button class="nav-link fw-semibold" id="tabMonitoring" data-bs-toggle="pill" data-bs-target="#contentMonitoring" type="button" role="tab">
-    <i class="bi bi-eye-fill me-1"></i>Monitoring Ujian
-  </button>
+        <button class="nav-link fw-semibold" id="tabMonitoring" data-bs-toggle="pill" data-bs-target="#contentMonitoring" type="button" role="tab">
+          <i class="bi bi-eye-fill me-1"></i>Monitoring Ujian
+        </button>
       </li>
     </ul>
 
     <!-- KONTEN TAB -->
     <div class="tab-content" id="mainTabContent">
-<!-- Contoh Container Tombol Manajemen Admin -->
-<div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
-  <!-- Tombol Manajemen yang sudah ada -->
-  <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
-    <i class="bi bi-person-plus me-1"></i> Tambah Guru
-  </button>
-  
-  <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalTambahKelas">
-    <i class="bi bi-building me-1"></i> Kelola Kelas
-  </button>
 
-  <!-- Pindahkan tombol Kelola Mapel ke sini agar sejajar di atas -->
-  <button class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#modalMapel">
-    <i class="bi bi-book me-1"></i> Kelola Mata Pelajaran
-  </button>
-</div>
       <!-- TAB 1: KELOLA UJIAN & BANK SOAL -->
       <div class="tab-pane fade show active" id="contentUjian" role="tabpanel">
         <div class="card border-0 shadow-sm">
@@ -291,45 +289,81 @@
       </div>
 
       <!-- TAB 4: KELOLA AKUN GURU (ADMIN ONLY) -->
-<div class="tab-pane fade" id="contentGuru" role="tabpanel">
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-      <h5 class="fw-bold mb-0 text-primary">
-        <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
-      </h5>
-      <button class="btn btn-primary btn-sm" onclick="openModalTambahGuru()">
-        <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
-      </button>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 50px;">No</th>
-              <th>Nama Guru</th>
-              <th>Email</th>
-              <th>Mata Pelajaran</th>
-              <th>Role</th>
-              <th style="width: 120px;">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyPengguna">
-            <!-- Rendered by app.js -->
-          </tbody>
-        </table>
+      <div class="tab-pane fade" id="contentGuru" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
+            </h5>
+            <button class="btn btn-primary btn-sm" onclick="openModalTambahGuru()">
+              <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 50px;">No</th>
+                    <th>Nama Guru</th>
+                    <th>Email</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Role</th>
+                    <th style="width: 120px;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPengguna">
+                  <!-- Rendered by app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-      <!-- TAB 4: KELOLA AKUN GURU (ADMIN ONLY) -->
-<!-- Tombol untuk membuka Modal Tambah Mapel di Panel Admin -->
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalMapel">
-  <i class="bi bi-book me-1"></i> Kelola Mata Pelajaran
-</button>
+      <!-- TAB 5: MONITORING UJIAN -->
+      <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
+        <div class="card border-0 shadow-sm mt-3">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Pengawasan & Reset Peserta Ujian</h5>
+          </div>
+          <div class="card-body">
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Pilih Jadwal Ujian:</label>
+                <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
+                  <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle border">
+                <thead class="table-dark">
+                  <tr>
+                    <th>No</th>
+                    <th>NISN</th>
+                    <th>Nama Siswa</th>
+                    <th>Kelas</th>
+                    <th>Status Peserta</th>
+                    <th>Waktu Mulai</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelMonitoringBody">
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      
+    </div> <!-- End Tab Content -->
+
+  </div> <!-- End Container Utama -->
+
   <!-- AREA CETAK KARTU UJIAN (TERSEMBUNYI SAAT TAMPILAN MONITOR) -->
   <div id="printAreaKartu" class="d-none d-print-block container p-4">
     <div class="row g-3" id="containerKartuUjian">
@@ -353,6 +387,29 @@
           <hr>
           <h6 class="fw-semibold text-secondary">Daftar Kelas Terdaftar:</h6>
           <ul id="listDaftarKelas" class="list-group" style="max-height: 250px; overflow-y: auto;">
+            <!-- Rendered by app.js -->
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: KELOLA MATA PELAJARAN -->
+  <div class="modal fade" id="modalMapel" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-book me-2"></i>Kelola Mata Pelajaran</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formTambahMapel" class="mb-3 d-flex gap-2">
+            <input type="text" id="inputNamaMapel" class="form-control" placeholder="Nama Mapel (Contoh: Informatika)" required>
+            <button type="submit" class="btn btn-success text-nowrap"><i class="bi bi-plus-lg me-1"></i>Tambah Mapel</button>
+          </form>
+          <hr>
+          <h6 class="fw-semibold text-secondary">Daftar Mata Pelajaran:</h6>
+          <ul id="listMapelAdmin" class="list-group" style="max-height: 250px; overflow-y: auto;">
             <!-- Rendered by app.js -->
           </ul>
         </div>
@@ -408,9 +465,6 @@
               <label class="form-label fw-bold">Guru Pembuat Soal</label>
               <select class="form-select" id="ujianPembuat" required>
                 <option value="">-- Pilih Guru Pengampu --</option>
-                <option value="Heri">Pak Heri</option>
-                <option value="Azis">Pak Azis</option>
-                <option value="Ahmad">Pak Ahmad</option>
               </select>
             </div>
             
@@ -425,6 +479,35 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
             <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan Ujian</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT UJIAN -->
+  <div class="modal fade" id="modalEditUjian" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="formEditUjian">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Ujian</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editUjianId">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Judul Ujian / Materi</label>
+              <input type="text" id="editJudulUjian" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Durasi (Menit)</label>
+              <input type="number" id="editDurasiUjian" class="form-control" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
           </div>
         </form>
       </div>
@@ -592,59 +675,50 @@
     </div>
   </div>
 
-  <!-- Modal Tambah Akun Guru -->
-<div class="modal fade" id="modalTambahGuru" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold">Tambah Akun Guru</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form id="formTambahGuru">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Nama Lengkap Guru</label>
-            <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd">
+  <!-- MODAL: TAMBAH AKUN GURU -->
+  <div class="modal fade" id="modalTambahGuru" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="formTambahGuru">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Akun Guru</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Email Login</label>
-            <input type="email" class="form-control" id="guruEmail" required placeholder="email@guru.sma.belajar.id">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Password</label>
-            <input type="password" class="form-control" id="guruPassword" required placeholder="Minimal 6 karakter">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Mata Pelajaran yang Diampu</label>
-            <input type="text" class="form-control" id="guruMapel" required placeholder="Contoh: Informatika">
-          </div>
-          
-          <!-- Pilihan Kelas yang Diampu (Hak Akses Ujian) di dalam Modal -->
-          <div class="mb-3">
-            <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
-            <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-              <!-- Checkbox akan otomatis terisi secara dinamis melalui app.js -->
-              <div class="form-check">
-                <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-A" id="tambahKls_IXA">
-                <label class="form-check-label" for="tambahKls_IXA">IX-A</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-B" id="tambahKls_IXB">
-                <label class="form-check-label" for="tambahKls_IXB">IX-B</label>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nama Lengkap Guru</label>
+              <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Email Login</label>
+              <input type="email" class="form-control" id="guruEmail" required placeholder="email@guru.sma.belajar.id">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Password</label>
+              <input type="password" class="form-control" id="guruPassword" required placeholder="Minimal 6 karakter">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Mata Pelajaran yang Diampu</label>
+              <select class="form-select" id="guruMapel" required>
+                <option value="">-- Pilih Mata Pelajaran --</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+              <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+                <!-- Checkbox akan otomatis terisi secara dinamis melalui app.js -->
               </div>
             </div>
           </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary fw-bold">Buat Akun Guru</button>
-        </div>
-      </form>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary fw-bold">Buat Akun Guru</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
-      
+
   <!-- MODAL: EDIT & RESET PASSWORD GURU -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog">
@@ -665,14 +739,16 @@
               <input type="email" id="editGuruEmail" class="form-control bg-light" readonly>
             </div>
             <div class="mb-3">
+              <label class="form-label fw-bold">Mata Pelajaran</label>
+              <select class="form-select" id="editGuruMapel" required>
+                <option value="">-- Pilih Mata Pelajaran --</option>
+              </select>
+            </div>
+            <div class="mb-3">
               <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
               <div id="containerEditKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
                 <!-- Checkbox kelas akan dirender otomatis di sini -->
               </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Mata Pelajaran</label>
-              <input type="text" id="editGuruMapel" class="form-control" required>
             </div>
             <hr>
             <div class="mb-3">
@@ -681,37 +757,6 @@
               <small class="text-muted">Isi bidang ini jika guru lupa password untuk menetapkan password baru.</small>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Mata Pelajaran yang Diampu:</label>
-            <div id="containerMapelGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
-              <!-- Daftar mapel akan dimuat dinamis atau statis -->
-              <div class="form-check">
-                <input class="form-check-input mapel-checkbox" type="checkbox" value="Informatika" id="mapelInformatika">
-                <label class="form-check-label" for="mapelInformatika">Informatika</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input mapel-checkbox" type="checkbox" value="PJOK" id="mapelPjok">
-                <label class="form-check-label" for="mapelPjok">PJOK</label>
-              </div>
-              <!-- Tambahkan mapel lainnya sesuai kebutuhan sekolah -->
-            </div>
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label fw-bold">Kelas yang Diampu:</label>
-            <div id="containerKelasGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
-              <!-- Daftar kelas dimuat dari database daftarKelas -->
-              <div class="form-check">
-                <input class="form-check-input kelas-checkbox" type="checkbox" value="IX-A" id="kelasIXA">
-                <label class="form-check-label" for="kelasIXA">IX-A</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input kelas-checkbox" type="checkbox" value="IX-B" id="kelasIXB">
-                <label class="form-check-label" for="kelasIXB">IX-B</label>
-              </div>
-            </div>
-          </div>
-          
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
             <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-check-circle me-1"></i>Simpan Perubahan</button>
@@ -720,72 +765,7 @@
       </div>
     </div>
   </div>
-    <!-- Modal Edit Ujian -->
-<div class="modal fade" id="modalEditUjian" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formEditUjian">
-        <div class="modal-header">
-          <h5 class="modal-title">Edit Ujian</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="editUjianId">
-          <div class="mb-3">
-            <label class="form-label">Judul Ujian / Materi</label>
-            <input type="text" id="editJudulUjian" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Durasi (Menit)</label>
-            <input type="number" id="editDurasiUjian" class="form-control" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<!-- TAB CONTENT: MONITORING UJIAN & RESET PESERTA -->
-<div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
-  <div class="card border-0 shadow-sm mt-3">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-      <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Pengawasan & Reset Peserta Ujian</h5>
-    </div>
-    <div class="card-body">
-      <div class="row mb-4">
-        <div class="col-md-6">
-          <label class="form-label fw-bold">Pilih Jadwal Ujian:</label>
-          <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
-            <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
-          </select>
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle border">
-         <thead class="table-dark">
-          <tr>
-            <th>No</th>
-            <th>NISN</th>
-            <th>Nama Siswa</th>
-            <th>Mata Pelajaran & Judul Ujian</th>
-            <th>Nilai</th>
-            <th>Waktu Selesai</th>
-            <th class="text-center">Aksi</th>
-          </tr>
-        </thead>
-          <tbody id="tabelMonitoringBody">
-            <tr>
-              <td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- App JS -->
