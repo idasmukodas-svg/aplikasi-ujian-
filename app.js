@@ -22,12 +22,13 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 
 let userSession = null;
-const storedUser = sessionStorage.getItem("userLoggedIn") || localStorage.getItem("cbt_current_user");
+const storedUser = sessionStorage.getItem("userLoggedIn") || localStorage.getItem("cbt_current_user") || localStorage.getItem("userSession");
 
 if (!storedUser) {
   window.location.href = "login.html";
 } else {
   userSession = JSON.parse(storedUser);
+  window.userSession = userSession; // Set global langsung agar bisa diakses modul lain
 }
 
 let daftarUjian = [];
@@ -41,9 +42,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!userSession) return;
 
   // Sinkronkan ulang profil terbaru dari Firebase jika user adalah guru
-  if (userSession.role === "guru" && userSession.uid) {
+  // Gunakan userSession.uid atau userSession.id (sesuaikan dengan database Anda)
+  const userId = userSession.uid || userSession.id;
+  if (userSession.role === "guru" && userId) {
     try {
-      const snapUser = await get(ref(db, "pengguna/" + userSession.uid));
+      const snapUser = await get(ref(db, "pengguna/" + userId));
       if (snapUser.exists()) {
         userSession = { ...userSession, ...snapUser.val() };
         window.userSession = userSession;
@@ -54,8 +57,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  renderUserInfoNav();
-  
+  if (typeof renderUserInfoNav === "function") {
+    renderUserInfoNav();
+  }
+});
+
   // 2. Load Realtime Data Ujian
   // Helper terpusat untuk mengecek hak akses ujian berdasarkan mapel & kelas yang diampu guru
   const cekAksesUjianGuru = (u) => {
