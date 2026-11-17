@@ -176,6 +176,52 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
+// 3. Load Realtime Data Siswa (Aman untuk Admin & Guru)
+  onValue(ref(db, "daftarSiswa"), (snapshot) => {
+    const data = snapshot.val();
+    
+    // Ubah data Firebase (baik format array maupun objek key-value) menjadi array murni
+    let rawSiswa = [];
+    if (data) {
+      if (Array.isArray(data)) {
+        rawSiswa = data.filter(Boolean); // Bersihkan dari elemen null jika ada
+      } else {
+        rawSiswa = Object.values(data);
+      }
+    }
+
+    const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+
+    // Jika Admin, tampilkan seluruh siswa tanpa filter
+    if (!session || session.role === "admin") {
+      daftarSiswa = rawSiswa;
+    } else {
+      // Jika Guru, filter hanya siswa yang berada di kelas yang diampu (kelasDiampu)
+      const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+      
+      if (kelasDiampu.length > 0) {
+        daftarSiswa = rawSiswa.filter((s) => {
+          const kelasSiswa = (s.kelas || "").toString().trim();
+          // Cocokkan apakah kelas siswa ada di dalam daftar kelas yang diampu guru
+          return kelasDiampu.includes(kelasSiswa);
+        });
+      } else {
+        // Jika guru belum mengatur kelas diampu, jangan tampilkan semua (atau kosongkan agar aman)
+        daftarSiswa = [];
+      }
+    }
+
+    window.daftarSiswa = daftarSiswa;
+
+    // Perbarui statistik dan tampilan tabel siswa
+    if (typeof renderStats === "function") renderStats();
+    if (typeof window.filterDataSiswa === "function") {
+      window.filterDataSiswa();
+    } else if (typeof renderTabelSiswa === "function") {
+      renderTabelSiswa(daftarSiswa);
+    }
+  });
+
 // Event Listeners Form & Input
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
