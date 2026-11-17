@@ -1828,3 +1828,50 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnTambahSiswa) btnTambahSiswa.style.display = "none";
   }
 });
+
+/* ===================================================
+   TAMBAHAN: FUNGSI PENGACAK SOAL & OPSI JAWABAN
+   =================================================== */
+
+function shuffleArray(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]
+    ];
+  }
+  return array;
+}
+
+function getAcakOpsi(soalItem) {
+  let opsiArray = [
+    { label: 'A', teks: soalItem.opsi?.A },
+    { label: 'B', teks: soalItem.opsi?.B },
+    { label: 'C', teks: soalItem.opsi?.C },
+    { label: 'D', teks: soalItem.opsi?.D },
+    { label: 'E', teks: soalItem.opsi?.E }
+  ].filter(o => o.teks && o.teks.trim() !== "");
+
+  let teksKunciAsli = soalItem.opsi ? soalItem.opsi[soalItem.kunci] : "";
+  let opsiAcak = shuffleArray(opsiArray);
+
+  let opsiBaru = {};
+  let kunciBaru = "";
+  const labelHuruf = ['A', 'B', 'C', 'D', 'E'];
+
+  opsiAcak.forEach((item, index) => {
+    let labelBaru = labelHuruf[index];
+    opsiBaru[labelBaru] = item.teks;
+    if (item.teks === teksKunciAsli) {
+      kunciBaru = labelBaru;
+    }
+  });
+
+  return {
+    ...soalItem,
+    opsi: opsiBaru,
+    kunci: kunciBaru || soalItem.kunci
+  };
+}
