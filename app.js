@@ -1033,18 +1033,28 @@ window.openModalTambahUjian = async () => {
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
+// Deklarasikan variabel global di atas window.openModalSoal
+window.currentUjianActive = null;
+window.currentUjianActiveKey = "";
+window.activeUjianId = "";
+
 window.openModalSoal = (idUjian) => {
-  // Pastikan daftarUjian tersedia dan cari ujian berdasarkan ID
-  if (typeof daftarUjian === 'undefined') {
+  // Pastikan daftarUjian tersedia dari global atau lokal
+  const sumberUjian = Array.isArray(window.daftarUjian) 
+    ? window.daftarUjian 
+    : (typeof daftarUjian !== 'undefined' ? daftarUjian : null);
+
+  if (!sumberUjian) {
     return alert("Data ujian belum dimuat, silakan refresh halaman.");
   }
   
-  const u = daftarUjian.find(item => item.id === idUjian);
+  const u = sumberUjian.find(item => item.id === idUjian);
   if (!u) return alert("Ujian tidak ditemukan!");
 
-  // Simpan referensi ujian aktif
-  currentUjianActive = u;
-  currentUjianActiveKey = idUjian;
+  // Simpan referensi ujian aktif ke variabel global (window)
+  window.currentUjianActive = u;
+  window.currentUjianActiveKey = idUjian;
+  window.activeUjianId = idUjian;
 
   // Render daftar soal ke dalam modal
   if (typeof window.renderDaftarSoalInteraktif === "function") {
