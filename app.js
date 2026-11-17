@@ -470,7 +470,7 @@ function handleSimpanUjian(e) {
     soal: [],
     createdBy: pembuatInput,
     pembuatUsername: usernamePembuat,
-    createdAt: firebase.database.ServerValue.TIMESTAMP
+    createdAt: Date.now() // Menggunakan Date.now() sebagai pengganti ServerValue.TIMESTAMP
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
@@ -480,6 +480,13 @@ function handleSimpanUjian(e) {
       if (modalEl && window.bootstrap) {
         bootstrap.Modal.getInstance(modalEl)?.hide();
       }
+      document.getElementById("formUjian")?.reset();
+    })
+    .catch((err) => {
+      console.error("Gagal menyimpan ujian:", err);
+      alert("Terjadi kesalahan saat menyimpan ujian: " + err.message);
+    });
+}
       
       // Masukkan data secara instan ke array lokal agar langsung tampil di tabel
       if (Array.isArray(window.daftarUjian)) {
