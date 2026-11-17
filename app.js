@@ -935,50 +935,24 @@ window.openModalTambahUjian = () => {
   
   const tokenEl = document.getElementById("ujianToken");
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
-  
-  if (typeof updateGuruDropdown === "function") {
-    updateGuruDropdown();
-  }
 
   const selectPembuat = document.getElementById("ujianPembuat");
   const mapelInput = document.getElementById("ujianMapel");
 
-  // Ambil teks nama dan mapel langsung dari header web yang sedang login
-  // Contoh format di header: "Ali Sya'ban Hanapiah (Guru Pendidikan Jasmani Olahraga dan Kesehatan)"
+  // Ambil data sesi user yang sedang login
   let namaGuru = "";
   let mapelGuru = "";
+  let kelasDiampuGuru = [];
 
-  const headerUserEl = document.querySelector("header") || document.querySelector(".navbar") || document.body;
-  // Cari teks di dalam elemen navbar/header yang memuat info login
-  const infoTextEl = Array.from(headerUserEl.querySelectorAll("*")).find(el => el.textContent && el.textContent.includes("(Guru"));
-  
-  if (infoTextEl) {
-    const textFull = infoTextEl.textContent.trim();
-    // Ekstraksi nama (sebelum tanda kurung)
-    const matchNama = textFull.match(/^([^(]+)/);
-    if (matchNama) namaGuru = matchNama[1].trim();
-
-    // Ekstraksi mapel di dalam kurung (setelah kata "Guru")
-    const matchMapel = textFull.match(/Guru\s+([^)]+)/i);
-    if (matchMapel) mapelGuru = matchMapel[1].trim();
+  if (window.userSession) {
+    namaGuru = window.userSession.nama || window.userSession.username || "";
+    mapelGuru = window.userSession.mapel || window.userSession.mataPelajaran || "";
+    // Ambil daftar kelas yang diampu dari profil login guru
+    kelasDiampuGuru = window.userSession.kelasDiampu || [];
   }
 
-  // Fallback jika tidak ketemu di header, coba cek localStorage
-  if (!namaGuru) {
-    try {
-      const saved = localStorage.getItem("userSession") || localStorage.getItem("currentUser") || localStorage.getItem("dataGuruActive");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const data = Array.isArray(parsed) ? parsed[0] : parsed;
-        namaGuru = data.nama || data.username || "";
-        mapelGuru = data.mapel || data.mataPelajaran || "";
-      }
-    } catch (e) {}
-  }
-
-  // Jika nama guru berhasil didapatkan (artinya yang login adalah guru)
-  if (namaGuru && namaGuru.toLowerCase() !== "administrator utama" && namaGuru.toLowerCase() !== "admin") {
-    
+  // Jika yang login adalah Guru (bukan Admin)
+  if (window.userSession && window.userSession.role !== "admin") {
     // 1. Kunci nama pembuat ujian
     if (selectPembuat) {
       let opsiAda = Array.from(selectPembuat.options).some(opt => opt.value.toLowerCase() === namaGuru.toLowerCase());
@@ -992,23 +966,47 @@ window.openModalTambahUjian = () => {
       selectPembuat.disabled = true;
     }
 
-    // 2. Mapel: Isi otomatis sesuai mapel guru & kunci
+    // 2. Kunci Mata Pelajaran sesuai profil guru
     if (mapelInput) {
-      if (mapelGuru) {
-        mapelInput.value = mapelGuru;
-        mapelInput.disabled = true; 
-      } else {
-        mapelInput.value = "";
-        mapelInput.disabled = false; 
-      }
+      mapelInput.value = mapelGuru;
+      mapelInput.disabled = true;
     }
-
   } else {
     // Jika Admin
     if (selectPembuat) selectPembuat.disabled = false;
     if (mapelInput) {
       mapelInput.value = "";
       mapelInput.disabled = false;
+    }
+  }
+
+  // 3. RENDER KELAS TARGET BERDASARKAN HAK AMPU GURU
+  const containerCheck = document.getElementById("containerCheckboxKelas");
+  if (containerCheck) {
+    containerCheck.innerHTML = "";
+    
+    // Jika guru, tampilkan hanya kelas yang diampu. Jika admin, tampilkan semua kelas.
+    let listKelasTampil = window.daftarKelas || [];
+    
+    if (window.userSession && window.userSession.role !== "admin" && kelasDiampuGuru.length > 0) {
+      // Filter hanya kelas yang ada di dalam kelasDiampu guru
+      listKelasTampil = listKelasTampil.filter(k => kelasDiampuGuru.includes(k.nama));
+    }
+
+    if (listKelasTampil.length === 0) {
+      containerCheck.innerHTML = `<small class="text-danger">Tidak ada kelas hak ampu yang terdaftar.</small>`;
+    } else {
+      listKelasTampil.forEach(k => {
+        // Otomatis centang jika guru hanya punya 1 kelas ampu, atau biarkan guru memilih
+        const isChecked = (listKelasTampil.length === 1) ? "checked" : "";
+        const div = document.createElement("div");
+        div.className = "form-check mb-1";
+        div.innerHTML = `
+          <input class="form-check-input check-kelas-item" type="checkbox" value="${k.nama}" id="checkKelas_${k.nama}" ${isChecked}>
+          <label class="form-check-label" for="checkKelas_${k.nama}">${k.nama}</label>
+        `;
+        containerCheck.appendChild(div);
+      });
     }
   }
 
