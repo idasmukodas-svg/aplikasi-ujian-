@@ -470,25 +470,10 @@ function handleSimpanUjian(e) {
     soal: [],
     createdBy: pembuatInput,
     pembuatUsername: usernamePembuat,
-    createdAt: Date.now() // Menggunakan Date.now() sebagai pengganti ServerValue.TIMESTAMP
+    createdAt: Date.now()
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
-    .then(() => {
-      alert("Ujian Berhasil Disimpan & Diamankan untuk Mapel Anda!");
-      const modalEl = document.getElementById("modalUjian");
-      if (modalEl && window.bootstrap) {
-        bootstrap.Modal.getInstance(modalEl)?.hide();
-      }
-      document.getElementById("formUjian")?.reset();
-    })
-    .catch((err) => {
-      console.error("Gagal menyimpan ujian:", err);
-      alert("Terjadi kesalahan saat menyimpan ujian: " + err.message);
-    });
-}
-      
-set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
       alert("Ujian Berhasil Disimpan & Diamankan untuk Mapel Anda!");
       const modalEl = document.getElementById("modalUjian");
