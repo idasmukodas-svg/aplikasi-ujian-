@@ -286,6 +286,21 @@
               <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
             </button>
           </div>
+          <div class="mb-3">
+              <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+              <div class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+                  <!-- Pastikan checkbox memiliki class="guruKelasCheckbox" -->
+                  <div class="form-check">
+                      <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-A" id="tambahKls_IXA">
+                      <label class="form-check-label" for="tambahKls_IXA">IX-A</label>
+                  </div>
+                  <div class="form-check">
+                      <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-B" id="tambahKls_IXB">
+                      <label class="form-check-label" for="tambahKls_IXB">IX-B</label>
+                  </div>
+                  <!-- Tambahkan kelas lainnya sesuai kebutuhan atau render dinamis -->
+              </div>
+          </div>
           <div class="card-body p-0">
             <div class="table-responsive">
               <table class="table table-hover align-middle mb-0">
