@@ -215,17 +215,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
    
   // 5. Load Pengguna (Admin Only)
-  if (userSession.role === "admin") {
+  if (userSession && userSession.role === "admin") {
     onValue(ref(db, "pengguna"), (snapshot) => {
       const data = snapshot.val();
       daftarPengguna = data ? Object.values(data) : [];
-      renderTabelPengguna();
+      if (typeof renderTabelPengguna === "function") renderTabelPengguna();
     });
   } else {
     const navGuruTab = document.getElementById("navGuruTab");
     if (navGuruTab) navGuruTab.style.display = "none";
   }
-});
 
 // Event Listeners Form & Input
 document.addEventListener("DOMContentLoaded", () => {
@@ -243,13 +242,15 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
 
   document.getElementById("soalTipe")?.addEventListener("change", (e) => {
-    window.switchTipeSoal(e.target.value);
+    if (typeof window.switchTipeSoal === "function") window.switchTipeSoal(e.target.value);
   });
 
   document.getElementById("btnExportRekap")?.addEventListener("click", () => {
     const kelas = document.getElementById("selectFilterKelas")?.value || "";
     const ujianId = document.getElementById("selectFilterUjian")?.value || "";
-    window.downloadRekapNilaiPerKelas(kelas, ujianId);
+    if (typeof window.downloadRekapNilaiPerKelas === "function") {
+      window.downloadRekapNilaiPerKelas(kelas, ujianId);
+    }
   });
 });
 
