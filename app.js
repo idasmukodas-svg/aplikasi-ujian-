@@ -94,33 +94,59 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = snapshot.val();
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
-    // Filter langsung dari sumbernya agar renderStats(), renderTabelUjian(), dan dropdown sinkron
-    if (userSession && userSession.role === "guru") {
-      daftarUjian = rawList.filter(cekAksesUjianGuru);
+    // Cek sesi login user
+    const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+
+    if (session.role === "guru") {
+      const mapelGuru = (session.mapel || session.mataPelajaran || "").toLowerCase().trim();
+      const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+      const namaGuru = (session.nama || "").toLowerCase().trim();
+      const usernameGuru = (session.username || "").toLowerCase().trim();
+
+      daftarUjian = rawList.filter(u => {
+        const mapelUjian = (u.mapel || "").toLowerCase().trim();
+        const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
+        const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
+
+        // 1. Cek apakah ujian ini dibuat sendiri oleh guru yang bersangkutan
+        const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) || 
+                              (usernameGuru && pembuatUjian.includes(usernameGuru));
+        if (dibuatSendiri) return true;
+
+        // 2. Cek kecocokan Mata Pelajaran
+        const cocokMapel = !mapelGuru || mapelUjian === mapelGuru || mapelUjian.includes(mapelGuru) || mapelGuru.includes(mapelUjian);
+
+        // 3. Cek kecocokan Kelas yang Diampu
+        const cocokKelas = kelasDiampu.length === 0 || 
+                           targetKelas.includes("Semua") || 
+                           targetKelas.some(k => kelasDiampu.includes(k));
+
+        // Ujian lolos jika Mapel cocok DAN Kelas target masuk dalam daftar kelas yang diampu guru
+        return cocokMapel && cocokKelas;
+      });
     } else {
+      // Jika Admin, tampilkan semua tanpa filter
       daftarUjian = rawList;
     }
+
     window.daftarUjian = daftarUjian;
 
     if (typeof renderStats === "function") renderStats();
     if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
     if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
 
-    // Sinkronkan modal soal jika sedang terbuka
     const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
     if (activeId) {
-      const activeUjian = daftarUjian.find((u) => u.id === activeId);
+      const activeUjian = daftarUjian.find(u => u.id === activeId);
       if (activeUjian) {
         window.currentUjianActive = activeUjian;
         if (typeof window.renderDaftarSoalInteraktif === "function") {
           window.renderDaftarSoalInteraktif(activeUjian.soal || []);
-        } else if (typeof renderDaftarSoal === "function") {
-          renderDaftarSoal(activeUjian);
         }
       }
     }
   });
-
+   
   // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
