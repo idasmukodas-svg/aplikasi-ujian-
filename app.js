@@ -369,7 +369,10 @@ window.renderTabelUjian = function() {
       <td>${i + 1}</td>
       <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
       <td><span class="badge bg-dark">${displayKelas}</span></td>
-      <td class="fw-bold">${u.judul || '-'}</td>
+      <td>
+        <div class="fw-bold">${u.judul || '-'}</div>
+        <small class="text-muted font-monospace" style="font-size: 11px;">ID: ${u.id}</small>
+      </td>
       <td>${u.durasi || 0} Mns</td>
       <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
       <td>
