@@ -423,18 +423,16 @@ function updateAllClassDropdowns() {
   const isGuru = session && session.role === "guru";
   const kelasDiampuGuru = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
 
-  // Tentukan daftar kelas yang boleh dilihat berdasarkan hak akses
   let kelasTampil = daftarKelas;
   if (isGuru) {
     kelasTampil = daftarKelas.filter(k => kelasDiampuGuru.includes(k.nama));
   }
 
-  // Dropdown Filter Kelas Siswa
   const filterSiswa = document.getElementById("filterKelasSiswa");
   if (filterSiswa) {
     const currVal = filterSiswa.value;
-    filterSisiwaHTML = isGuru ? '<option value="">-- Kelas Ampuan --</option>' : '<option value="">-- Semua Kelas --</option>';
-    filterSiswa.innerHTML = filterSisiwaHTML;
+    const filterSiswaHTML = isGuru ? '<option value="">-- Kelas Ampuan --</option>' : '<option value="">-- Semua Kelas --</option>';
+    filterSiswa.innerHTML = filterSiswaHTML;
     
     kelasTampil.forEach(k => {
       const opt = document.createElement("option");
@@ -445,7 +443,6 @@ function updateAllClassDropdowns() {
     filterSiswa.value = currVal;
   }
 
-  // Dropdown Filter Rekap Nilai
   const filterNilai = document.getElementById("selectFilterKelas");
   if (filterNilai) {
     const currVal = filterNilai.value;
@@ -461,7 +458,6 @@ function updateAllClassDropdowns() {
     filterNilai.value = currVal;
   }
 
-  // Container Checkbox Kelas (Saat Buat Ujian)
   const containerCheck = document.getElementById("containerCheckboxKelas");
   if (containerCheck) {
     containerCheck.innerHTML = "";
@@ -476,7 +472,6 @@ function updateAllClassDropdowns() {
     });
   }
 
-  // Dropdown Tambah Siswa
   const selectSiswa = document.getElementById("siswaKelas");
   if (selectSiswa) {
     const currVal = selectSiswa.value;
@@ -490,6 +485,7 @@ function updateAllClassDropdowns() {
     selectSiswa.value = currVal;
   }
 }
+
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL
    =================================================== */
@@ -1775,3 +1771,4 @@ document.addEventListener("click", function(event) {
     setTimeout(window.updateFilterUjianDropdown, 200);
   }
 });
+Analyzing
