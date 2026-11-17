@@ -37,18 +37,25 @@ let daftarPengguna = [];
 let daftarKelas = [];
 let activeUjianId = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!userSession) return;
+
+  // Sinkronkan ulang profil terbaru dari Firebase jika user adalah guru
+  if (userSession.role === "guru" && userSession.uid) {
+    try {
+      const snapUser = await get(ref(db, "pengguna/" + userSession.uid));
+      if (snapUser.exists()) {
+        userSession = { ...userSession, ...snapUser.val() };
+        window.userSession = userSession;
+        sessionStorage.setItem("userLoggedIn", JSON.stringify(userSession));
+      }
+    } catch (err) {
+      console.error("Gagal menyinkronkan profil guru:", err);
+    }
+  }
+
   renderUserInfoNav();
-
-  // 1. Load Realtime Data Kelas
-  onValue(ref(db, "daftarKelas"), (snapshot) => {
-    const data = snapshot.val();
-    daftarKelas = data ? Object.values(data) : [];
-    renderListKelasModal();
-    updateAllClassDropdowns();
-  });
-
+  
   // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
