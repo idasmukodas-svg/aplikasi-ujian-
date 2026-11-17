@@ -176,6 +176,82 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
+// Load Realtime Data Mapel untuk Panel Admin
+  if (db && typeof onValue !== 'undefined' && typeof ref !== 'undefined') {
+    onValue(ref(db, "daftarMapel"), (snapshot) => {
+      const data = snapshot.val();
+      const listMapelAdmin = document.getElementById("listMapelAdmin");
+      const selectMapelGuru = document.getElementById("selectMapelGuru"); // <select> di form guru
+
+      let mapelArray = [];
+      if (data) {
+        mapelArray = Object.entries(data).map(([key, val]) => ({ id: key, nama: val.nama || val }));
+      }
+
+      // 1. Render ke List Daftar Mapel Admin
+      if (listMapelAdmin) {
+        listMapelAdmin.innerHTML = "";
+        if (mapelArray.length === 0) {
+          listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
+        } else {
+          mapelArray.forEach(m => {
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML = `
+              <span>${m.nama}</span>
+              <button class="btn btn-sm btn-danger" onclick="hapusMapel('${m.id}')">
+                <i class="bi bi-trash"></i> Hapus
+              </button>
+            `;
+            listMapelAdmin.appendChild(li);
+          });
+        }
+      }
+
+      // 2. Render otomatis ke Dropdown/Select di Form Tambah/Edit Guru
+      if (selectMapelGuru) {
+        selectMapelGuru.innerHTML = `<option value="">-- Pilih Mata Pelajaran --</option>`;
+        mapelArray.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.nama;
+          opt.textContent = m.nama;
+          selectMapelGuru.appendChild(opt);
+        });
+      }
+    });
+  }
+
+  // Event Listener untuk Form Tambah Mapel
+  document.getElementById("formTambahMapel")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inputMapel = document.getElementById("inputNamaMapel");
+    const namaMapel = inputMapel.value.trim();
+
+    if (!namaMapel) return;
+
+    try {
+      const newMapelRef = push(ref(db, "daftarMapel"));
+      await set(newMapelRef, { nama: namaMapel });
+      inputMapel.value = "";
+      alert("Mata pelajaran berhasil ditambahkan!");
+    } catch (err) {
+      console.error("Gagal menambah mapel:", err);
+      alert("Terjadi kesalahan saat menyimpan mapel.");
+    }
+  });
+
+  // Fungsi Global untuk Menghapus Mapel
+  window.hapusMapel = async (idMapel) => {
+    if (confirm("Yakin ingin menghapus mata pelajaran ini?")) {
+      try {
+        await remove(ref(db, "daftarMapel/" + idMapel));
+        alert("Mata pelajaran berhasil dihapus!");
+      } catch (err) {
+        console.error("Gagal menghapus mapel:", err);
+        alert("Gagal menghapus mata pelajaran.");
+      }
+    }
+  };
 // 3. Load Realtime Data Siswa (Aman untuk Admin & Guru)
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
