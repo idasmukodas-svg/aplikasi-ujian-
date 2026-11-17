@@ -543,15 +543,7 @@ async function handleTambahGuru(e) {
   const email = document.getElementById("guruEmail").value.trim();
   const password = document.getElementById("guruPassword").value;
   const mapel = document.getElementById("guruMapel").value.trim();
-  <!-- Contoh di Modal Edit Guru (HTML) -->
-
-     <div class="mb-3">
-    <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
-    <div id="containerEditKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-        <!-- Checkbox kelas akan dirender otomatis di sini -->
-    </div>
-</div>
-   
+  
   // Ambil data kelas yang diampu dari checkbox di form tambah guru
   const kelasDiampu = [];
   document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
