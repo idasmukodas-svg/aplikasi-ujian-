@@ -225,6 +225,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const navGuruTab = document.getElementById("navGuruTab");
     if (navGuruTab) navGuruTab.style.display = "none";
   }
+}
 
 // Event Listeners Form & Input
 document.addEventListener("DOMContentLoaded", () => {
