@@ -537,38 +537,46 @@ window.hapusSoal = (soalId) => {
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
-   async function handleSimpanEditGuru(e) {
+  async function handleTambahGuru(e) {
   e.preventDefault();
-  const uid = document.getElementById("editGuruUid").value;
-  const nama = document.getElementById("editGuruNama").value.trim();
-  const mapel = document.getElementById("editGuruMapel").value.trim();
-  const newPassword = document.getElementById("editGuruPassword").value.trim();
-
-  // Ambil pembaruan kelas yang diampu dari form edit
+  const nama = document.getElementById("guruNama").value.trim();
+  const email = document.getElementById("guruEmail").value.trim();
+  const password = document.getElementById("guruPassword").value;
+  const mapel = document.getElementById("guruMapel").value.trim();
+  
+  // Ambil data kelas yang diampu dari checkbox di form tambah guru
   const kelasDiampu = [];
-  document.querySelectorAll('.editGuruKelasCheckbox:checked').forEach((checkbox) => {
+  document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
       kelasDiampu.push(checkbox.value);
   });
 
+  if (kelasDiampu.length === 0) {
+      alert("Pilih minimal satu kelas yang diampu oleh guru ini!");
+      return;
+  }
+
   try {
-    // Update data di database termasuk kelasDiampu
-    await update(ref(db, "pengguna/" + uid), { 
-      nama, 
-      mapel, 
-      kelasDiampu 
-    });
+    const secondaryApp = getApps().find(app => app.name === "SecondaryApp") 
+      ? getApp("SecondaryApp") 
+      : initializeApp(firebaseConfig, "SecondaryApp");
+      
+    const secondaryAuth = getAuth(secondaryApp);
 
-    if (newPassword) {
-      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
-    } else {
-      alert(`Profil Guru ${nama} berhasil diperbarui!`);
-    }
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const uid = cred.user.uid;
 
-    const modalEl = document.getElementById("modalEditGuru");
+    const dataPengguna = { uid, nama, email, mapel, kelasDiampu, role: "guru" };
+    await set(ref(db, "pengguna/" + uid), dataPengguna);
+    await secondaryAuth.signOut();
+
+    alert(`Akun Guru ${nama} berhasil dibuat!`);
+    document.getElementById("formTambahGuru").reset();
+    const modalEl = document.getElementById("modalTambahGuru");
     if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
 
   } catch (err) {
-    alert("Gagal memperbarui data guru: " + err.message);
+    console.error("Gagal buat guru:", err);
+    alert("Gagal membuat akun guru: " + err.message);
   }
 }
 
@@ -1058,6 +1066,12 @@ window.openModalEditGuru = (uid) => {
   document.getElementById("editGuruEmail").value = g.email || "";
   document.getElementById("editGuruMapel").value = g.mapel || "";
   document.getElementById("editGuruPassword").value = "";
+
+  // Otomatis centang checkbox kelas sesuai data yang diampu sebelumnya
+  const kelasDiampuDb = g.kelasDiampu || [];
+  document.querySelectorAll('.editGuruKelasCheckbox').forEach((checkbox) => {
+    checkbox.checked = kelasDiampuDb.includes(checkbox.value);
+  });
 
   const modalEl = document.getElementById("modalEditGuru");
   if (modalEl && window.bootstrap) {
