@@ -1090,7 +1090,7 @@ window.downloadTemplateSiswa = () => {
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
 };
 
-window.openModalEditGuru = (uid) => {
+window.openModalEditGuru = async (uid) => {
   const g = daftarPengguna.find(p => p.uid === uid);
   if (!g) return alert("Data guru tidak ditemukan!");
 
@@ -1100,14 +1100,30 @@ window.openModalEditGuru = (uid) => {
   document.getElementById("editGuruMapel").value = g.mapel || "";
   document.getElementById("editGuruPassword").value = "";
 
-  // Render pilihan checkbox kelas berdasarkan daftarKelas global
   const container = document.getElementById("containerEditKelasGuru");
   if (container) {
+    container.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
+    
+    // Ambil data kelas terbaru jika variabel global masih kosong
+    let listKelasAktif = window.daftarKelas || [];
+    if (listKelasAktif.length === 0) {
+      try {
+        const snapshot = await get(ref(db, "daftarKelas"));
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          listKelasAktif = Object.values(data);
+          window.daftarKelas = listKelasAktif;
+        }
+      } catch (err) {
+        console.error("Gagal memuat kelas:", err);
+      }
+    }
+
     container.innerHTML = "";
     const kelasDiampuDb = g.kelasDiampu || [];
 
-    if (window.daftarKelas && window.daftarKelas.length > 0) {
-      window.daftarKelas.forEach(k => {
+    if (listKelasAktif.length > 0) {
+      listKelasAktif.forEach(k => {
         const isChecked = kelasDiampuDb.includes(k.nama) ? "checked" : "";
         container.innerHTML += `
           <div class="form-check">
@@ -1117,7 +1133,7 @@ window.openModalEditGuru = (uid) => {
         `;
       });
     } else {
-      container.innerHTML = `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
+      container.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar di menu Kelola Kelas.</small>`;
     }
   }
 
