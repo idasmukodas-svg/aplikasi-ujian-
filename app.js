@@ -1771,4 +1771,30 @@ document.addEventListener("click", function(event) {
     setTimeout(window.updateFilterUjianDropdown, 200);
   }
 });
-Analyzing
+
+
+// Sembunyikan fitur khusus Admin jika yang login adalah Guru
+document.addEventListener("DOMContentLoaded", () => {
+  const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+  if (session && session.role === "guru") {
+    // Sembunyikan tombol action di atas (Tambah Guru, Kelola Kelas, Kelola Mata Pelajaran)
+    const btnTambahGuru = document.querySelector('button[onclick*="openModalTambahGuru"], #btnTambahGuru, [data-bs-target="#modalTambahGuru"]')?.closest('button');
+    // Cari tombol-tombol spesifik admin berdasarkan teks atau elemennya
+    document.querySelectorAll("button, a").forEach(el => {
+      const text = el.textContent.trim();
+      if (text.includes("Tambah Guru") || text.includes("Kelola Kelas") || text.includes("Kelola Mata Pelajaran") || text.includes("Kelola Akun Guru")) {
+        // Sembunyikan elemen induk atau tombolnya langsung
+        const container = el.closest('.btn, button, a, li');
+        if (container) container.style.display = "none";
+      }
+    });
+
+    // Sembunyikan tab / tombol navigasi "Kelola Akun Guru"
+    const tabKelolaGuru = document.querySelector('[onclick*="Kelola Akun Guru"], a[href*="Kelola"], button');
+    document.querySelectorAll(".nav-link, .btn, button, a").forEach(el => {
+      if (el.textContent.includes("Kelola Akun Guru")) {
+        el.style.display = "none";
+      }
+    });
+  }
+});
