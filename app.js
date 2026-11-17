@@ -537,7 +537,7 @@ window.hapusSoal = (soalId) => {
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
-  async function handleTambahGuru(e) {
+async function handleTambahGuru(e) {
   e.preventDefault();
   const nama = document.getElementById("guruNama").value.trim();
   const email = document.getElementById("guruEmail").value.trim();
@@ -577,6 +577,41 @@ window.hapusSoal = (soalId) => {
   } catch (err) {
     console.error("Gagal buat guru:", err);
     alert("Gagal membuat akun guru: " + err.message);
+  }
+}
+
+async function handleSimpanEditGuru(e) {
+  e.preventDefault();
+  const uid = document.getElementById("editGuruUid").value;
+  const nama = document.getElementById("editGuruNama").value.trim();
+  const mapel = document.getElementById("editGuruMapel").value.trim();
+  const newPassword = document.getElementById("editGuruPassword").value.trim();
+
+  // Ambil pembaruan kelas yang diampu dari form edit
+  const kelasDiampu = [];
+  document.querySelectorAll('.editGuruKelasCheckbox:checked').forEach((checkbox) => {
+      kelasDiampu.push(checkbox.value);
+  });
+
+  try {
+    // Update data di database termasuk kelasDiampu
+    await update(ref(db, "pengguna/" + uid), { 
+      nama, 
+      mapel, 
+      kelasDiampu 
+    });
+
+    if (newPassword) {
+      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
+    } else {
+      alert(`Profil Guru ${nama} berhasil diperbarui!`);
+    }
+
+    const modalEl = document.getElementById("modalEditGuru");
+    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+
+  } catch (err) {
+    alert("Gagal memperbarui data guru: " + err.message);
   }
 }
 
