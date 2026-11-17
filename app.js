@@ -62,20 +62,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
+// 2. Load Realtime Data Ujian (Aman untuk Data Lama & Baru)
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
     const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
 
-    // Jika Admin, tampilkan seluruh ujian tanpa filter
     if (!session || session.role === "admin") {
       daftarUjian = rawList;
     } else {
-      // Jika Guru, filter ketat berdasarkan Mapel DAN Kelas yang Diampu
-      const mapelGuru = (session.mapel || session.mataPelajaran || "").toLowerCase().trim();
-      const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+      // 1. Ambil mapel guru: dukung format baru (mapelDiampu array) ATAU format lama (mapel string)
+      let mapelGuruArray = [];
+      if (Array.isArray(session.mapelDiampu) && session.mapelDiampu.length > 0) {
+        mapelGuruArray = session.mapelDiampu.map(m => m.toLowerCase().trim());
+      } else if (session.mapel) {
+        mapelGuruArray = [session.mapel.toLowerCase().trim()];
+      }
+
+      // 2. Ambil kelas diampu: dukung array ATAU string koma
+      let kelasDiampuArray = [];
+      if (Array.isArray(session.kelasDiampu)) {
+        kelasDiampuArray = session.kelasDiampu;
+      } else if (typeof session.kelasDiampu === "string") {
+        kelasDiampuArray = session.kelasDiampu.split(",").map(k => k.trim());
+      }
+
       const namaGuru = (session.nama || "").toLowerCase().trim();
       const usernameGuru = (session.username || "").toLowerCase().trim();
 
@@ -84,20 +96,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
         const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
 
-        // 1. Cek apakah dibuat sendiri oleh guru tersebut
+        // Cek apakah dibuat sendiri oleh guru tersebut
         const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) || 
                               (usernameGuru && pembuatUjian.includes(usernameGuru));
         if (dibuatSendiri) return true;
 
-        // 2. Cek kecocokan Mata Pelajaran
-        const cocokMapel = !mapelGuru || mapelUjian === mapelGuru || mapelUjian.includes(mapelGuru) || mapelGuru.includes(mapelUjian);
+        // Cek kecocokan mapel (mendukung data lama)
+        const cocokMapel = mapelGuruArray.length === 0 || mapelGuruArray.includes(mapelUjian);
 
-        // 3. Cek kecocokan Kelas Target dengan Kelas yang Diampu guru
-        const cocokKelas = kelasDiampu.length === 0 || 
+        // Cek kecocokan kelas
+        const cocokKelas = kelasDiampuArray.length === 0 || 
                            targetKelas.includes("Semua") || 
-                           targetKelas.some(k => kelasDiampu.includes(k));
+                           targetKelas.some(k => kelasDiampuArray.includes(k));
 
-        // Ujian hanya lolos jika Mapel cocok DAN Kelas target masuk dalam daftar kelas diampu
         return cocokMapel && cocokKelas;
       });
     }
@@ -107,19 +118,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (typeof renderStats === "function") renderStats();
     if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
     if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
-
-    const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
-    if (activeId) {
-      const activeUjian = daftarUjian.find(u => u.id === activeId);
-      if (activeUjian) {
-        window.currentUjianActive = activeUjian;
-        if (typeof window.renderDaftarSoalInteraktif === "function") {
-          window.renderDaftarSoalInteraktif(activeUjian.soal || []);
-        }
-      }
-    }
   });
-  // 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
+// 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
@@ -684,48 +684,68 @@ window.hapusSoal = (soalId) => {
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
    =================================================== */
-async function handleTambahGuru(e) {
+window.handleTambahGuru = async (e) => {
   e.preventDefault();
-  const nama = document.getElementById("guruNama").value.trim();
-  const email = document.getElementById("guruEmail").value.trim();
-  const password = document.getElementById("guruPassword").value;
-  const mapel = document.getElementById("guruMapel").value.trim();
-  
-  // Ambil data kelas yang diampu dari checkbox di form tambah guru
-  const kelasDiampu = [];
-  document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
-      kelasDiampu.push(checkbox.value);
-  });
 
-  if (kelasDiampu.length === 0) {
-      alert("Pilih minimal satu kelas yang diampu oleh guru ini!");
-      return;
-  }
+  const nama = document.getElementById("inputNamaGuru")?.value.trim() || "";
+  const username = document.getElementById("inputUsernameGuru")?.value.trim() || "";
+  const password = document.getElementById("inputPasswordGuru")?.value.trim() || "";
 
-  try {
-    const secondaryApp = getApps().find(app => app.name === "SecondaryApp") 
-      ? getApp("SecondaryApp") 
-      : initializeApp(firebaseConfig, "SecondaryApp");
+  // Ambil semua mapel yang dicentang
+  const mapelDiampu = Array.isArray(session.mapelDiampu) 
+        ? session.mapelDiampu.map(m => m.toLowerCase().trim()) 
+        : (session.mapel ? [session.mapel.toLowerCase().trim()] : []);
       
-    const secondaryAuth = getAuth(secondaryApp);
+      const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+      const namaGuru = (session.nama || "").toLowerCase().trim();
+      const usernameGuru = (session.username || "").toLowerCase().trim();
 
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    const uid = cred.user.uid;
+      daftarUjian = rawList.filter(u => {
+        const mapelUjian = (u.mapel || "").toLowerCase().trim();
+        const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
+        const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
 
-    const dataPengguna = { uid, nama, email, mapel, kelasDiampu, role: "guru" };
-    await set(ref(db, "pengguna/" + uid), dataPengguna);
-    await secondaryAuth.signOut();
+        // 1. Cek apakah ujian ini dibuat sendiri oleh guru tersebut
+        const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) || 
+                              (usernameGuru && pembuatUjian.includes(usernameGuru));
+        if (dibuatSendiri) return true;
 
-    alert(`Akun Guru ${nama} berhasil dibuat!`);
-    document.getElementById("formTambahGuru").reset();
-    const modalEl = document.getElementById("modalTambahGuru");
-    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
+        // 2. Cek apakah mapel ujian ada di dalam daftar mapelDiampu guru
+        const cocokMapel = mapelDiampu.length === 0 || mapelDiampu.includes(mapelUjian);
 
+        // 3. Cek apakah kelas target ujian ada di dalam daftar kelasDiampu guru
+        const cocokKelas = kelasDiampu.length === 0 || 
+                           targetKelas.includes("Semua") || 
+                           targetKelas.some(k => kelasDiampu.includes(k));
+
+        return cocokMapel && cocokKelas;
+      });
+   
+  try {
+    const newGuruRef = push(ref(db, "pengguna"));
+    await set(newGuruRef, {
+      id: newGuruRef.key,
+      nama: nama,
+      username: username,
+      password: password,
+      role: "guru",
+      mapelDiampu: mapelDiampu, // Disimpan sebagai array, misal: ["Informatika"]
+      kelasDiampu: kelasDiampu  // Disimpan sebagai array, misal: ["IX-A", "IX-B"]
+    });
+
+    alert("Data guru berhasil ditambahkan!");
+    // Tutup modal & reset form
+    document.getElementById("formTambahGuru")?.reset();
+    if (typeof bootstrap !== 'undefined') {
+      const modalEl = document.getElementById("modalTambahGuru");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
   } catch (err) {
-    console.error("Gagal buat guru:", err);
-    alert("Gagal membuat akun guru: " + err.message);
+    console.error("Gagal menyimpan guru:", err);
+    alert("Terjadi kesalahan saat menyimpan data guru.");
   }
-}
+};
 
 async function handleSimpanEditGuru(e) {
   e.preventDefault();
