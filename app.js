@@ -488,6 +488,15 @@ function handleSimpanUjian(e) {
     });
 }
       
+set(ref(db, "daftarUjian/" + id), newUjian)
+    .then(() => {
+      alert("Ujian Berhasil Disimpan & Diamankan untuk Mapel Anda!");
+      const modalEl = document.getElementById("modalUjian");
+      if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+      }
+      document.getElementById("formUjian")?.reset();
+
       // Masukkan data secara instan ke array lokal agar langsung tampil di tabel
       if (Array.isArray(window.daftarUjian)) {
         window.daftarUjian.push(newUjian);
@@ -501,6 +510,7 @@ function handleSimpanUjian(e) {
       }
     })
     .catch((err) => {
+      console.error("Gagal menyimpan ujian:", err);
       alert("Gagal menyimpan: " + err.message);
     });
 }
