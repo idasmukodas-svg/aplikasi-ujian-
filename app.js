@@ -419,11 +419,24 @@ function renderListKelasModal() {
 }
 
 function updateAllClassDropdowns() {
+  const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+  const isGuru = session && session.role === "guru";
+  const kelasDiampuGuru = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+
+  // Tentukan daftar kelas yang boleh dilihat berdasarkan hak akses
+  let kelasTampil = daftarKelas;
+  if (isGuru) {
+    kelasTampil = daftarKelas.filter(k => kelasDiampuGuru.includes(k.nama));
+  }
+
+  // Dropdown Filter Kelas Siswa
   const filterSiswa = document.getElementById("filterKelasSiswa");
   if (filterSiswa) {
     const currVal = filterSiswa.value;
-    filterSiswa.innerHTML = '<option value="">-- Semua Kelas --</option>';
-    daftarKelas.forEach(k => {
+    filterSisiwaHTML = isGuru ? '<option value="">-- Kelas Ampuan --</option>' : '<option value="">-- Semua Kelas --</option>';
+    filterSiswa.innerHTML = filterSisiwaHTML;
+    
+    kelasTampil.forEach(k => {
       const opt = document.createElement("option");
       opt.value = k.nama;
       opt.textContent = k.nama;
@@ -432,11 +445,14 @@ function updateAllClassDropdowns() {
     filterSiswa.value = currVal;
   }
 
+  // Dropdown Filter Rekap Nilai
   const filterNilai = document.getElementById("selectFilterKelas");
   if (filterNilai) {
     const currVal = filterNilai.value;
-    filterNilai.innerHTML = '<option value="">-- Semua Kelas --</option>';
-    daftarKelas.forEach(k => {
+    const filterNilaiHTML = isGuru ? '<option value="">-- Pilih Kelas Ampuan --</option>' : '<option value="">-- Semua Kelas --</option>';
+    filterNilai.innerHTML = filterNilaiHTML;
+    
+    kelasTampil.forEach(k => {
       const opt = document.createElement("option");
       opt.value = k.nama;
       opt.textContent = k.nama;
@@ -445,10 +461,11 @@ function updateAllClassDropdowns() {
     filterNilai.value = currVal;
   }
 
+  // Container Checkbox Kelas (Saat Buat Ujian)
   const containerCheck = document.getElementById("containerCheckboxKelas");
   if (containerCheck) {
     containerCheck.innerHTML = "";
-    daftarKelas.forEach(k => {
+    kelasTampil.forEach(k => {
       const div = document.createElement("div");
       div.className = "form-check mb-1";
       div.innerHTML = `
@@ -459,11 +476,12 @@ function updateAllClassDropdowns() {
     });
   }
 
+  // Dropdown Tambah Siswa
   const selectSiswa = document.getElementById("siswaKelas");
   if (selectSiswa) {
     const currVal = selectSiswa.value;
     selectSiswa.innerHTML = '<option value="">-- Pilih Kelas --</option>';
-    daftarKelas.forEach(k => {
+    kelasTampil.forEach(k => {
       const opt = document.createElement("option");
       opt.value = k.nama;
       opt.textContent = k.nama;
@@ -472,7 +490,6 @@ function updateAllClassDropdowns() {
     selectSiswa.value = currVal;
   }
 }
-
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL
    =================================================== */
