@@ -57,47 +57,107 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderUserInfoNav();
   
   // 2. Load Realtime Data Ujian
+  // Helper terpusat untuk mengecek hak akses ujian berdasarkan mapel & kelas yang diampu guru
+  const cekAksesUjianGuru = (u) => {
+    if (!userSession || userSession.role === "admin") return true;
+
+    const namaLogin = (userSession.nama || "").toLowerCase().trim();
+    const usernameLogin = (userSession.username || "").toLowerCase().trim();
+    const mapelGuru = (userSession.mapel || userSession.mataPelajaran || "").toLowerCase().trim();
+    const kelasDiampu = Array.isArray(userSession.kelasDiampu) ? userSession.kelasDiampu : [];
+
+    const pembuat = (u.createdBy || "").toLowerCase().trim();
+    const usernamePembuat = (u.pembuatUsername || "").toLowerCase().trim();
+    const mapelUjian = (u.mapel || "").toLowerCase().trim();
+    const targetUjian = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
+
+    const isPembuat =
+      (namaLogin && (pembuat === namaLogin || usernamePembuat === namaLogin)) ||
+      (usernameLogin && (pembuat === usernameLogin || usernamePembuat === usernameLogin));
+
+    const cocokKelas =
+      kelasDiampu.length === 0 ||
+      targetUjian.includes("Semua") ||
+      targetUjian.some((k) => kelasDiampu.includes(k));
+
+    if (isPembuat) return cocokKelas;
+
+    if (mapelGuru && mapelUjian === mapelGuru) {
+      return cocokKelas;
+    }
+
+    return false;
+  };
+
+  // 2. Load Realtime Data Ujian
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
 
-    if (userSession.role === "guru" && userSession.mapel) {
-      daftarUjian = rawList.filter(u => u.mapel && u.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
+    // Filter langsung dari sumbernya agar renderStats(), renderTabelUjian(), dan dropdown sinkron
+    if (userSession && userSession.role === "guru") {
+      daftarUjian = rawList.filter(cekAksesUjianGuru);
     } else {
       daftarUjian = rawList;
     }
     window.daftarUjian = daftarUjian;
 
-    renderStats();
-    renderTabelUjian();
-    updateFilterUjianDropdown();
+    if (typeof renderStats === "function") renderStats();
+    if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
+    if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
 
-    if (activeUjianId) {
-      const activeUjian = daftarUjian.find(u => u.id === activeUjianId);
-      if (activeUjian) renderDaftarSoal(activeUjian);
+    // Sinkronkan modal soal jika sedang terbuka
+    const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
+    if (activeId) {
+      const activeUjian = daftarUjian.find((u) => u.id === activeId);
+      if (activeUjian) {
+        window.currentUjianActive = activeUjian;
+        if (typeof window.renderDaftarSoalInteraktif === "function") {
+          window.renderDaftarSoalInteraktif(activeUjian.soal || []);
+        } else if (typeof renderDaftarSoal === "function") {
+          renderDaftarSoal(activeUjian);
+        }
+      }
     }
   });
 
   // 3. Load Realtime Data Siswa
   onValue(ref(db, "daftarSiswa"), (snapshot) => {
     const data = snapshot.val();
-    daftarSiswa = data ? Object.values(data) : [];
-    renderStats();
-    window.filterDataSiswa();
+    const rawSiswa = data ? Object.values(data) : [];
+
+    // Filter siswa berdasarkan kelas yang diampu jika login sebagai guru
+    if (userSession && userSession.role === "guru" && Array.isArray(userSession.kelasDiampu) && userSession.kelasDiampu.length > 0) {
+      daftarSiswa = rawSiswa.filter((s) => userSession.kelasDiampu.includes(s.kelas));
+    } else {
+      daftarSiswa = rawSiswa;
+    }
+    window.daftarSiswa = daftarSiswa;
+
+    if (typeof renderStats === "function") renderStats();
+    if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
   });
 
   // 4. Load Realtime Hasil Ujian
   onValue(ref(db, "hasilUjian"), (snapshot) => {
     const data = snapshot.val();
     const rawHasil = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
-     
-    if (userSession.role === "guru" && userSession.mapel) {
-      hasilUjian = rawHasil.filter(h => h.mapel && h.mapel.toLowerCase().trim() === userSession.mapel.toLowerCase().trim());
+
+    if (userSession && userSession.role === "guru") {
+      const kelasDiampu = Array.isArray(userSession.kelasDiampu) ? userSession.kelasDiampu : [];
+      const mapelGuru = (userSession.mapel || "").toLowerCase().trim();
+
+      hasilUjian = rawHasil.filter((h) => {
+        const cocokMapel = !mapelGuru || (h.mapel && h.mapel.toLowerCase().trim() === mapelGuru);
+        const cocokKelas = kelasDiampu.length === 0 || (h.kelas && kelasDiampu.includes(h.kelas));
+        return cocokMapel && cocokKelas;
+      });
     } else {
       hasilUjian = rawHasil;
     }
-
-  window.filterRekapNilai();
+     
+    window.hasilUjian = hasilUjian;
+    window.filterRekapNilai();
     if (typeof updateFilterUjianDropdown === "function") {
       updateFilterUjianDropdown();
     }
