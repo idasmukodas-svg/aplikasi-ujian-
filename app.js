@@ -62,6 +62,63 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+// 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
+  onValue(ref(db, "daftarUjian"), (snapshot) => {
+    const data = snapshot.val();
+    const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
+
+    const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+
+    // Jika Admin, tampilkan seluruh ujian tanpa filter
+    if (!session || session.role === "admin") {
+      daftarUjian = rawList;
+    } else {
+      // Jika Guru, filter ketat berdasarkan Mapel DAN Kelas yang Diampu
+      const mapelGuru = (session.mapel || session.mataPelajaran || "").toLowerCase().trim();
+      const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+      const namaGuru = (session.nama || "").toLowerCase().trim();
+      const usernameGuru = (session.username || "").toLowerCase().trim();
+
+      daftarUjian = rawList.filter(u => {
+        const mapelUjian = (u.mapel || "").toLowerCase().trim();
+        const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
+        const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
+
+        // 1. Cek apakah dibuat sendiri oleh guru tersebut
+        const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) || 
+                              (usernameGuru && pembuatUjian.includes(usernameGuru));
+        if (dibuatSendiri) return true;
+
+        // 2. Cek kecocokan Mata Pelajaran
+        const cocokMapel = !mapelGuru || mapelUjian === mapelGuru || mapelUjian.includes(mapelGuru) || mapelGuru.includes(mapelUjian);
+
+        // 3. Cek kecocokan Kelas Target dengan Kelas yang Diampu guru
+        const cocokKelas = kelasDiampu.length === 0 || 
+                           targetKelas.includes("Semua") || 
+                           targetKelas.some(k => kelasDiampu.includes(k));
+
+        // Ujian hanya lolos jika Mapel cocok DAN Kelas target masuk dalam daftar kelas diampu
+        return cocokMapel && cocokKelas;
+      });
+    }
+
+    window.daftarUjian = daftarUjian;
+
+    if (typeof renderStats === "function") renderStats();
+    if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
+    if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
+
+    const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
+    if (activeId) {
+      const activeUjian = daftarUjian.find(u => u.id === activeId);
+      if (activeUjian) {
+        window.currentUjianActive = activeUjian;
+        if (typeof window.renderDaftarSoalInteraktif === "function") {
+          window.renderDaftarSoalInteraktif(activeUjian.soal || []);
+        }
+      }
+    }
+  });
   // 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
   onValue(ref(db, "daftarUjian"), (snapshot) => {
     const data = snapshot.val();
@@ -119,83 +176,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
-
-  // 3. Load Realtime Data Siswa
-  onValue(ref(db, "daftarSiswa"), (snapshot) => {
-    const data = snapshot.val();
-    const rawSiswa = data ? Object.values(data) : [];
-
-    // Filter siswa berdasarkan kelas yang diampu jika login sebagai guru
-    if (userSession && userSession.role === "guru" && Array.isArray(userSession.kelasDiampu) && userSession.kelasDiampu.length > 0) {
-      daftarSiswa = rawSiswa.filter((s) => userSession.kelasDiampu.includes(s.kelas));
-    } else {
-      daftarSiswa = rawSiswa;
-    }
-    window.daftarSiswa = daftarSiswa;
-
-    if (typeof renderStats === "function") renderStats();
-    if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
-  });
-
-  // 4. Load Realtime Hasil Ujian
-  onValue(ref(db, "hasilUjian"), (snapshot) => {
-    const data = snapshot.val();
-    const rawHasil = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
-
-    if (userSession && userSession.role === "guru") {
-      const kelasDiampu = Array.isArray(userSession.kelasDiampu) ? userSession.kelasDiampu : [];
-      const mapelGuru = (userSession.mapel || "").toLowerCase().trim();
-
-      hasilUjian = rawHasil.filter((h) => {
-        const cocokMapel = !mapelGuru || (h.mapel && h.mapel.toLowerCase().trim() === mapelGuru);
-        const cocokKelas = kelasDiampu.length === 0 || (h.kelas && kelasDiampu.includes(h.kelas));
-        return cocokMapel && cocokKelas;
-      });
-    } else {
-      hasilUjian = rawHasil;
-    }
-     
-    window.hasilUjian = hasilUjian;
-    window.filterRekapNilai();
-    if (typeof updateFilterUjianDropdown === "function") {
-      updateFilterUjianDropdown();
-    }
-  });
-
-  window.filterRekapNilai = () => {
-    const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
-    const ujianSelected = document.getElementById("selectFilterUjian")?.value.toLowerCase().trim() || "";
-
-    const filteredHasil = hasilUjian.filter(h => {
-      const kelasSiswa = (h.kelas || "").toLowerCase().trim();
-      const judulUjian = (h.judul || "").toLowerCase().trim();
-      const mapelUjian = (h.mapel || "").toLowerCase().trim();
-      const idUjian = (h.ujianId || "").toLowerCase().trim();
-
-      let matchKelas = kelasSelected ? (kelasSiswa === kelasSelected || kelasSiswa.includes(kelasSelected) || kelasSelected.includes(kelasSiswa)) : true;
-      let matchUjian = ujianSelected ? (judulUjian.includes(ujianSelected) || mapelUjian.includes(ujianSelected) || idUjian === ujianSelected) : true;
-
-      return matchKelas && matchUjian;
-    });
-
-    renderTabelNilai(filteredHasil);
-  };
-   
-  // 5. Load Pengguna (Admin Only)
-  if (userSession && userSession.role === "admin") {
-    onValue(ref(db, "pengguna"), (snapshot) => {
-      const data = snapshot.val();
-      daftarPengguna = data ? Object.values(data) : [];
-      if (typeof renderTabelPengguna === "function") renderTabelPengguna();
-    });
-  } else {
-    const navGuruTab = document.getElementById("navGuruTab");
-    if (navGuruTab) navGuruTab.style.display = "none";
-  }
-      }
-    }
-  });
-
 // Event Listeners Form & Input
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
