@@ -324,60 +324,106 @@ window.renderTabelUjian = function() {
   tbody.innerHTML = "";
 
   // Ambil sumber data dengan aman
-  const dataSumber = Array.isArray(window.daftarUjian) ? window.daftarUjian : (typeof daftarUjian !== 'undefined' && Array.isArray(daftarUjian) ? daftarUjian : []);
+  const dataSumber = Array.isArray(window.daftarUjian)
+    ? window.daftarUjian
+    : (typeof daftarUjian !== "undefined" && Array.isArray(daftarUjian) ? daftarUjian : []);
+
+  // Fungsi bantuan untuk memperbarui angka keterangan di atas tabel/dashboard
+  const updateKeteranganUjian = (listUjian) => {
+    const totalUjian = listUjian.length;
+    const totalSoal = listUjian.reduce((sum, item) => sum + (Array.isArray(item.soal) ? item.soal.length : 0), 0);
+
+    // Perbarui elemen keterangan jika ID-nya ada di index.html
+    ["statTotalUjian", "totalUjian", "infoJumlahUjian", "countUjian"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = totalUjian;
+    });
+
+    ["statTotalSoal", "totalSoal", "infoJumlahSoal", "countSoal"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = totalSoal;
+    });
+
+    const elKet = document.getElementById("keteranganDaftarUjian");
+    if (elKet) {
+      elKet.textContent = `Menampilkan ${totalUjian} ujian (${totalSoal} soal) sesuai kelas yang Anda ampu`;
+    }
+  };
 
   if (dataSumber.length === 0) {
+    updateKeteranganUjian([]);
     tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
     return;
   }
 
-  // Filter data berdasarkan siapa yang login
+  // Filter data berdasarkan guru yang login & kelas yang diampu
   let dataTampil = dataSumber;
   if (window.userSession && window.userSession.role !== "admin") {
-    const namaLogin = (window.userSession.nama || "").toLowerCase().trim();
-    const usernameLogin = (window.userSession.username || "").toLowerCase().trim();
+    const session = window.userSession;
+    const namaLogin = (session.nama || "").toLowerCase().trim();
+    const usernameLogin = (session.username || "").toLowerCase().trim();
+    const mapelGuru = (session.mapel || session.mataPelajaran || "").toLowerCase().trim();
+    const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
 
     dataTampil = dataSumber.filter(u => {
       const pembuat = (u.createdBy || "").toLowerCase().trim();
       const usernamePembuat = (u.pembuatUsername || "").toLowerCase().trim();
-      
-      // Jika salah satu cocok dengan akun yang login, atau jika data lama belum ada pembuatnya
-      return (
-        !pembuat || // Cadangan untuk data lama
-        (namaLogin && (pembuat.includes(namaLogin) || usernamePembuat.includes(namaLogin))) ||
-        (usernameLogin && (pembuat.includes(usernameLogin) || usernamePembuat.includes(usernameLogin)))
-      );
+      const mapelUjian = (u.mapel || "").toLowerCase().trim();
+      const targetUjian = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
+
+      // 1. Cek apakah dibuat langsung oleh guru ini
+      const isPembuat =
+        (namaLogin && (pembuat === namaLogin || usernamePembuat === namaLogin)) ||
+        (usernameLogin && (pembuat === usernameLogin || usernamePembuat === usernameLogin));
+
+      // 2. Cek kecocokan kelas yang diampu jika guru memiliki daftar kelasDiampu
+      const cocokKelas =
+        kelasDiampu.length === 0 ||
+        targetUjian.includes("Semua") ||
+        targetUjian.some(k => kelasDiampu.includes(k));
+
+      if (isPembuat) return cocokKelas;
+
+      // 3. Jika ujian kolaborasi/mapel yang sama, wajib cocok mapel DAN kelas yang diampu
+      if (mapelGuru && mapelUjian === mapelGuru && kelasDiampu.length > 0) {
+        return cocokKelas;
+      }
+
+      return false;
     });
   }
 
+  // Sinkronkan keterangan angka berdasarkan dataTampil yang sudah terfilter
+  updateKeteranganUjian(dataTampil);
+
   if (dataTampil.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal yang Anda buat.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal untuk kelas yang Anda ampu.</td></tr>`;
     return;
   }
 
   dataTampil.forEach((u, i) => {
     const jmlSoal = u.soal ? u.soal.length : 0;
     const isAktif = u.status === "aktif";
-    const statusBadge = isAktif  
-      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>`  
+    const statusBadge = isAktif
+      ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktif</span>`
       : `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Nonaktif</span>`;
 
-    const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || 'Semua');
+    const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || "Semua");
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td><span class="badge bg-secondary">${u.mapel || '-'}</span></td>
+      <td><span class="badge bg-secondary">${u.mapel || "-"}</span></td>
       <td><span class="badge bg-dark">${displayKelas}</span></td>
       <td>
-        <div class="fw-bold">${u.judul || '-'}</div>
+        <div class="fw-bold">${u.judul || "-"}</div>
         <small class="text-muted font-monospace" style="font-size: 11px;">ID: ${u.id}</small>
       </td>
       <td>${u.durasi || 0} Mns</td>
-      <td><span class="badge bg-info text-dark font-monospace">${u.token || '-'}</span></td>
+      <td><span class="badge bg-info text-dark font-monospace">${u.token || "-"}</span></td>
       <td>
         <div class="form-check form-switch cursor-pointer" title="Klik untuk mengubah status">
-          <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? 'checked' : ''} onchange="toggleStatusUjian('${u.id}', '${u.status || 'nonaktif'}')">
+          <input class="form-check-input" type="checkbox" role="switch" id="switch-${u.id}" ${isAktif ? "checked" : ""} onchange="toggleStatusUjian('${u.id}', '${u.status || "nonaktif"}')">
           <label class="form-check-label" for="switch-${u.id}">${statusBadge}</label>
         </div>
       </td>
@@ -388,7 +434,7 @@ window.renderTabelUjian = function() {
             <i class="bi bi-gear-fill"></i> Soal
           </button>
           <button class="btn btn-outline-warning" onclick="window.bukaModalEditUjian('${u.id}')" title="Edit Ujian">
-           <i class="bi bi-pencil-square"></i>
+            <i class="bi bi-pencil-square"></i>
           </button>
           <button class="btn btn-outline-success" onclick="downloadArsipSoalById('${u.id}')" title="Download Arsip Soal">
             <i class="bi bi-file-earmark-excel"></i>
