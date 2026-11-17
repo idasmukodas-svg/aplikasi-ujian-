@@ -533,6 +533,17 @@ window.hapusSoal = (soalId) => {
      const email = document.getElementById("guruEmail").value.trim();
      const password = document.getElementById("guruPassword").value;
      const mapel = document.getElementById("guruMapel").value.trim();
+     
+     // AMBIL DATA KELAS YANG DIAMPU (Contoh dari checkbox yang dicentang)
+     const kelasDiampu = [];
+     document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
+         kelasDiampu.push(checkbox.value);
+     });
+
+     if (kelasDiampu.length === 0) {
+         alert("Pilih minimal satu kelas yang diampu oleh guru ini!");
+         return;
+     }
    
      try {
        const secondaryApp = getApps().find(app => app.name === "SecondaryApp") 
@@ -544,7 +555,8 @@ window.hapusSoal = (soalId) => {
        const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
        const uid = cred.user.uid;
    
-       const dataPengguna = { uid, nama, email, mapel, role: "guru" };
+       // MASUKKAN kelasDiampu KE DALAM OBJEK DATABASE
+       const dataPengguna = { uid, nama, email, mapel, kelasDiampu, role: "guru" };
        await set(ref(db, "pengguna/" + uid), dataPengguna);
        await secondaryAuth.signOut();
    
@@ -558,29 +570,6 @@ window.hapusSoal = (soalId) => {
        alert("Gagal membuat akun guru: " + err.message);
      }
    }
-async function handleSimpanEditGuru(e) {
-  e.preventDefault();
-  const uid = document.getElementById("editGuruUid").value;
-  const nama = document.getElementById("editGuruNama").value.trim();
-  const mapel = document.getElementById("editGuruMapel").value.trim();
-  const newPassword = document.getElementById("editGuruPassword").value.trim();
-
-  try {
-    await update(ref(db, "pengguna/" + uid), { nama, mapel });
-
-    if (newPassword) {
-      alert(`Profil Guru ${nama} berhasil diperbarui!\n\nCatatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
-    } else {
-      alert(`Profil Guru ${nama} berhasil diperbarui!`);
-    }
-
-    const modalEl = document.getElementById("modalEditGuru");
-    if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
-
-  } catch (err) {
-    alert("Gagal memperbarui data guru: " + err.message);
-  }
-}
 
 window.hapusGuru = (uid, nama) => {
   if (confirm(`Apakah Anda yakin ingin menghapus akun Guru "${nama}"?`)) {
