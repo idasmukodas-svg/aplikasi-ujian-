@@ -395,28 +395,41 @@ window.renderTabelUjian = function() {
 
 function handleSimpanUjian(e) {
   e.preventDefault();
-  const mapelInput = document.getElementById("ujianMapel").value.trim();
-  const judul = document.getElementById("ujianJudul").value.trim();
-  const durasi = document.getElementById("ujianDurasi").value;
-  const token = document.getElementById("ujianToken").value.trim();
-  const status = document.getElementById("ujianStatus").value;
   
-  // Tentukan pembuat: otomatis dari userSession jika Guru, atau dari dropdown jika Admin
+  // Tentukan pembuat dan mata pelajaran berdasarkan sesi login
   let pembuatInput = "";
   let usernamePembuat = "";
+  let idGuruAktif = "";
+  let mapelInput = "";
 
   if (window.userSession && window.userSession.role !== "admin") {
     pembuatInput = window.userSession.nama || window.userSession.username || "Guru";
     usernamePembuat = window.userSession.username || window.userSession.nama || "";
+    idGuruAktif = window.userSession.uid || "";
+    // Otomatis ambil mapel dari profil guru yang login (terkunci)
+    mapelInput = window.userSession.mapel || window.userSession.mataPelajaran || "";
   } else {
     const selectPembuat = document.getElementById("ujianPembuat");
-    pembuatInput = selectPembuat ? selectPembuat.value : "";
+    pembuatInput = selectPembuat ? selectPembuat.value : "Admin";
     usernamePembuat = pembuatInput;
+    idGuruAktif = "admin_" + Date.now();
+    // Jika admin yang membuat, ambil dari input form
+    const inputMapelEl = document.getElementById("ujianMapel");
+    mapelInput = inputMapelEl ? inputMapelEl.value.trim() : "";
   }
 
   if (!pembuatInput) {
     return alert("Identitas pembuat ujian tidak valid!");
   }
+
+  if (!mapelInput) {
+    return alert("Mata pelajaran tidak boleh kosong!");
+  }
+
+  const judul = document.getElementById("ujianJudul").value.trim();
+  const durasi = document.getElementById("ujianDurasi").value;
+  const token = document.getElementById("ujianToken").value.trim();
+  const status = document.getElementById("ujianStatus").value;
 
   let selectedKelas = [];
   const checkSemua = document.getElementById("checkKelasSemua");
@@ -432,9 +445,12 @@ function handleSimpanUjian(e) {
     return alert("Pilih minimal satu target kelas!");
   }
 
-  const id = "UJN-" + Date.now();
+  // KUNCI UTAMA: Buat ID unik berbasis ID Guru agar tidak saling menimpa antar guru
+  const id = "ujian_" + idGuruAktif + "_" + Date.now();
+  
   const newUjian = {
     id, 
+    idGuru: idGuruAktif,
     mapel: mapelInput, 
     kelasTarget: selectedKelas, 
     judul, 
@@ -443,12 +459,13 @@ function handleSimpanUjian(e) {
     status, 
     soal: [],
     createdBy: pembuatInput,
-    pembuatUsername: usernamePembuat
+    pembuatUsername: usernamePembuat,
+    createdAt: firebase.database.ServerValue.TIMESTAMP
   };
 
   set(ref(db, "daftarUjian/" + id), newUjian)
     .then(() => {
-      alert("Ujian Berhasil Disimpan!");
+      alert("Ujian Berhasil Disimpan & Diamankan untuk Mapel Anda!");
       const modalEl = document.getElementById("modalUjian");
       if (modalEl && window.bootstrap) {
         bootstrap.Modal.getInstance(modalEl)?.hide();
@@ -469,7 +486,7 @@ function handleSimpanUjian(e) {
     .catch((err) => {
       alert("Gagal menyimpan: " + err.message);
     });
-} // <-- Kurung kurawal penutup untuk fungsi handleSimpanUjian
+}
 
 window.toggleStatusUjian = (id, currentStatus) => {
   const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
@@ -479,13 +496,6 @@ window.toggleStatusUjian = (id, currentStatus) => {
     });
 };
 
-window.toggleStatusUjian = (id, currentStatus) => {
-  const newStatus = (currentStatus === "aktif") ? "nonaktif" : "aktif";
-  update(ref(db, `daftarUjian/${id}`), { status: newStatus })
-    .catch((err) => {
-      alert("Gagal mengubah status ujian: " + err.message);
-    });
-};
 function renderDaftarSoal(ujian) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
