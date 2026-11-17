@@ -293,7 +293,7 @@ window.hapusMapel = async (idMapel) => {
 // Event Listeners Form & Input Lainnya
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
-  document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
+  // document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
   document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
   document.getElementById("formEditGuru")?.addEventListener("submit", handleSimpanEditGuru);
