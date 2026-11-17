@@ -1216,6 +1216,11 @@ window.openModalTambahGuru = async () => {
   }
 };
 
+// Pastikan state global terinisialisasi dengan aman
+window.currentUjianActive = window.currentUjianActive || null;
+window.currentUjianActiveKey = window.currentUjianActiveKey || "";
+window.currentEditSoalIndex = null; // Gunakan null secara konsisten untuk mode tambah baru
+
 window.renderDaftarSoalInteraktif = function(daftarSoal) {
   const container = document.getElementById("listSoalUjian");
   if (!container) return;
@@ -1256,7 +1261,7 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
         </div>`;
     }
 
-    let kunciText = Array.isArray(soal.kunci) ? soal.kunci.join(", ") : (soal.kunci || "-");
+    const kunciText = Array.isArray(soal.kunci) ? soal.kunci.join(", ") : (soal.kunci || "-");
 
     html += `
       <div class="card mb-3 border shadow-sm">
@@ -1267,10 +1272,10 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
               ${badgeTipe}
             </div>
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning text-dark px-2" onclick="isiFormEditSoal(${index})" title="Edit Soal">
+              <button type="button" class="btn btn-outline-warning text-dark px-2" onclick="isiFormEditSoal(${index})" title="Edit Soal">
                 <i class="bi bi-pencil me-1"></i>Edit
               </button>
-              <button class="btn btn-outline-danger px-2" onclick="hapusSoalIndeks(${index})" title="Hapus Soal">
+              <button type="button" class="btn btn-outline-danger px-2" onclick="hapusSoalIndeks(${index})" title="Hapus Soal">
                 <i class="bi bi-trash me-1"></i>Hapus
               </button>
             </div>
@@ -1289,10 +1294,10 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
 };
 
 window.isiFormEditSoal = (index) => {
-  if (!currentUjianActive || !currentUjianActive.soal || !currentUjianActive.soal[index]) return;
+  if (!window.currentUjianActive || !window.currentUjianActive.soal || !window.currentUjianActive.soal[index]) return;
 
-  const soal = currentUjianActive.soal[index];
-  currentEditSoalIndex = index;
+  const soal = window.currentUjianActive.soal[index];
+  window.currentEditSoalIndex = index;
 
   const selectTipe = document.getElementById("soalTipe");
   if (selectTipe) {
@@ -1302,19 +1307,21 @@ window.isiFormEditSoal = (index) => {
     }
   }
 
-  document.getElementById("soalPertanyaan").value = soal.pertanyaan || "";
-  document.getElementById("soalGambarUrl").value = soal.gambarUrl || "";
+  const elPertanyaan = document.getElementById("soalPertanyaan");
+  const elGambar = document.getElementById("soalGambarUrl");
+  if (elPertanyaan) elPertanyaan.value = soal.pertanyaan || "";
+  if (elGambar) elGambar.value = soal.gambarUrl || "";
 
   if (soal.opsi) {
-    if (document.getElementById("soalA")) document.getElementById("soalA").value = soal.opsi.A || "";
-    if (document.getElementById("soalB")) document.getElementById("soalB").value = soal.opsi.B || "";
-    if (document.getElementById("soalC")) document.getElementById("soalC").value = soal.opsi.C || "";
-    if (document.getElementById("soalD")) document.getElementById("soalD").value = soal.opsi.D || "";
-    if (document.getElementById("soalE")) document.getElementById("soalE").value = soal.opsi.E || "";
+    ["A", "B", "C", "D", "E"].forEach(opt => {
+      const elOpsi = document.getElementById(`soal${opt}`);
+      if (elOpsi) elOpsi.value = soal.opsi[opt] || "";
+    });
   }
 
   if (soal.tipe === "pg" || !soal.tipe) {
-    if (document.getElementById("soalKunciPG")) document.getElementById("soalKunciPG").value = soal.kunci || "A";
+    const elKunciPG = document.getElementById("soalKunciPG");
+    if (elKunciPG) elKunciPG.value = soal.kunci || "A";
   } else if (soal.tipe === "pg_kompleks") {
     ["A", "B", "C", "D", "E"].forEach(opt => {
       const chk = document.getElementById(`kunciKompleks${opt}`);
@@ -1322,6 +1329,14 @@ window.isiFormEditSoal = (index) => {
         chk.checked = Array.isArray(soal.kunci) ? soal.kunci.includes(opt) : (soal.kunci === opt);
       }
     });
+  } else if (soal.tipe === "mencocokkan" && Array.isArray(soal.pasangan)) {
+    for (let i = 1; i <= 3; i++) {
+      const p = soal.pasangan[i - 1];
+      const elKiri = document.getElementById(`matchKiri${i}`);
+      const elKanan = document.getElementById(`matchKanan${i}`);
+      if (elKiri) elKiri.value = p ? p.kiri : "";
+      if (elKanan) elKanan.value = p ? p.kanan : "";
+    }
   }
 
   const btnSubmit = document.querySelector('#formTambahSoal button[type="submit"]');
@@ -1332,15 +1347,15 @@ window.isiFormEditSoal = (index) => {
 };
 
 window.hapusSoalIndeks = (index) => {
-  if (!currentUjianActive || !currentUjianActive.soal) return;
+  if (!window.currentUjianActive || !window.currentUjianActive.soal) return;
 
   if (confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
-    let listSoal = [...currentUjianActive.soal];
+    const listSoal = [...window.currentUjianActive.soal];
     listSoal.splice(index, 1);
 
-    simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
+    simpanSoalUjianAktif(window.currentUjianActiveKey, listSoal)
       .then(() => {
-        currentUjianActive.soal = listSoal;
+        window.currentUjianActive.soal = listSoal;
         window.renderDaftarSoalInteraktif(listSoal);
         alert("Soal berhasil dihapus!");
       })
@@ -1352,18 +1367,26 @@ const formTambahSoalEl = document.getElementById("formTambahSoal");
 if (formTambahSoalEl) {
   formTambahSoalEl.onsubmit = (e) => {
     e.preventDefault();
-    if (!currentUjianActiveKey) return alert("Pilih ujian terlebih dahulu!");
+    if (!window.currentUjianActiveKey || !window.currentUjianActive) {
+      return alert("Pilih ujian terlebih dahulu!");
+    }
 
     const tipe = document.getElementById("soalTipe").value;
     const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
     const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
 
-    let itemSoal = {
-      id: currentEditSoalIndex !== null && currentUjianActive.soal[currentEditSoalIndex]
-        ? currentUjianActive.soal[currentEditSoalIndex].id
+    const listSoal = Array.isArray(window.currentUjianActive.soal)
+      ? [...window.currentUjianActive.soal]
+      : [];
+
+    const isEditMode = window.currentEditSoalIndex !== null && window.currentEditSoalIndex >= 0;
+
+    const itemSoal = {
+      id: isEditMode && listSoal[window.currentEditSoalIndex]
+        ? listSoal[window.currentEditSoalIndex].id
         : "SOAL-" + Date.now(),
-      tipe, 
-      pertanyaan, 
+      tipe,
+      pertanyaan,
       gambarUrl
     };
 
@@ -1385,7 +1408,7 @@ if (formTambahSoalEl) {
         E: document.getElementById("soalE")?.value || ""
       };
       const checkedKunci = [];
-      ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
+      ["A", "B", "C", "D", "E"].forEach(opt => {
         if (document.getElementById("kunciKompleks" + opt)?.checked) checkedKunci.push(opt);
       });
       itemSoal.kunci = checkedKunci;
@@ -1400,21 +1423,18 @@ if (formTambahSoalEl) {
       itemSoal.kunci = "Sesuai Pasangan";
     }
 
-    let listSoal = currentUjianActive.soal ? [...currentUjianActive.soal] : [];
-    const isEditMode = currentEditSoalIndex !== null;
-
     if (isEditMode) {
-      listSoal[currentEditSoalIndex] = itemSoal;
-      currentEditSoalIndex = null;
+      listSoal[window.currentEditSoalIndex] = itemSoal;
+      window.currentEditSoalIndex = null;
     } else {
       listSoal.push(itemSoal);
     }
 
-    simpanSoalUjianAktif(currentUjianActiveKey, listSoal)
+    simpanSoalUjianAktif(window.currentUjianActiveKey, listSoal)
       .then(() => {
         alert(isEditMode ? "Perubahan soal berhasil disimpan!" : "Soal berhasil ditambahkan!");
         e.target.reset();
-        if (window.switchTipeSoal) window.switchTipeSoal("pg");
+        if (typeof window.switchTipeSoal === "function") window.switchTipeSoal("pg");
 
         const btnSubmit = e.target.querySelector('button[type="submit"]');
         if (btnSubmit) {
@@ -1422,7 +1442,7 @@ if (formTambahSoalEl) {
           btnSubmit.className = "btn btn-primary w-100";
         }
 
-        currentUjianActive.soal = listSoal;
+        window.currentUjianActive.soal = listSoal;
         window.renderDaftarSoalInteraktif(listSoal);
       })
       .catch((err) => alert("Gagal menyimpan soal: " + err.message));
@@ -1430,13 +1450,13 @@ if (formTambahSoalEl) {
 }
 
 window.downloadArsipSoal = () => {
-  if (!currentUjianActive || !currentUjianActive.soal || currentUjianActive.soal.length === 0) {
+  if (!window.currentUjianActive || !window.currentUjianActive.soal || window.currentUjianActive.soal.length === 0) {
     return alert("Tidak ada soal dalam ujian ini untuk diunduh!");
   }
 
-  const excelData = currentUjianActive.soal.map((s, index) => {
-    let kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
-    let pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
+  const excelData = window.currentUjianActive.soal.map((s, index) => {
+    const kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
+    const pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
 
     return {
       "No": index + 1,
@@ -1457,19 +1477,23 @@ window.downloadArsipSoal = () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Arsip Soal");
   
-  const namaFileClean = (currentUjianActive.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
+  const namaFileClean = (window.currentUjianActive.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
   XLSX.writeFile(wb, `Arsip_Soal_${namaFileClean}.xlsx`);
 };
 
 window.downloadArsipSoalById = (ujianId) => {
-  const u = daftarUjian.find(item => item.id === ujianId);
+  const sumberUjian = Array.isArray(window.daftarUjian)
+    ? window.daftarUjian
+    : (typeof daftarUjian !== "undefined" ? daftarUjian : []);
+
+  const u = sumberUjian.find(item => item.id === ujianId);
   if (!u || !u.soal || u.soal.length === 0) {
     return alert("Ujian ini belum memiliki soal untuk diunduh!");
   }
 
   const excelData = u.soal.map((s, index) => {
-    let kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
-    let pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
+    const kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
+    const pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
 
     return {
       "No": index + 1,
@@ -1493,7 +1517,6 @@ window.downloadArsipSoalById = (ujianId) => {
   const namaFileClean = (u.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
   XLSX.writeFile(wb, `Arsip_Soal_${u.mapel}_${namaFileClean}.xlsx`);
 };
-
 function updateGuruDropdown() {
   const selectPembuat = document.getElementById("ujianPembuat");
   if (!selectPembuat) return;
