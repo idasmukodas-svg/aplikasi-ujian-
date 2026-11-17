@@ -950,11 +950,17 @@ function renderTabelSiswaFiltered(listSiswa) {
   const totalBadge = document.getElementById("totalSiswaTampil");
   if (!tbody) return;
   
+  const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+  const isGuru = session && session.role === "guru";
+
+  // Sesuaikan colspan tabel (4 jika guru tanpa aksi, 5 jika admin)
+  const colspanNum = isGuru ? 4 : 5;
+  
   if (totalBadge) totalBadge.innerText = `${listSiswa.length} Siswa`;
   tbody.innerHTML = "";
 
   if (listSiswa.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Data siswa tidak ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-3">Data siswa tidak ditemukan.</td></tr>`;
     return;
   }
 
@@ -965,11 +971,12 @@ function renderTabelSiswaFiltered(listSiswa) {
       <td class="font-monospace">${s.nisn || '-'}</td>
       <td class="fw-bold">${s.nama || '-'}</td>
       <td><span class="badge bg-secondary">${s.kelas || '-'}</span></td>
+      ${!isGuru ? `
       <td>
         <button class="btn btn-sm btn-outline-danger" onclick="hapusSiswa('${s.nisn}')">
           <i class="bi bi-trash"></i>
         </button>
-      </td>
+      </td>` : ''}
     `;
     tbody.appendChild(tr);
   });
@@ -1630,15 +1637,14 @@ window.loadDaftarUjianMonitoring = () => {
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
 
-  onValue(ref(db, "daftarUjian"), (snapshot) => {
-    selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnap) => {
-        const ujianId = childSnap.key;
-        const data = childSnap.val();
-        selectUjian.innerHTML += `<option value="${ujianId}">${data.mapel || 'Mapel'} - ${data.judul || 'Ujian'} (Token: ${data.token || '-'})</option>`;
-      });
-    }
+  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
+  const sumberUjian = window.daftarUjian || [];
+  
+  sumberUjian.forEach(ujian => {
+    const opt = document.createElement("option");
+    opt.value = ujian.id;
+    opt.textContent = `${ujian.mapel || 'Mapel'} - ${ujian.judul || 'Ujian'} (Token: ${ujian.token || '-'})`;
+    selectUjian.appendChild(opt);
   });
 };
 
@@ -1796,5 +1802,36 @@ document.addEventListener("DOMContentLoaded", () => {
         el.style.display = "none";
       }
     });
+  }
+});
+
+
+// Penyesuaian Tampilan Berdasarkan Role (Guru vs Admin)
+document.addEventListener("DOMContentLoaded", () => {
+  const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
+  const isGuru = session && session.role === "guru";
+
+  // 1. Hapus tombol "Kelola Kelas" yang ada di atas (baris tombol atas) untuk semua user (karena sudah ada di Data Siswa)
+  document.querySelectorAll("button, a").forEach(el => {
+    const text = el.textContent.trim();
+    if (text === "Kelola Kelas" && !el.closest('#modalKelolaKelas') && !el.closest('.modal')) {
+      const container = el.closest('.btn, button, a, div, span');
+      if (container) container.style.display = "none";
+    }
+  });
+
+  if (isGuru) {
+    // 2. Sembunyikan tombol aksi data siswa (Cetak Kartu, Template Excel, Import Excel, Tambah Siswa)
+    const btnCetak = document.querySelector('button[onclick*="cetakKartuUjianSiswa"]');
+    if (btnCetak) btnCetak.style.display = "none";
+    
+    const btnTemplate = document.querySelector('button[onclick*="downloadTemplateSiswa"]');
+    if (btnTemplate) btnTemplate.style.display = "none";
+
+    const labelImport = document.querySelector('label[for="fileExcelSiswa"]') || document.getElementById("fileExcelSiswa")?.closest('label');
+    if (labelImport) labelImport.style.display = "none";
+
+    const btnTambahSiswa = document.querySelector('button[onclick*="openModalTambahSiswa"]');
+    if (btnTambahSiswa) btnTambahSiswa.style.display = "none";
   }
 });
