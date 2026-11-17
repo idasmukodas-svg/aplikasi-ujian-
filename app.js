@@ -1806,22 +1806,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
+
+
 // Penyesuaian Tampilan Berdasarkan Role (Guru vs Admin)
 document.addEventListener("DOMContentLoaded", () => {
   const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
   const isGuru = session && session.role === "guru";
 
-  // 1. Hapus tombol "Kelola Kelas" yang ada di atas (baris tombol atas) untuk semua user (karena sudah ada di Data Siswa)
-  document.querySelectorAll("button, a").forEach(el => {
-    const text = el.textContent.trim();
-    if (text === "Kelola Kelas" && !el.closest('#modalKelolaKelas') && !el.closest('.modal')) {
-      const container = el.closest('.btn, button, a, div, span');
-      if (container) container.style.display = "none";
-    }
-  });
-
   if (isGuru) {
-    // 2. Sembunyikan tombol aksi data siswa (Cetak Kartu, Template Excel, Import Excel, Tambah Siswa)
+    // Sembunyikan tombol aksi data siswa khusus admin (Cetak Kartu, Template Excel, Import Excel, Tambah Siswa)
     const btnCetak = document.querySelector('button[onclick*="cetakKartuUjianSiswa"]');
     if (btnCetak) btnCetak.style.display = "none";
     
