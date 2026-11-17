@@ -1129,16 +1129,32 @@ window.openModalEditGuru = (uid) => {
   }
 };
 
-window.openModalTambahGuru = () => {
+window.openModalTambahGuru = async () => {
   const formEl = document.getElementById("formTambahGuru");
   if (formEl) formEl.reset();
   
-  // Render pilihan checkbox kelas secara dinamis berdasarkan data kelas yang ada
   const container = document.getElementById("containerTambahKelasGuru");
   if (container) {
+    container.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
+    
+    // Pastikan mengambil data kelas terbaru jika variabel global belum terisi
+    let listKelasAktif = window.daftarKelas || [];
+    if (listKelasAktif.length === 0) {
+      try {
+        const snapshot = await get(ref(db, "daftarKelas"));
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          listKelasAktif = Object.values(data);
+          window.daftarKelas = listKelasAktif; // Simpan ke global
+        }
+      } catch (err) {
+        console.error("Gagal memuat kelas:", err);
+      }
+    }
+
     container.innerHTML = "";
-    if (window.daftarKelas && window.daftarKelas.length > 0) {
-      window.daftarKelas.forEach(k => {
+    if (listKelasAktif.length > 0) {
+      listKelasAktif.forEach(k => {
         container.innerHTML += `
           <div class="form-check">
             <input class="form-check-input guruKelasCheckbox" type="checkbox" value="${k.nama}" id="tambahKls_${k.nama}">
@@ -1147,7 +1163,7 @@ window.openModalTambahGuru = () => {
         `;
       });
     } else {
-      container.innerHTML = `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
+      container.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar di menu Kelola Kelas.</small>`;
     }
   }
 
@@ -1156,51 +1172,6 @@ window.openModalTambahGuru = () => {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 };
-
-window.downloadTemplateSoal = () => {
-  const data = [
-    { Tipe: "pg", Pertanyaan: "Perhatikan gambar berikut, perangkat ini adalah?", GambarURL: "https://via.placeholder.com/300", A: "Keyboard", B: "Mouse", C: "Monitor", D: "Printer", E: "Scanner", Kunci: "B", Pasangan: "" },
-    { Tipe: "pg_kompleks", Pertanyaan: "Manakah yang merupakan OS?", GambarURL: "", A: "Windows", B: "Linux", C: "Word", D: "Excel", E: "MacOS", Kunci: "A,B,E", Pasangan: "" },
-    { Tipe: "mencocokkan", Pertanyaan: "Jodohkan istilah berikut!", GambarURL: "", A: "", B: "", C: "", D: "", E: "", Kunci: "", Pasangan: "CPU=Otak Komputer;RAM=Memori Sementara" }
-  ];
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
-  XLSX.writeFile(wb, "Template_Soal_Lengkap.xlsx");
-};
-
-window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
-  if (hasilUjian.length === 0) return alert("Belum ada data nilai!");
-
-  let dataFiltered = hasilUjian.filter(item => {
-    let matchKelas = true, matchUjian = true;
-    if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase() === kelasFilter.trim().toLowerCase());
-    if (ujianIdFilter) matchUjian = (item.ujianId === ujianIdFilter);
-    return matchKelas && matchUjian;
-  });
-
-  if (dataFiltered.length === 0) return alert("Data nilai tidak ditemukan!");
-
-  const excelData = dataFiltered.map((item, index) => ({
-    "No": index + 1,
-    "NISN": item.nisn,
-    "Nama Siswa": item.nama,
-    "Kelas": item.kelas || "-",
-    "Mata Pelajaran": item.mapel,
-    "Judul Ujian": item.judul,
-    "Nilai": item.nilai,
-    "Waktu Selesai": item.waktuSelesai || "-"
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(excelData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Rekap Nilai");
-  XLSX.writeFile(wb, `Rekap_Nilai_CBT_${kelasFilter || 'Semua'}.xlsx`);
-};
-
-let currentUjianActive = null;
-let currentUjianActiveKey = null;
-let currentEditSoalIndex = null;
 
 window.renderDaftarSoalInteraktif = function(daftarSoal) {
   const container = document.getElementById("listSoalUjian");
