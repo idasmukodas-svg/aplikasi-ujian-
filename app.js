@@ -545,7 +545,6 @@ window.hapusSoal = (soalId) => {
     simpanSoalUjianAktif(activeUjianId, listSoalBaru);
   }
 };
-}
 
 /* ===================================================
    2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
