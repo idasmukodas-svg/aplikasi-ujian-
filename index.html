@@ -127,6 +127,34 @@
 
     <!-- KONTEN TAB -->
     <div class="tab-content" id="mainTabContent">
+<!-- Modal Kelola Mata Pelajaran -->
+<div class="modal fade" id="modalMapel" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Kelola Mata Pelajaran</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form Tambah Mapel -->
+        <form id="formTambahMapel" class="mb-3">
+          <div class="input-group">
+            <input type="text" id="inputNamaMapel" class="form-control" placeholder="Nama Mapel (Contoh: Informatika)" required>
+            <button class="btn btn-success" type="submit">Tambah Mapel</button>
+          </div>
+        </form>
+
+        <hr>
+
+        <!-- Daftar Mapel yang Tersedia -->
+        <h6>Daftar Mata Pelajaran:</h6>
+        <ul id="listMapelAdmin" class="list-group" style="max-height: 200px; overflow-y: auto;">
+          <!-- Data mapel akan dimuat secara dinamis di sini -->
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
       <!-- TAB 1: KELOLA UJIAN & BANK SOAL -->
       <div class="tab-pane fade show active" id="contentUjian" role="tabpanel">
@@ -314,34 +342,6 @@
   <i class="bi bi-book me-1"></i> Kelola Mata Pelajaran
 </button>
 
-<!-- Modal Kelola Mata Pelajaran -->
-<div class="modal fade" id="modalMapel" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Kelola Mata Pelajaran</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Form Tambah Mapel -->
-        <form id="formTambahMapel" class="mb-3">
-          <div class="input-group">
-            <input type="text" id="inputNamaMapel" class="form-control" placeholder="Nama Mapel (Contoh: Informatika)" required>
-            <button class="btn btn-success" type="submit">Tambah Mapel</button>
-          </div>
-        </form>
-
-        <hr>
-
-        <!-- Daftar Mapel yang Tersedia -->
-        <h6>Daftar Mata Pelajaran:</h6>
-        <ul id="listMapelAdmin" class="list-group" style="max-height: 200px; overflow-y: auto;">
-          <!-- Data mapel akan dimuat secara dinamis di sini -->
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
       
   <!-- AREA CETAK KARTU UJIAN (TERSEMBUNYI SAAT TAMPILAN MONITOR) -->
   <div id="printAreaKartu" class="d-none d-print-block container p-4">
