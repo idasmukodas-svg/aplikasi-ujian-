@@ -276,56 +276,38 @@
       </div>
 
       <!-- TAB 4: KELOLA AKUN GURU (ADMIN ONLY) -->
-      <div class="tab-pane fade" id="contentGuru" role="tabpanel">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0 text-primary">
-              <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
-            </h5>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
-              <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
-            </button>
-          </div>
-          <div class="mb-3">
-              <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
-              <div class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-                  <!-- Pastikan checkbox memiliki class="guruKelasCheckbox" -->
-                  <div class="form-check">
-                      <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-A" id="tambahKls_IXA">
-                      <label class="form-check-label" for="tambahKls_IXA">IX-A</label>
-                  </div>
-                  <div class="form-check">
-                      <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-B" id="tambahKls_IXB">
-                      <label class="form-check-label" for="tambahKls_IXB">IX-B</label>
-                  </div>
-                  <!-- Tambahkan kelas lainnya sesuai kebutuhan atau render dinamis -->
-              </div>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 50px;">No</th>
-                    <th>Nama Guru</th>
-                    <th>Email</th>
-                    <th>Mata Pelajaran</th>
-                    <th>Role</th>
-                    <th style="width: 120px;">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyPengguna">
-                  <!-- Rendered by app.js -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+<div class="tab-pane fade" id="contentGuru" role="tabpanel">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="fw-bold mb-0 text-primary">
+        <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
+      </h5>
+      <button class="btn btn-primary btn-sm" onclick="openModalTambahGuru()">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 50px;">No</th>
+              <th>Nama Guru</th>
+              <th>Email</th>
+              <th>Mata Pelajaran</th>
+              <th>Role</th>
+              <th style="width: 120px;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPengguna">
+            <!-- Rendered by app.js -->
+          </tbody>
+        </table>
       </div>
-
     </div>
   </div>
-
+</div>
+      
   <!-- AREA CETAK KARTU UJIAN (TERSEMBUNYI SAAT TAMPILAN MONITOR) -->
   <div id="printAreaKartu" class="d-none d-print-block container p-4">
     <div class="row g-3" id="containerKartuUjian">
@@ -588,42 +570,59 @@
     </div>
   </div>
 
-  <!-- MODAL: TAMBAH GURU -->
-  <div class="modal fade" id="modalTambahGuru" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form id="formTambahGuru">
-          <div class="modal-header">
-            <h5 class="modal-title fw-bold"><i class="bi bi-person-badge-plus me-2"></i>Tambah Akun Guru</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Nama Lengkap Guru</label>
-              <input type="text" id="guruNama" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Email Login</label>
-              <input type="email" id="guruEmail" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Password</label>
-              <input type="password" id="guruPassword" class="form-control" minlength="6" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Mata Pelajaran yang Diampu</label>
-              <input type="text" id="guruMapel" class="form-control" placeholder="Contoh: Informatika" required>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Buat Akun Guru</button>
-          </div>
-        </form>
+  <!-- Modal Tambah Akun Guru -->
+<div class="modal fade" id="modalTambahGuru" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Tambah Akun Guru</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
+      <form id="formTambahGuru">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nama Lengkap Guru</label>
+            <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Email Login</label>
+            <input type="email" class="form-control" id="guruEmail" required placeholder="email@guru.sma.belajar.id">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Password</label>
+            <input type="password" class="form-control" id="guruPassword" required placeholder="Minimal 6 karakter">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mata Pelajaran yang Diampu</label>
+            <input type="text" class="form-control" id="guruMapel" required placeholder="Contoh: Informatika">
+          </div>
+          
+          <!-- Pilihan Kelas yang Diampu (Hak Akses Ujian) di dalam Modal -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+            <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+              <!-- Checkbox akan otomatis terisi secara dinamis melalui app.js -->
+              <div class="form-check">
+                <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-A" id="tambahKls_IXA">
+                <label class="form-check-label" for="tambahKls_IXA">IX-A</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input guruKelasCheckbox" type="checkbox" value="IX-B" id="tambahKls_IXB">
+                <label class="form-check-label" for="tambahKls_IXB">IX-B</label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary fw-bold">Buat Akun Guru</button>
+        </div>
+      </form>
     </div>
   </div>
-
+</div>
+      
   <!-- MODAL: EDIT & RESET PASSWORD GURU -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog">
