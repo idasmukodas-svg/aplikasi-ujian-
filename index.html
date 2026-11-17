@@ -659,6 +659,37 @@
               <small class="text-muted">Isi bidang ini jika guru lupa password untuk menetapkan password baru.</small>
             </div>
           </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mata Pelajaran yang Diampu:</label>
+            <div id="containerMapelGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <!-- Daftar mapel akan dimuat dinamis atau statis -->
+              <div class="form-check">
+                <input class="form-check-input mapel-checkbox" type="checkbox" value="Informatika" id="mapelInformatika">
+                <label class="form-check-label" for="mapelInformatika">Informatika</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input mapel-checkbox" type="checkbox" value="PJOK" id="mapelPjok">
+                <label class="form-check-label" for="mapelPjok">PJOK</label>
+              </div>
+              <!-- Tambahkan mapel lainnya sesuai kebutuhan sekolah -->
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Kelas yang Diampu:</label>
+            <div id="containerKelasGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <!-- Daftar kelas dimuat dari database daftarKelas -->
+              <div class="form-check">
+                <input class="form-check-input kelas-checkbox" type="checkbox" value="IX-A" id="kelasIXA">
+                <label class="form-check-label" for="kelasIXA">IX-A</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input kelas-checkbox" type="checkbox" value="IX-B" id="kelasIXB">
+                <label class="form-check-label" for="kelasIXB">IX-B</label>
+              </div>
+            </div>
+          </div>
+          
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
             <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-check-circle me-1"></i>Simpan Perubahan</button>
