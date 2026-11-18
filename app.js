@@ -1239,26 +1239,32 @@ window.openModalEditGuru = async (uid) => {
   document.getElementById("editGuruEmail").value = g.email || "";
   document.getElementById("editGuruPassword").value = "";
 
-  // Render Checkbox Mapel untuk Edit Guru
+  // 1. Render Checkbox Mapel untuk Edit Guru
   const containerMapel = document.getElementById("containerEditMapelGuru");
   if (containerMapel) {
     containerMapel.innerHTML = `<small class="text-muted">Memuat mapel...</small>`;
     let listMapelAktif = window.daftarMapelMaster || [];
     containerMapel.innerHTML = "";
+    
+    // Ambil mapel yang sebelumnya diampu (bisa berupa array atau string tunggal)
     const mapelDb = Array.isArray(g.mapelDiampu) ? g.mapelDiampu : (g.mapel ? [g.mapel] : []);
 
-    listMapelAktif.forEach(m => {
-      const isChecked = mapelDb.includes(m.nama) ? "checked" : "";
-      containerMapel.innerHTML += `
-        <div class="form-check">
-          <input class="form-check-input editGuruMapelCheckbox" type="checkbox" value="${m.nama}" id="editMapel_${m.id}" ${isChecked}>
-          <label class="form-check-label" for="editMapel_${m.id}">${m.nama}</label>
-        </div>
-      `;
-    });
+    if (listMapelAktif.length > 0) {
+      listMapelAktif.forEach(m => {
+        const isChecked = mapelDb.includes(m.nama) ? "checked" : "";
+        containerMapel.innerHTML += `
+          <div class="form-check mb-1">
+            <input class="form-check-input editGuruMapelCheckbox" type="checkbox" value="${m.nama}" id="editMapel_${m.id}" ${isChecked}>
+            <label class="form-check-label" for="editMapel_${m.id}">${m.nama}</label>
+          </div>
+        `;
+      });
+    } else {
+      containerMapel.innerHTML = `<small class="text-danger">Belum ada mata pelajaran terdaftar.</small>`;
+    }
   }
 
-  // Render Checkbox Kelas untuk Edit Guru
+  // 2. Render Checkbox Kelas untuk Edit Guru
   const containerKelas = document.getElementById("containerEditKelasGuru");
   if (containerKelas) {
     containerKelas.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
@@ -1283,7 +1289,7 @@ window.openModalEditGuru = async (uid) => {
       listKelasAktif.forEach(k => {
         const isChecked = kelasDiampuDb.includes(k.nama) ? "checked" : "";
         containerKelas.innerHTML += `
-          <div class="form-check">
+          <div class="form-check mb-1">
             <input class="form-check-input editGuruKelasCheckbox" type="checkbox" value="${k.nama}" id="editKls_${k.nama}" ${isChecked}>
             <label class="form-check-label" for="editKls_${k.nama}">${k.nama}</label>
           </div>
