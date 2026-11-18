@@ -274,12 +274,15 @@
         const card = document.createElement("div");
         card.className = "card border-0 shadow-sm mb-4 soal-card";
 
-        let htmlGambar = s.gambarUrl ? `
-          <div class="mb-3 text-center">
-            <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 300px;" alt="Gambar Soal">
-          </div>
-        ` : "";
-
+        let htmlGambar = "";
+        if (s.gambarUrl && s.gambarUrl.trim() !== "") {
+          htmlGambar = `
+            <div class="mb-3 text-center">
+              <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 300px;" alt="Gambar Soal" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'alert alert-warning small\'>Gagal memuat gambar dari link: ${s.gambarUrl}</div>';">
+            </div>
+          `;
+        }
+        
         let htmlOption = "";
         if (s.tipe === "pg" || s.tipe === "pg_kompleks") {
           const keysOpsi = Object.keys(s.opsi || {}).filter(k => s.opsi[k]);
