@@ -204,7 +204,7 @@ onValue(ref(db, "hasilUjian"), (snapshot) => {
   if (typeof updateFilterUjianDropdown === "function") updateFilterUjianDropdown();
 });
 
-// 5. Load Pengguna & Master Mapel (Admin Only)
+// 5. Load Pengguna & Master Mapel (Admin Only) & Render Checkbox Mapel Guru
 onValue(ref(db, "pengguna"), (snapshot) => {
   const data = snapshot.val();
   daftarPengguna = data ? Object.values(data) : [];
@@ -216,13 +216,12 @@ onValue(ref(db, "pengguna"), (snapshot) => {
 onValue(ref(db, "daftarMapel"), (snapshot) => {
   const data = snapshot.val();
   const listMapelAdmin = document.getElementById("listMapelAdmin");
-  const selectMapelGuru = document.getElementById("guruMapel");
-  const selectEditMapelGuru = document.getElementById("editGuruMapel");
-
+  
   let mapelArray = [];
   if (data) {
     mapelArray = Object.entries(data).map(([key, val]) => ({ id: key, nama: val.nama || val }));
   }
+  window.daftarMapelMaster = mapelArray;
 
   if (listMapelAdmin) {
     listMapelAdmin.innerHTML = "";
@@ -243,19 +242,23 @@ onValue(ref(db, "daftarMapel"), (snapshot) => {
     }
   }
 
-  [selectMapelGuru, selectEditMapelGuru].forEach(el => {
-    if (el) {
-      const currVal = el.value;
-      el.innerHTML = `<option value="">-- Pilih Mata Pelajaran --</option>`;
+  // Render Checkbox untuk Form Tambah Guru
+  const containerTambahMapel = document.getElementById("containerCheckboxMapel") || document.getElementById("containerTambahMapelGuru");
+  if (containerTambahMapel) {
+    containerTambahMapel.innerHTML = "";
+    if (mapelArray.length === 0) {
+      containerTambahMapel.innerHTML = `<small class="text-danger">Belum ada mata pelajaran terdaftar.</small>`;
+    } else {
       mapelArray.forEach(m => {
-        const opt = document.createElement("option");
-        opt.value = m.nama;
-        opt.textContent = m.nama;
-        el.appendChild(opt);
+        containerTambahMapel.innerHTML += `
+          <div class="form-check mb-1">
+            <input class="form-check-input guruMapelCheckbox" type="checkbox" value="${m.nama}" id="tambahMapel_${m.id}">
+            <label class="form-check-label" for="tambahMapel_${m.id}">${m.nama}</label>
+          </div>
+        `;
       });
-      el.value = currVal;
     }
-  });
+  }
 });
 
 // Event Listener untuk Form Tambah Mapel
@@ -293,11 +296,10 @@ window.hapusMapel = async (idMapel) => {
 // Event Listeners Form & Input Lainnya
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
-  // document.getElementById("formTambahSoal")?.addEventListener("submit", handleTambahSoal);
   document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
   document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
   document.getElementById("formEditGuru")?.addEventListener("submit", handleSimpanEditGuru);
-  document.getElementById("formTambahKelas")?.addEventListener("submit", handleTambahKelas);
+  document.getElementById("formTambahKelas")?.addEventListener("submit", handleSimpanKelas);
   document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 
@@ -320,7 +322,8 @@ document.addEventListener("DOMContentLoaded", () => {
 function renderUserInfoNav() {
   const userDisplayName = document.getElementById("userDisplayName");
   if (userDisplayName && userSession) {
-    userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'ADMIN' : 'Guru ' + (userSession.mapel || '')})`;
+    const listMapel = Array.isArray(userSession.mapelDiampu) ? userSession.mapelDiampu.join(", ") : (userSession.mapel || '');
+    userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${userSession.nama || userSession.email} (${userSession.role === 'admin' ? 'ADMIN' : 'Guru ' + listMapel})`;
   }
 }
 
@@ -558,7 +561,9 @@ function handleSimpanUjian(e) {
     pembuatInput = window.userSession.nama || window.userSession.username || "Guru";
     usernamePembuat = window.userSession.username || window.userSession.nama || "";
     idGuruAktif = window.userSession.uid || window.userSession.id || "";
-    mapelInput = window.userSession.mapel || "";
+    
+    const selectMapelUjian = document.getElementById("ujianMapel");
+    mapelInput = selectMapelUjian ? selectMapelUjian.value.trim() : (Array.isArray(window.userSession.mapelDiampu) ? window.userSession.mapelDiampu[0] : window.userSession.mapel);
   } else {
     const selectPembuat = document.getElementById("ujianPembuat");
     pembuatInput = selectPembuat ? selectPembuat.value : "Admin";
@@ -628,22 +633,30 @@ window.toggleStatusUjian = (id, currentStatus) => {
 };
 
 /* ===================================================
-   2. KELOLA AKUN GURU & EDIT/RESET PASSWORD
+   2. KELOLA AKUN GURU & EDIT/RESET PASSWORD (MULTI-MAPEL & KELAS)
    =================================================== */
 window.handleTambahGuru = async (e) => {
   e.preventDefault();
   const nama = document.getElementById("guruNama").value.trim();
   const email = document.getElementById("guruEmail").value.trim();
   const password = document.getElementById("guruPassword").value;
-  const mapel = document.getElementById("guruMapel").value.trim();
+
+  const mapelDiampu = [];
+  document.querySelectorAll('.guruMapelCheckbox:checked').forEach((checkbox) => {
+    mapelDiampu.push(checkbox.value);
+  });
 
   const kelasDiampu = [];
   document.querySelectorAll('.guruKelasCheckbox:checked').forEach((checkbox) => {
     kelasDiampu.push(checkbox.value);
   });
 
+  if (mapelDiampu.length === 0) {
+    alert("Pilih minimal satu mata pelajaran yang diampu!");
+    return;
+  }
   if (kelasDiampu.length === 0) {
-    alert("Pilih minimal satu kelas yang diampu oleh guru ini!");
+    alert("Pilih minimal satu kelas yang diampu!");
     return;
   }
 
@@ -657,7 +670,15 @@ window.handleTambahGuru = async (e) => {
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     const uid = cred.user.uid;
 
-    const dataPengguna = { uid, nama, email, mapel, kelasDiampu, role: "guru" };
+    const dataPengguna = { 
+      uid, 
+      nama, 
+      email, 
+      mapelDiampu, 
+      mapel: mapelDiampu[0], 
+      kelasDiampu, 
+      role: "guru" 
+    };
     await set(ref(db, "pengguna/" + uid), dataPengguna);
     await secondaryAuth.signOut();
 
@@ -676,29 +697,36 @@ async function handleSimpanEditGuru(e) {
   e.preventDefault();
   const uid = document.getElementById("editGuruUid").value;
   const nama = document.getElementById("editGuruNama").value.trim();
-  const mapel = document.getElementById("editGuruMapel").value.trim();
   const newPassword = document.getElementById("editGuruPassword").value.trim();
+
+  const mapelDiampu = [];
+  document.querySelectorAll('.editGuruMapelCheckbox:checked').forEach((checkbox) => {
+    mapelDiampu.push(checkbox.value);
+  });
 
   const kelasDiampu = [];
   document.querySelectorAll('.editGuruKelasCheckbox:checked').forEach((checkbox) => {
     kelasDiampu.push(checkbox.value);
   });
 
+  if (mapelDiampu.length === 0) {
+    alert("Pilih minimal satu mata pelajaran!");
+    return;
+  }
+  if (kelasDiampu.length === 0) {
+    alert("Pilih minimal satu kelas!");
+    return;
+  }
+
   try {
     await update(ref(db, "pengguna/" + uid), { 
       nama, 
-      mapel, 
+      mapelDiampu,
+      mapel: mapelDiampu[0],
       kelasDiampu 
     });
 
-    if (newPassword) {
-      alert(`Profil Guru ${nama} berhasil diperbarui!
-
-Catatan: Untuk penyetelan password baru (${newPassword}), silakan beritahukan kepada guru untuk login menggunakan password tersebut.`);
-    } else {
-      alert(`Profil Guru ${nama} berhasil diperbarui!`);
-    }
-
+    alert(`Profil Guru ${nama} berhasil diperbarui!`);
     const modalEl = document.getElementById("modalEditGuru");
     if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
 
@@ -727,12 +755,13 @@ window.renderTabelPengguna = function() {
 
   daftarPengguna.forEach((p, i) => {
     const isSelfAdmin = (p.role === 'admin');
+    const listMapel = Array.isArray(p.mapelDiampu) ? p.mapelDiampu.join(", ") : (p.mapel || 'Semua Mapel');
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td class="fw-bold">${p.nama || '-'}</td>
       <td>${p.email || '-'}</td>
-      <td><span class="badge bg-info text-dark">${p.mapel || 'Semua Mapel'}</span></td>
+      <td><span class="badge bg-info text-dark">${listMapel}</span></td>
       <td><span class="badge ${isSelfAdmin ? 'bg-danger' : 'bg-primary'}">${(p.role || 'guru').toUpperCase()}</span></td>
       <td>
         ${!isSelfAdmin ? `
@@ -952,8 +981,6 @@ function renderTabelSiswaFiltered(listSiswa) {
   
   const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
   const isGuru = session && session.role === "guru";
-
-  // Sesuaikan colspan tabel (4 jika guru tanpa aksi, 5 jika admin)
   const colspanNum = isGuru ? 4 : 5;
   
   if (totalBadge) totalBadge.innerText = `${listSiswa.length} Siswa`;
@@ -1037,15 +1064,15 @@ window.openModalTambahUjian = async () => {
   if (tokenEl) tokenEl.value = Math.random().toString(36).substring(2, 8).toUpperCase();
 
   const selectPembuat = document.getElementById("ujianPembuat");
-  const mapelInput = document.getElementById("ujianMapel");
+  const selectMapelUjian = document.getElementById("ujianMapel");
 
   let namaGuru = "";
-  let mapelGuru = "";
+  let mapelGuruList = [];
   let kelasDiampuGuru = [];
 
   if (window.userSession) {
     namaGuru = window.userSession.nama || window.userSession.username || "";
-    mapelGuru = window.userSession.mapel || "";
+    mapelGuruList = window.userSession.mapelDiampu || (window.userSession.mapel ? [window.userSession.mapel] : []);
     kelasDiampuGuru = window.userSession.kelasDiampu || [];
   }
 
@@ -1062,18 +1089,29 @@ window.openModalTambahUjian = async () => {
       selectPembuat.disabled = true;
     }
 
-    if (mapelInput) {
-      mapelInput.value = mapelGuru;
-      mapelInput.disabled = true;
+    if (selectMapelUjian) {
+      selectMapelUjian.innerHTML = "";
+      mapelGuruList.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        selectMapelUjian.appendChild(opt);
+      });
+      selectMapelUjian.disabled = false;
     }
   } else {
     if (selectPembuat) {
       selectPembuat.disabled = false;
       if (typeof updateGuruDropdown === "function") updateGuruDropdown();
     }
-    if (mapelInput) {
-      mapelInput.value = "";
-      mapelInput.disabled = false;
+    if (selectMapelUjian) {
+      selectMapelUjian.disabled = false;
+      if (window.daftarMapelMaster) {
+        selectMapelUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
+        window.daftarMapelMaster.forEach(m => {
+          selectMapelUjian.innerHTML += `<option value="${m.nama}">${m.nama}</option>`;
+        });
+      }
     }
   }
 
@@ -1199,12 +1237,31 @@ window.openModalEditGuru = async (uid) => {
   document.getElementById("editGuruUid").value = g.uid;
   document.getElementById("editGuruNama").value = g.nama || "";
   document.getElementById("editGuruEmail").value = g.email || "";
-  document.getElementById("editGuruMapel").value = g.mapel || "";
   document.getElementById("editGuruPassword").value = "";
 
-  const container = document.getElementById("containerEditKelasGuru");
-  if (container) {
-    container.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
+  // Render Checkbox Mapel untuk Edit Guru
+  const containerMapel = document.getElementById("containerEditMapelGuru");
+  if (containerMapel) {
+    containerMapel.innerHTML = `<small class="text-muted">Memuat mapel...</small>`;
+    let listMapelAktif = window.daftarMapelMaster || [];
+    containerMapel.innerHTML = "";
+    const mapelDb = Array.isArray(g.mapelDiampu) ? g.mapelDiampu : (g.mapel ? [g.mapel] : []);
+
+    listMapelAktif.forEach(m => {
+      const isChecked = mapelDb.includes(m.nama) ? "checked" : "";
+      containerMapel.innerHTML += `
+        <div class="form-check">
+          <input class="form-check-input editGuruMapelCheckbox" type="checkbox" value="${m.nama}" id="editMapel_${m.id}" ${isChecked}>
+          <label class="form-check-label" for="editMapel_${m.id}">${m.nama}</label>
+        </div>
+      `;
+    });
+  }
+
+  // Render Checkbox Kelas untuk Edit Guru
+  const containerKelas = document.getElementById("containerEditKelasGuru");
+  if (containerKelas) {
+    containerKelas.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
     
     let listKelasAktif = window.daftarKelas || [];
     if (listKelasAktif.length === 0) {
@@ -1219,13 +1276,13 @@ window.openModalEditGuru = async (uid) => {
       }
     }
 
-    container.innerHTML = "";
+    containerKelas.innerHTML = "";
     const kelasDiampuDb = g.kelasDiampu || [];
 
     if (listKelasAktif.length > 0) {
       listKelasAktif.forEach(k => {
         const isChecked = kelasDiampuDb.includes(k.nama) ? "checked" : "";
-        container.innerHTML += `
+        containerKelas.innerHTML += `
           <div class="form-check">
             <input class="form-check-input editGuruKelasCheckbox" type="checkbox" value="${k.nama}" id="editKls_${k.nama}" ${isChecked}>
             <label class="form-check-label" for="editKls_${k.nama}">${k.nama}</label>
@@ -1233,7 +1290,7 @@ window.openModalEditGuru = async (uid) => {
         `;
       });
     } else {
-      container.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar.</small>`;
+      containerKelas.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar.</small>`;
     }
   }
 
@@ -1247,9 +1304,25 @@ window.openModalTambahGuru = async () => {
   const formEl = document.getElementById("formTambahGuru");
   if (formEl) formEl.reset();
   
-  const container = document.getElementById("containerTambahKelasGuru");
-  if (container) {
-    container.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
+  // Render Checkbox Mapel untuk Tambah Guru
+  const containerMapel = document.getElementById("containerCheckboxMapel") || document.getElementById("containerTambahMapelGuru");
+  if (containerMapel) {
+    containerMapel.innerHTML = "";
+    let listMapelAktif = window.daftarMapelMaster || [];
+    listMapelAktif.forEach(m => {
+      containerMapel.innerHTML += `
+        <div class="form-check mb-1">
+          <input class="form-check-input guruMapelCheckbox" type="checkbox" value="${m.nama}" id="tambahMapel_${m.id}">
+          <label class="form-check-label" for="tambahMapel_${m.id}">${m.nama}</label>
+        </div>
+      `;
+    });
+  }
+
+  // Render Checkbox Kelas untuk Tambah Guru
+  const containerKelas = document.getElementById("containerTambahKelasGuru");
+  if (containerKelas) {
+    containerKelas.innerHTML = `<small class="text-muted">Memuat data kelas...</small>`;
     
     let listKelasAktif = window.daftarKelas || [];
     if (listKelasAktif.length === 0) {
@@ -1264,10 +1337,10 @@ window.openModalTambahGuru = async () => {
       }
     }
 
-    container.innerHTML = "";
+    containerKelas.innerHTML = "";
     if (listKelasAktif.length > 0) {
       listKelasAktif.forEach(k => {
-        container.innerHTML += `
+        containerKelas.innerHTML += `
           <div class="form-check">
             <input class="form-check-input guruKelasCheckbox" type="checkbox" value="${k.nama}" id="tambahKls_${k.nama}">
             <label class="form-check-label" for="tambahKls_${k.nama}">${k.nama}</label>
@@ -1275,7 +1348,7 @@ window.openModalTambahGuru = async () => {
         `;
       });
     } else {
-      container.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar.</small>`;
+      containerKelas.innerHTML = `<small class="text-danger">Belum ada kelas terdaftar.</small>`;
     }
   }
 
@@ -1559,7 +1632,8 @@ function updateGuruDropdown() {
         addedNames.add(p.nama);
         const opt = document.createElement("option");
         opt.value = p.nama;
-        opt.textContent = `${p.nama} - ${p.mapel || 'Guru Pengampu'}`;
+        const listMapel = Array.isArray(p.mapelDiampu) ? p.mapelDiampu.join(", ") : (p.mapel || 'Guru Pengampu');
+        opt.textContent = `${p.nama} - ${listMapel}`;
         selectPembuat.appendChild(opt);
       }
     });
@@ -1778,25 +1852,18 @@ document.addEventListener("click", function(event) {
   }
 });
 
-
 // Sembunyikan fitur khusus Admin jika yang login adalah Guru
 document.addEventListener("DOMContentLoaded", () => {
   const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
   if (session && session.role === "guru") {
-    // Sembunyikan tombol action di atas (Tambah Guru, Kelola Kelas, Kelola Mata Pelajaran)
-    const btnTambahGuru = document.querySelector('button[onclick*="openModalTambahGuru"], #btnTambahGuru, [data-bs-target="#modalTambahGuru"]')?.closest('button');
-    // Cari tombol-tombol spesifik admin berdasarkan teks atau elemennya
     document.querySelectorAll("button, a").forEach(el => {
       const text = el.textContent.trim();
       if (text.includes("Tambah Guru") || text.includes("Kelola Kelas") || text.includes("Kelola Mata Pelajaran") || text.includes("Kelola Akun Guru")) {
-        // Sembunyikan elemen induk atau tombolnya langsung
         const container = el.closest('.btn, button, a, li');
         if (container) container.style.display = "none";
       }
     });
 
-    // Sembunyikan tab / tombol navigasi "Kelola Akun Guru"
-    const tabKelolaGuru = document.querySelector('[onclick*="Kelola Akun Guru"], a[href*="Kelola"], button');
     document.querySelectorAll(".nav-link, .btn, button, a").forEach(el => {
       if (el.textContent.includes("Kelola Akun Guru")) {
         el.style.display = "none";
@@ -1805,16 +1872,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-
-
-
 // Penyesuaian Tampilan Berdasarkan Role (Guru vs Admin)
 document.addEventListener("DOMContentLoaded", () => {
   const session = window.userSession || (typeof userSession !== 'undefined' ? userSession : {});
   const isGuru = session && session.role === "guru";
 
   if (isGuru) {
-    // Sembunyikan tombol aksi data siswa khusus admin (Cetak Kartu, Template Excel, Import Excel, Tambah Siswa)
     const btnCetak = document.querySelector('button[onclick*="cetakKartuUjianSiswa"]');
     if (btnCetak) btnCetak.style.display = "none";
     
