@@ -1944,3 +1944,36 @@ function getAcakOpsi(soalItem) {
     kunci: kunciBaru || soalItem.kunci
   };
 }
+// Fungsi untuk menangani penyimpanan data kelas baru dari modal kelola kelas
+window.handleSimpanKelas = async function(event) {
+  if (event) event.preventDefault();
+  
+  const inputNama = document.getElementById("inputNamaKelas");
+  const namaKelas = inputNama ? inputNama.value.trim() : "";
+  
+  if (!namaKelas) {
+    alert("Nama kelas tidak boleh kosong!");
+    return;
+  }
+
+  try {
+    // Simpan ke Firebase Realtime Database pada node "daftarKelas"
+    const kelasRef = ref(db, "daftarKelas");
+    const newKelasRef = push(kelasRef);
+    await set(newKelasRef, {
+      nama: namaKelas,
+      dibuatPada: new Date().toISOString()
+    });
+
+    alert("Kelas berhasil ditambahkan!");
+    if (inputNama) inputNama.value = "";
+    
+    // Perbarui daftar kelas lokal jika ada fungsi pemuat
+    if (typeof loadDaftarKelas === "function") {
+      loadDaftarKelas();
+    }
+  } catch (error) {
+    console.error("Gagal menyimpan kelas:", error);
+    alert("Gagal menyimpan kelas: " + error.message);
+  }
+};
