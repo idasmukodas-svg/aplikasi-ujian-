@@ -381,35 +381,71 @@
       }
     }
 
-    async function prosesKumpulJawaban() {
+async function prosesKumpulJawaban() {
       isExamActive = false;
       clearInterval(timerInterval);
 
-      let skorTotal = 0;
+      let totalPoinDiperoleh = 0;
+      let totalPoinMaksimal = 0;
       const listSoal = ujianAktif.soal || [];
       const totalSoal = listSoal.length;
 
+      // Setiap soal diberi bobot 1 poin penuh maksimal
+      totalPoinMaksimal = totalSoal;
+
       listSoal.forEach(s => {
-        if (s.tipe === "pg") {
+        const tipe = s.tipe || "pg";
+
+        if (tipe === "pg") {
           const selected = document.querySelector(`input[name="soal_${s.id}"]:checked`);
-          if (selected && selected.value === s.kunci) skorTotal++;
-        } else if (s.tipe === "pg_kompleks") {
+          if (selected && selected.value === s.kunci) {
+            totalPoinDiperoleh += 1; // Benar penuh
+          }
+        } 
+        else if (tipe === "pg_kompleks") {
           const checkedVals = Array.from(document.querySelectorAll(`input[name="soal_${s.id}"]:checked`)).map(c => c.value);
           const kunciArr = Array.isArray(s.kunci) ? s.kunci : [s.kunci];
-          if (checkedVals.length === kunciArr.length && checkedVals.every(v => kunciArr.includes(v))) skorTotal++;
-        } else if (s.tipe === "mencocokkan" && s.pasangan) {
+          
+          if (kunciArr.length > 0) {
+            let benarCount = 0;
+            let salahCount = 0;
+
+            // Hitung berapa pilihan siswa yang tepat ada di kunci
+            checkedVals.forEach(v => {
+              if (kunciArr.includes(v)) benarCount++;
+              else salahCount++;
+            });
+
+            // Rumus parsial: (Jumlah benar dikurangi kesalahan) dibagi total kunci asli
+            // Nilai minimal 0 (tidak boleh minus)
+            let skorSoal = (benarCount - salahCount) / kunciArr.length;
+            if (skorSoal < 0) skorSoal = 0;
+            
+            totalPoinDiperoleh += skorSoal;
+          }
+        } 
+        else if (tipe === "mencocokkan" && s.pasangan && s.pasangan.length > 0) {
           const selects = document.querySelectorAll(`select[data-soal-id="${s.id}"]`);
-          let benarCount = 0;
+          let pasanganBenar = 0;
+          let totalPasangan = s.pasangan.length;
+
           selects.forEach(sel => {
             const kiriVal = sel.getAttribute("data-kiri");
             const pairFound = s.pasangan.find(p => p.kiri === kiriVal);
-            if (pairFound && pairFound.kanan === sel.value) benarCount++;
+            if (pairFound && pairFound.kanan === sel.value) {
+              pasanganBenar++;
+            }
           });
-          if (benarCount === s.pasangan.length) skorTotal++;
+
+          // Poin proporsional berdasarkan jumlah pasangan yang benar dibagi total pasangan
+          let skorPasangan = pasanganBenar / totalPasangan;
+          totalPoinDiperoleh += skorPasangan;
         }
       });
 
-      const nilaiAkhir = totalSoal > 0 ? Math.round((skorTotal / totalSoal) * 100) : 0;
+      // Hitung skala nilai akhir 0 sampai 100
+      const nilaiAkhir = totalPoinMaksimal > 0 ? Math.round((totalPoinDiperoleh / totalPoinMaksimal) * 100) : 0;
+      
       const hasilRefKey = `${siswaAktif.nisn}_${ujianAktif.id}`;
       const payloadHasil = {
         nisn: siswaAktif.nisn,
@@ -424,7 +460,6 @@
 
       try {
         await set(ref(db, "hasilUjian/" + hasilRefKey), payloadHasil);
-        // Ubah status peserta menjadi selesai
         await update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), {
           status: "selesai",
           nilai: nilaiAkhir
@@ -440,6 +475,7 @@
       }
       window.location.reload();
     }
+    
 
     window.kembaliKeFullscreen = function() {
       const docEl = document.documentElement;
