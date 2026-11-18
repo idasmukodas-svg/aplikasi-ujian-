@@ -1508,7 +1508,7 @@ window.hapusSoalIndeks = (index) => {
 
 const formTambahSoalEl = document.getElementById("formTambahSoal");
 if (formTambahSoalEl) {
-  formTambahSoalEl.onsubmit = (e) => {
+  formTambahSoalEl.onsubmit = async (e) => {
     e.preventDefault();
     if (!window.currentUjianActiveKey || !window.currentUjianActive) {
       return alert("Pilih ujian terlebih dahulu!");
@@ -1516,7 +1516,22 @@ if (formTambahSoalEl) {
 
     const tipe = document.getElementById("soalTipe").value;
     const pertanyaan = document.getElementById("soalPertanyaan").value.trim();
-    const gambarUrl = document.getElementById("soalGambarUrl")?.value.trim() || "";
+
+    // 1. Tangkap file gambar dari input file baru
+    const fileInput = document.getElementById("soalGambarFile");
+    let gambarUrlFinal = window.currentEditGambarLama || ""; 
+
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      try {
+        // Konversi file gambar ke Base64 agar tersimpan aman di Firebase
+        gambarUrlFinal = await convertFileToBase64(file);
+      } catch (err) {
+        console.error("Gagal memproses gambar:", err);
+        alert("Gagal membaca file gambar.");
+        return;
+      }
+    }
 
     const listSoal = Array.isArray(window.currentUjianActive.soal) ? [...window.currentUjianActive.soal] : [];
     const isEditMode = window.currentEditSoalIndex !== null && window.currentEditSoalIndex >= 0;
@@ -1527,7 +1542,7 @@ if (formTambahSoalEl) {
         : "SOAL-" + Date.now(),
       tipe,
       pertanyaan,
-      gambarUrl
+      gambarUrl: gambarUrlFinal // Berisi string base64 gambar
     };
 
     if (tipe === "pg") {
@@ -1566,6 +1581,7 @@ if (formTambahSoalEl) {
     if (isEditMode) {
       listSoal[window.currentEditSoalIndex] = itemSoal;
       window.currentEditSoalIndex = null;
+      window.currentEditGambarLama = null;
     } else {
       listSoal.push(itemSoal);
     }
@@ -1977,3 +1993,12 @@ window.handleSimpanKelas = async function(event) {
     alert("Gagal menyimpan kelas: " + error.message);
   }
 };
+// Fungsi pembantu untuk mengubah file gambar yang di-upload menjadi Base64
+function convertFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+}
