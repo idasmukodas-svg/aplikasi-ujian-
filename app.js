@@ -1671,6 +1671,10 @@ window.bukaModalEditUjian = (ujianId) => {
       document.getElementById("editJudulUjian").value = data.judul || "";
       document.getElementById("editDurasiUjian").value = data.durasi || "";
       
+      // Memuat token ujian yang ada ke dalam input form edit
+      const elToken = document.getElementById("editTokenUjian");
+      if (elToken) elToken.value = data.token || "";
+      
       const modalEl = document.getElementById("modalEditUjian");
       if (modalEl && window.bootstrap) {
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -1689,17 +1693,19 @@ window.simpanPerubahanUjian = (e) => {
   const ujianId = document.getElementById("editUjianId").value;
   const judulBaru = document.getElementById("editJudulUjian").value.trim();
   const durasiBaru = document.getElementById("editDurasiUjian").value.trim();
+  const tokenBaru = document.getElementById("editTokenUjian")?.value.trim().toUpperCase() || ""; // Tangkap token baru
 
-  if (!ujianId || !judulBaru || !durasiBaru) {
-    alert("Mohon lengkapi semua data!");
+  if (!ujianId || !judulBaru || !durasiBaru || !tokenBaru) {
+    alert("Mohon lengkapi semua data termasuk token!");
     return;
   }
 
   update(ref(db, `daftarUjian/${ujianId}`), {
     judul: judulBaru,
-    durasi: durasiBaru
+    durasi: durasiBaru,
+    token: tokenBaru // Simpan token baru ke Firebase
   }).then(() => {
-    alert("Ujian berhasil diperbarui!");
+    alert("Ujian dan token berhasil diperbarui!");
     const modalEl = document.getElementById("modalEditUjian");
     if (modalEl && window.bootstrap) {
       bootstrap.Modal.getInstance(modalEl)?.hide();
