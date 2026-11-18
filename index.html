@@ -641,6 +641,54 @@
     </div>
   </div>
 
+  <!-- Modal Tambah Guru -->
+<div class="modal fade" id="modalTambahGuru" tabindex="-1" aria-labelledby="modalTambahGuruLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formTambahGuru">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="modalTambahGuruLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Akun Guru Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="guruNama" class="form-label fw-semibold">Nama Lengkap & Gelar</label>
+            <input type="text" class="form-control" id="guruNama" placeholder="Contoh: Budi Santoso, S.Pd." required>
+          </div>
+          <div class="mb-3">
+            <label for="guruEmail" class="form-label fw-semibold">Email Guru (untuk Login)</label>
+            <input type="email" class="form-control" id="guruEmail" placeholder="guru@smantaraju.sch.id" required>
+          </div>
+          <div class="mb-3">
+            <label for="guruPassword" class="form-label fw-semibold">Password Sementara</label>
+            <input type="password" class="form-control" id="guruPassword" placeholder="Minimal 6 karakter" required>
+          </div>
+
+          <!-- Pilihan Mata Pelajaran (Multi-Mapel Checkbox Dinamis) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mata Pelajaran yang Diampu (Bisa Pilih Lebih dari Satu)</label>
+            <div id="containerCheckboxMapel" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <small class="text-muted">Memuat daftar mata pelajaran...</small>
+            </div>
+          </div>
+
+          <!-- Pilihan Kelas Ampuan (Multi-Class Checkbox Dinamis) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Kelas Ampuan</label>
+            <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <small class="text-muted">Memuat daftar kelas...</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-save me-1"></i>Simpan Akun Guru</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+  
   <!-- MODAL: TAMBAH SISWA -->
   <div class="modal fade" id="modalSiswa" tabindex="-1">
     <div class="modal-dialog">
