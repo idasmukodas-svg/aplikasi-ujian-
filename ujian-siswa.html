@@ -75,9 +75,9 @@
                 <input type="text" id="inputToken" class="form-control form-control-lg text-uppercase fw-bold" placeholder="Contoh: X7Y2Z" required>
               </div>
               <div class="alert alert-info small mb-3">
-                <i class="bi bi-shield-lock-fill me-1"></i> Ujian menggunakan mode <strong>Layar Penuh (Fullscreen)</strong>. Jika Anda terlempar atau keluar aplikasi, silakan minta <strong>Reset Peserta</strong> ke Pengawas/Admin untuk dapat masuk kembali menggunakan token yang sama.
+                <i class="bi bi-shield-lock-fill me-1"></i> Ujian menggunakan mode <strong>Layar Penuh (Fullscreen)</strong>. Jika Anda terlempar atau keluar aplikasi karena kendala teknis, silakan lapor ke <strong>Pengawas/Guru</strong> untuk pemulihan sesi.
               </div>
-              <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+              <button type="submit" id="btnMulaiUjian" class="btn btn-primary btn-lg w-100 fw-bold">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Mulai Ujian
               </button>
             </form>
@@ -106,9 +106,39 @@
 
     <div class="card border-0 shadow-sm mb-5">
       <div class="card-body text-end bg-white">
-        <button class="btn btn-success btn-lg fw-bold px-5" onclick="konfirmasiSelesaiUjian()">
+        <button type="button" class="btn btn-success btn-lg fw-bold px-5" onclick="konfirmasiSelesaiUjian()">
           <i class="bi bi-check-circle-fill me-2"></i>Kumpulkan Jawaban
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI SELESAI UJIAN DENGAN CHECKBOX PERNYATAAN -->
+  <div class="modal fade" id="modalKonfirmasiSelesai" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-shield-check me-2"></i>Konfirmasi Penyelesaian Ujian
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="mb-2">Pastikan seluruh soal sudah Anda kerjakan dan periksa kembali sebelum mengakhiri ujian.</p>
+          <div id="ringkasanJawabInfo" class="alert alert-light border small mb-3"></div>
+          <div class="form-check p-3 bg-warning-subtle border border-warning rounded">
+            <input class="form-check-input border-dark" type="checkbox" id="cekPernyataanSelesai">
+            <label class="form-check-label fw-semibold text-dark" for="cekPernyataanSelesai">
+              Saya menyatakan dengan sadar bahwa saya memang sudah selesai mengerjakan ujian ini dan siap mengirimkan jawaban akhir.
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Periksa Lagi</button>
+          <button type="button" id="btnKonfirmasiKirimUjian" class="btn btn-success fw-bold px-4" disabled>
+            <i class="bi bi-send-check-fill me-1"></i>Kirim & Selesaikan Ujian
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -119,7 +149,19 @@
   <!-- Firebase Logic (Module) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set, update, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import {
+      getDatabase,
+      ref,
+      get,
+      set,
+      update,
+      remove,
+      query,
+      orderByChild,
+      equalTo,
+      onValue,
+      off
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -141,6 +183,9 @@
     let sisaDetik = 0;
     let warningTotal = 3;
     let isExamActive = false;
+    let isSubmitting = false;
+    let perintahRefAktif = null;
+    let modalKonfirmasiInstance = null;
 
     function shuffleArray(array) {
       const arr = [...array];
@@ -151,44 +196,63 @@
       return arr;
     }
 
-    // --- FORM LOGIN SUBMIT DENGAN CEK STATUS PESERTA ---
+    function cekKelasTargetSiswa(targetKelas, kelasSiswa) {
+      if (!targetKelas) return true;
+      const kSiswa = String(kelasSiswa || "").toLowerCase().trim();
+      const targets = Array.isArray(targetKelas)
+        ? targetKelas.map(k => String(k).toLowerCase().trim())
+        : [String(targetKelas).toLowerCase().trim()];
+
+      if (targets.includes("semua") || targets.includes("semua kelas") || targets.includes("")) return true;
+      return targets.includes(kSiswa);
+    }
+
+    // --- FORM LOGIN SUBMIT DENGAN QUERY HEMAT KUOTA & CEK STATUS PESERTA ---
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const btnSubmit = document.getElementById("btnMulaiUjian");
       const nisnInput = document.getElementById("inputNisn").value.trim();
       const tokenInput = document.getElementById("inputToken").value.trim().toUpperCase();
 
+      if (!nisnInput || !tokenInput) return;
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memverifikasi...`;
+
       try {
-        const dbRef = ref(db);
-        
-        // 1. Cek Siswa
-        const snapSiswa = await get(child(dbRef, "daftarSiswa"));
-        if (!snapSiswa.exists()) {
-          alert("Belum ada data siswa terdaftar!");
-          return;
+        // 1. Query Siswa berdasarkan NISN (Hemat download: hanya tarik 1 siswa)
+        const qSiswa = query(ref(db, "daftarSiswa"), orderByChild("nisn"), equalTo(nisnInput));
+        let snapSiswa = await get(qSiswa);
+        let foundSiswa = null;
+
+        if (snapSiswa.exists()) {
+          foundSiswa = Object.values(snapSiswa.val())[0];
+        } else {
+          // Fallback jika nisn di database tersimpan bertipe number
+          const nisnNum = Number(nisnInput);
+          if (!Number.isNaN(nisnNum)) {
+            const qSiswaNum = query(ref(db, "daftarSiswa"), orderByChild("nisn"), equalTo(nisnNum));
+            const snapSiswaNum = await get(qSiswaNum);
+            if (snapSiswaNum.exists()) {
+              foundSiswa = Object.values(snapSiswaNum.val())[0];
+            }
+          }
         }
-        const foundSiswa = Object.values(snapSiswa.val()).find(s => String(s.nisn).trim() === nisnInput);
+
         if (!foundSiswa) {
-          alert("NISN tidak ditemukan! Silakan hubungi Guru/Admin.");
+          alert("NISN tidak ditemukan! Silakan periksa kembali atau hubungi Guru/Admin.");
           return;
         }
 
-        // 2. Cek Ujian Token
-        const snapUjian = await get(child(dbRef, "daftarUjian"));
-        if (!snapUjian.exists()) {
-          alert("Belum ada jadwal ujian aktif!");
-          return;
-        }
-        const dataUjian = snapUjian.val();
-        let foundUjianKey = null;
+        // 2. Query Ujian berdasarkan Token (Hemat download: hanya tarik 1 ujian)
+        const qUjian = query(ref(db, "daftarUjian"), orderByChild("token"), equalTo(tokenInput));
+        const snapUjian = await get(qUjian);
         let foundUjian = null;
 
-        for (const [key, val] of Object.entries(dataUjian)) {
-          if (String(val.token).trim().toUpperCase() === tokenInput) {
-            foundUjianKey = key;
-            foundUjian = val;
-            foundUjian.id = key;
-            break;
-          }
+        if (snapUjian.exists()) {
+          const entries = Object.entries(snapUjian.val());
+          const [key, val] = entries[0];
+          foundUjian = { ...val, id: key };
         }
 
         if (!foundUjian) {
@@ -201,19 +265,25 @@
           return;
         }
 
+        if (!cekKelasTargetSiswa(foundUjian.kelasTarget, foundSiswa.kelas)) {
+          alert(`Maaf, ujian ini tidak dijadwalkan untuk kelas Anda (${foundSiswa.kelas || "-"}).`);
+          return;
+        }
+
         if (!foundUjian.soal || foundUjian.soal.length === 0) {
           alert("Ujian ini belum memiliki soal!");
           return;
         }
 
         // 3. Cek Status Pengerjaan Siswa di Firebase (`statusPeserta`)
-        const statusRef = ref(db, `statusPeserta/${foundUjian.id}/${foundSiswa.nisn}`);
+        const cleanNisn = String(foundSiswa.nisn).trim();
+        const statusRef = ref(db, `statusPeserta/${foundUjian.id}/${cleanNisn}`);
         const snapStatus = await get(statusRef);
-        
+
         if (snapStatus.exists()) {
           const statusData = snapStatus.val();
-          if (statusData.status === "sedang_mengerjakan") {
-            alert("⚠️ Sesi Anda terdeteksi aktif atau Anda sebelumnya keluar tanpa mengumpulkan! Akun Anda terkunci. Silakan lapor ke Pengawas/Admin untuk melakukan RESET PESERTA.");
+          if (statusData.status === "sedang_mengerjakan" || statusData.status === "terlempar") {
+            alert("⚠️ Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
             return;
           } else if (statusData.status === "selesai") {
             alert("Anda sudah menyelesaikan ujian ini sebelumnya!");
@@ -221,8 +291,11 @@
           }
         }
 
-        siswaAktif = foundSiswa;
+        siswaAktif = { ...foundSiswa, nisn: cleanNisn };
         ujianAktif = foundUjian;
+
+        // Bersihkan perintah sisa jika sebelumnya pernah direset
+        await remove(ref(db, `perintahPeserta/${ujianAktif.id}/${siswaAktif.nisn}`));
 
         // Set status ke Firebase menjadi "sedang_mengerjakan"
         await set(statusRef, {
@@ -230,6 +303,7 @@
           nama: siswaAktif.nama,
           kelas: siswaAktif.kelas || "-",
           status: "sedang_mengerjakan",
+          konfirmasiSiswaSelesai: false,
           waktuMulai: new Date().toLocaleString("id-ID")
         });
 
@@ -238,6 +312,9 @@
       } catch (err) {
         console.error("Login Error:", err);
         alert("Gagal memproses login: " + err.message);
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-2"></i>Mulai Ujian`;
       }
     });
 
@@ -263,6 +340,38 @@
 
       isExamActive = true;
       pasangSistemKeamanan();
+      pasangListenerPerintahPengawas();
+    }
+
+    // --- LISTENER REALTIME PERINTAH DARI LIVE MONITORING GURU (PAKSA SELESAI / RESET AWAL) ---
+    function pasangListenerPerintahPengawas() {
+      if (perintahRefAktif) {
+        off(perintahRefAktif);
+        perintahRefAktif = null;
+      }
+
+      perintahRefAktif = ref(db, `perintahPeserta/${ujianAktif.id}/${siswaAktif.nisn}`);
+      onValue(perintahRefAktif, async (snapshot) => {
+        if (!snapshot.exists() || !isExamActive) return;
+
+        const perintah = snapshot.val() || {};
+        if (perintah.aksi === "paksa_selesai") {
+          isExamActive = false;
+          clearInterval(timerInterval);
+          await remove(perintahRefAktif);
+          alert("Pengawas/Guru telah mengakhiri sesi ujian Anda secara paksa. Jawaban Anda saat ini otomatis dikumpulkan.");
+          await prosesKumpulJawaban({ diselesaikanPaksa: true });
+        } else if (perintah.aksi === "reset_awal") {
+          isExamActive = false;
+          clearInterval(timerInterval);
+          await remove(perintahRefAktif);
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          }
+          alert("Sesi ujian Anda telah direset dari awal oleh Pengawas/Guru karena kendala teknis. Silakan login kembali untuk memulai ulang.");
+          window.location.reload();
+        }
+      });
     }
 
     function renderSoalSiswa(originalListSoal) {
@@ -278,11 +387,11 @@
         if (s.gambarUrl && s.gambarUrl.trim() !== "") {
           htmlGambar = `
             <div class="mb-3 text-center">
-              <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 300px;" alt="Gambar Soal" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'alert alert-warning small\'>Gagal memuat gambar dari link: ${s.gambarUrl}</div>';">
+              <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 300px;" alt="Gambar Soal" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'alert alert-warning small\'>Gagal memuat gambar soal.</div>';">
             </div>
           `;
         }
-        
+
         let htmlOption = "";
         if (s.tipe === "pg" || s.tipe === "pg_kompleks") {
           const keysOpsi = Object.keys(s.opsi || {}).filter(k => s.opsi[k]);
@@ -308,7 +417,7 @@
               <p class="small text-primary fw-bold mb-2"><i class="bi bi-info-circle me-1"></i>Jodohkan pernyataan di kiri dengan pasangan di kanan:</p>
               ${s.pasangan.map((p, pIdx) => `
                 <div class="row align-items-center g-2 mb-3 bg-light p-2 rounded">
-                  <div class="col-md-6 fw-bold">${pIdx + 1}.${p.kiri}</div>
+                  <div class="col-md-6 fw-bold">${pIdx + 1}. ${p.kiri}</div>
                   <div class="col-md-6">
                     <select class="form-select match-select" data-soal-id="${s.id}" data-kiri="${p.kiri}">
                       <option value="">-- Pilih Pasangan --</option>
@@ -339,12 +448,12 @@
         if (sisaDetik <= 0) {
           clearInterval(timerInterval);
           alert("Waktu ujian telah habis! Sistem akan otomatis mengumpulkan jawaban Anda.");
-          prosesKumpulJawaban();
+          prosesKumpulJawaban({ waktuHabis: true });
         } else {
           const jam = Math.floor(sisaDetik / 3600);
           const menit = Math.floor((sisaDetik % 3600) / 60);
           const detik = sisaDetik % 60;
-          document.getElementById("timerCountdown").innerText = 
+          document.getElementById("timerCountdown").innerText =
             `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}:${String(detik).padStart(2, '0')}`;
         }
       }, 1000);
@@ -360,7 +469,7 @@
     }
 
     async function handleViolation() {
-      if (!isExamActive) return;
+      if (!isExamActive || isSubmitting) return;
       const isFull = document.fullscreenElement || document.webkitFullscreenElement;
       if (!isFull || document.hidden) {
         warningTotal--;
@@ -370,13 +479,13 @@
           isExamActive = false;
           clearInterval(timerInterval);
           document.getElementById("warningOverlay").classList.add("d-none");
-          
-          // Update status ke "terlempar" di Firebase agar admin tahu
+
           await update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), {
-            status: "terlempar"
+            status: "terlempar",
+            waktuTerlempar: new Date().toLocaleTimeString("id-ID", { hour12: false })
           });
 
-          alert("Anda telah melanggar batas kesempatan keluar dari ujian! Sesi Anda dikunci. Silakan lapor ke Pengawas untuk Reset Peserta.");
+          alert("Anda telah melanggar batas kesempatan keluar dari ujian! Sesi Anda dikunci. Silakan lapor ke Pengawas untuk penanganan lebih lanjut.");
           window.location.reload();
         } else {
           document.getElementById("warningOverlay").classList.remove("d-none");
@@ -384,17 +493,44 @@
       }
     }
 
-async function prosesKumpulJawaban() {
+    function hitungJumlahSoalTerjawab() {
+      const listSoal = ujianAktif?.soal || [];
+      let terjawab = 0;
+
+      listSoal.forEach(s => {
+        const tipe = s.tipe || "pg";
+        if (tipe === "pg" || tipe === "pg_kompleks") {
+          const adaPilih = document.querySelectorAll(`input[name="soal_${s.id}"]:checked`).length > 0;
+          if (adaPilih) terjawab++;
+        } else if (tipe === "mencocokkan") {
+          const selects = Array.from(document.querySelectorAll(`select[data-soal-id="${s.id}"]`));
+          const semuaTerisi = selects.length > 0 && selects.every(sel => sel.value !== "");
+          if (semuaTerisi) terjawab++;
+        }
+      });
+
+      return { terjawab, total: listSoal.length };
+    }
+
+    async function prosesKumpulJawaban(opsiStatus = {}) {
+      if (isSubmitting) return;
+      isSubmitting = true;
       isExamActive = false;
       clearInterval(timerInterval);
 
+      if (perintahRefAktif) {
+        off(perintahRefAktif);
+        perintahRefAktif = null;
+      }
+
+      if (modalKonfirmasiInstance) {
+        modalKonfirmasiInstance.hide();
+      }
+
       let totalPoinDiperoleh = 0;
-      let totalPoinMaksimal = 0;
       const listSoal = ujianAktif.soal || [];
       const totalSoal = listSoal.length;
-
-      // Setiap soal diberi bobot 1 poin penuh maksimal
-      totalPoinMaksimal = totalSoal;
+      const totalPoinMaksimal = totalSoal;
 
       listSoal.forEach(s => {
         const tipe = s.tipe || "pg";
@@ -402,35 +538,29 @@ async function prosesKumpulJawaban() {
         if (tipe === "pg") {
           const selected = document.querySelector(`input[name="soal_${s.id}"]:checked`);
           if (selected && selected.value === s.kunci) {
-            totalPoinDiperoleh += 1; // Benar penuh
+            totalPoinDiperoleh += 1;
           }
-        } 
-        else if (tipe === "pg_kompleks") {
+        } else if (tipe === "pg_kompleks") {
           const checkedVals = Array.from(document.querySelectorAll(`input[name="soal_${s.id}"]:checked`)).map(c => c.value);
           const kunciArr = Array.isArray(s.kunci) ? s.kunci : [s.kunci];
-          
+
           if (kunciArr.length > 0) {
             let benarCount = 0;
             let salahCount = 0;
 
-            // Hitung berapa pilihan siswa yang tepat ada di kunci
             checkedVals.forEach(v => {
               if (kunciArr.includes(v)) benarCount++;
               else salahCount++;
             });
 
-            // Rumus parsial: (Jumlah benar dikurangi kesalahan) dibagi total kunci asli
-            // Nilai minimal 0 (tidak boleh minus)
             let skorSoal = (benarCount - salahCount) / kunciArr.length;
             if (skorSoal < 0) skorSoal = 0;
-            
             totalPoinDiperoleh += skorSoal;
           }
-        } 
-        else if (tipe === "mencocokkan" && s.pasangan && s.pasangan.length > 0) {
+        } else if (tipe === "mencocokkan" && s.pasangan && s.pasangan.length > 0) {
           const selects = document.querySelectorAll(`select[data-soal-id="${s.id}"]`);
           let pasanganBenar = 0;
-          let totalPasangan = s.pasangan.length;
+          const totalPasangan = s.pasangan.length;
 
           selects.forEach(sel => {
             const kiriVal = sel.getAttribute("data-kiri");
@@ -440,15 +570,15 @@ async function prosesKumpulJawaban() {
             }
           });
 
-          // Poin proporsional berdasarkan jumlah pasangan yang benar dibagi total pasangan
-          let skorPasangan = pasanganBenar / totalPasangan;
+          const skorPasangan = pasanganBenar / totalPasangan;
           totalPoinDiperoleh += skorPasangan;
         }
       });
 
-      // Hitung skala nilai akhir 0 sampai 100
       const nilaiAkhir = totalPoinMaksimal > 0 ? Math.round((totalPoinDiperoleh / totalPoinMaksimal) * 100) : 0;
-      
+      const waktuSelesaiStr = new Date().toLocaleString("id-ID");
+      const waktuJamStr = new Date().toLocaleTimeString("id-ID", { hour12: false });
+
       const hasilRefKey = `${siswaAktif.nisn}_${ujianAktif.id}`;
       const payloadHasil = {
         nisn: siswaAktif.nisn,
@@ -458,15 +588,24 @@ async function prosesKumpulJawaban() {
         mapel: ujianAktif.mapel,
         judul: ujianAktif.judul,
         nilai: nilaiAkhir,
-        waktuSelesai: new Date().toLocaleString("id-ID")
+        konfirmasiSiswaSelesai: Boolean(opsiStatus.konfirmasiSiswaSelesai),
+        waktuSelesai: waktuSelesaiStr
+      };
+
+      const payloadStatus = {
+        status: "selesai",
+        nilai: nilaiAkhir,
+        waktuSelesai: waktuJamStr,
+        konfirmasiSiswaSelesai: Boolean(opsiStatus.konfirmasiSiswaSelesai),
+        ...(opsiStatus.konfirmasiSiswaSelesai ? { waktuKonfirmasiSelesai: waktuJamStr } : {}),
+        ...(opsiStatus.diselesaikanPaksa ? { diselesaikanPaksa: true } : {})
       };
 
       try {
-        await set(ref(db, "hasilUjian/" + hasilRefKey), payloadHasil);
-        await update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), {
-          status: "selesai",
-          nilai: nilaiAkhir
-        });
+        await Promise.all([
+          set(ref(db, "hasilUjian/" + hasilRefKey), payloadHasil),
+          update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), payloadStatus)
+        ]);
         alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
       } catch (e) {
         console.error("Gagal simpan nilai:", e);
@@ -478,7 +617,33 @@ async function prosesKumpulJawaban() {
       }
       window.location.reload();
     }
-    
+
+    // --- EVENT MODAL KONFIRMASI CHECKBOX SELESAI UJIAN ---
+    const cekPernyataan = document.getElementById("cekPernyataanSelesai");
+    const btnKonfirmasiKirim = document.getElementById("btnKonfirmasiKirimUjian");
+
+    cekPernyataan.addEventListener("change", () => {
+      btnKonfirmasiKirim.disabled = !cekPernyataan.checked;
+    });
+
+    btnKonfirmasiKirim.addEventListener("click", async () => {
+      if (!cekPernyataan.checked) return;
+      btnKonfirmasiKirim.disabled = true;
+      btnKonfirmasiKirim.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
+
+      // Kirim sinyal cepat ke Live Monitoring guru sebelum kalkulasi selesai
+      const waktuKonfirmasi = new Date().toLocaleTimeString("id-ID", { hour12: false });
+      try {
+        await update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), {
+          konfirmasiSiswaSelesai: true,
+          waktuKonfirmasiSelesai: waktuKonfirmasi
+        });
+      } catch (err) {
+        console.warn("Gagal kirim sinyal awal konfirmasi:", err);
+      }
+
+      await prosesKumpulJawaban({ konfirmasiSiswaSelesai: true });
+    });
 
     window.kembaliKeFullscreen = function() {
       const docEl = document.documentElement;
@@ -491,9 +656,22 @@ async function prosesKumpulJawaban() {
     };
 
     window.konfirmasiSelesaiUjian = function() {
-      if (confirm("Apakah Anda yakin ingin mengumpulkan jawaban ujian ini?")) {
-        prosesKumpulJawaban();
-      }
+      const { terjawab, total } = hitungJumlahSoalTerjawab();
+      const belumDijawab = total - terjawab;
+
+      const infoEl = document.getElementById("ringkasanJawabInfo");
+      infoEl.innerHTML = belumDijawab > 0
+        ? `<i class="bi bi-exclamation-circle text-danger me-1"></i> Terjawab: <strong>${terjawab} dari ${total} soal</strong> (Masih ada <strong>${belumDijawab} soal</strong> belum dijawab).`
+        : `<i class="bi bi-check-circle-fill text-success me-1"></i> Seluruh soal (<strong>${terjawab} dari ${total} soal</strong>) sudah terisi.`;
+
+      // Reset checkbox setiap kali modal dibuka
+      cekPernyataan.checked = false;
+      btnKonfirmasiKirim.disabled = true;
+      btnKonfirmasiKirim.innerHTML = `<i class="bi bi-send-check-fill me-1"></i>Kirim & Selesaikan Ujian`;
+
+      const modalEl = document.getElementById("modalKonfirmasiSelesai");
+      modalKonfirmasiInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modalKonfirmasiInstance.show();
     };
   </script>
 </body>
