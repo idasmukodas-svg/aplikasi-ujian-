@@ -314,7 +314,8 @@ onValue(ref(db, "daftarUjian"), (snapshot) => {
   if (typeof renderStats === "function") renderStats();
   if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
   if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
-
+  if (typeof window.loadDaftarUjianMonitoring === "function") window.loadDaftarUjianMonitoring();
+   
   const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
   if (activeId) {
     const activeUjian = daftarUjian.find(u => u.id === activeId);
@@ -1412,8 +1413,18 @@ window.openModalTambahSiswa = () => {
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
-window.hapusUjian = (id) => {
-  if (confirm("Hapus ujian beserta seluruh soalnya?")) remove(ref(db, "daftarUjian/" + id));
+window.hapusUjian = async (id) => {
+  if (!confirm("Hapus ujian beserta seluruh soalnya?")) return;
+  try {
+    await remove(ref(db, "daftarUjian/" + id));
+    await remove(ref(db, "statusPeserta/" + id));
+    if (document.getElementById("selectUjianMonitoring")?.value === id) {
+      document.getElementById("selectUjianMonitoring").value = "";
+      window.loadDataMonitoring();
+    }
+  } catch (err) {
+    alert("Gagal menghapus ujian: " + err.message);
+  }
 };
 
 window.switchTipeSoal = (tipe) => {
@@ -1936,15 +1947,41 @@ window.loadDaftarUjianMonitoring = () => {
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
 
+  const prevVal = selectUjian.value;
   selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
-  const sumberUjian = window.daftarUjian || [];
 
-  sumberUjian.forEach(ujian => {
+  const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+  const validIds = new Set();
+
+  // Urutkan terbaru dulu & saring ujian yang valid
+  const ujianValid = sumberUjian
+    .filter(u => u && u.id && (u.judul || u.mapel))
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  ujianValid.forEach(ujian => {
+    if (validIds.has(ujian.id)) return;
+    validIds.add(ujian.id);
+
     const opt = document.createElement("option");
     opt.value = ujian.id;
     opt.textContent = `${ujian.mapel || "Mapel"} - ${ujian.judul || "Ujian"} (Token: ${ujian.token || "-"})`;
     selectUjian.appendChild(opt);
   });
+
+  // Jika ujian yang sebelumnya dipilih sudah dihapus, reset pilihan & bersihkan tabel monitoring
+  if (prevVal && validIds.has(prevVal)) {
+    selectUjian.value = prevVal;
+  } else {
+    selectUjian.value = "";
+    if (typeof unsubMonitoring === "function") {
+      unsubMonitoring();
+      unsubMonitoring = null;
+    }
+    const tbody = document.getElementById("tabelMonitoringBody");
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+    }
+  }
 };
 
 window.loadDataMonitoring = () => {
