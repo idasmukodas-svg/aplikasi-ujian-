@@ -307,7 +307,7 @@
                     <th style="width: 50px;">No</th>
                     <th>Nama Guru</th>
                     <th>Email</th>
-                    <th>Mapel & Kelas Ampu</th>
+                    <th>Mapel &amp; Target Kelas Ampu</th>
                     <th>Role</th>
                     <th style="width: 120px;">Aksi</th>
                   </tr>
@@ -325,12 +325,12 @@
       <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
         <div class="card border-0 shadow-sm mt-3">
           <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Live Monitoring, Paksa Selesai & Reset Peserta Ujian</h5>
+            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Live Monitoring, Paksa Selesai &amp; Reset Peserta Ujian</h5>
           </div>
           <div class="card-body">
             <div class="row mb-3 align-items-end g-2">
               <div class="col-md-6">
-                <label class="form-label fw-bold">Pilih Jadwal Ujian (Terfokus Sesuai Hak Ampu / Pembuat):</label>
+                <label class="form-label fw-bold">Pilih Jadwal Ujian (Terfokus Sesuai Mapel/Kelas Ampu atau Pembuat):</label>
                 <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
                   <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
                 </select>
@@ -338,7 +338,7 @@
               <div class="col-md-6">
                 <div class="alert alert-light border small mb-0 py-2">
                   <i class="bi bi-info-circle-fill text-primary me-1"></i>
-                  <strong>Paksa Selesai:</strong> Mengakhiri ujian &amp; mengumpulkan jawaban saat ini.
+                  <strong>Paksa Selesai:</strong> Menyelesaikan ujian siswa saat ini.
                   <strong>Reset Awal:</strong> Mengulang dari awal khusus kendala non-teknis.
                 </div>
               </div>
@@ -695,7 +695,7 @@
     </div>
   </div>
 
-  <!-- MODAL: TAMBAH AKUN GURU (TUNGGAL & TERKUNCI MAPEL + KELAS AMPU) -->
+  <!-- MODAL: TAMBAH AKUN GURU (MAPEL -> TARGET KELAS BERSARANG) -->
   <div class="modal fade" id="modalTambahGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
@@ -718,15 +718,10 @@
               <input type="password" class="form-control" id="guruPassword" minlength="6" required placeholder="Minimal 6 karakter">
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran yang Diampu (Bisa Pilih Lebih dari Satu)</label>
-              <div id="containerCheckboxMapel" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;">
-                <small class="text-muted">Memuat daftar mata pelajaran...</small>
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Kelas yang Diampu (Mengunci Akses Soal, Ujian &amp; Monitoring)</label>
-              <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-                <small class="text-muted">Memuat daftar kelas...</small>
+              <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
+              <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
+              <div id="containerMappingMapelKelasTambah" class="border p-2 rounded bg-light" style="max-height: 280px; overflow-y: auto;">
+                <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
           </div>
@@ -739,7 +734,7 @@
     </div>
   </div>
 
-  <!-- MODAL: EDIT & RESET PASSWORD GURU -->
+  <!-- MODAL: EDIT & RESET PASSWORD GURU (MAPEL -> TARGET KELAS BERSARANG) -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
@@ -759,15 +754,10 @@
               <input type="email" id="editGuruEmail" class="form-control bg-light" readonly>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Mata Pelajaran yang Diampu</label>
-              <div id="containerEditMapelGuru" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;">
-                <small class="text-muted">Memuat daftar mata pelajaran...</small>
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Kelas yang Diampu (Mengunci Akses Soal, Ujian &amp; Monitoring)</label>
-              <div id="containerEditKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-                <small class="text-muted">Memuat daftar kelas...</small>
+              <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
+              <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
+              <div id="containerMappingMapelKelasEdit" class="border p-2 rounded bg-light" style="max-height: 280px; overflow-y: auto;">
+                <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
             <hr>
