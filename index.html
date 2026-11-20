@@ -18,6 +18,21 @@
     .card-stat { transition: transform 0.2s; }
     .card-stat:hover { transform: translateY(-3px); }
 
+    /* Jaga agar header & footer modal selalu terlihat dan body modal bisa di-scroll */
+    .modal-dialog-scrollable .modal-content {
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-dialog-scrollable .modal-header,
+    .modal-dialog-scrollable .modal-footer {
+      flex-shrink: 0;
+    }
+    .modal-dialog-scrollable .modal-body {
+      overflow-y: auto;
+      flex: 1 1 auto;
+    }
+
     /* CSS CETAK KARTU UJIAN */
     @media print {
       body * {
@@ -695,99 +710,84 @@
     </div>
   </div>
 
-  <!-- MODAL: TAMBAH AKUN GURU (DROPDOWN MAPEL + CHECKBOX KELAS AMPU) -->
+  <!-- MODAL: TAMBAH AKUN GURU (MAPEL LENGKAP + CHECKBOX TARGET KELAS) -->
   <div class="modal fade" id="modalTambahGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
-        <form id="formTambahGuru">
+        <form id="formTambahGuru" class="d-flex flex-column h-100 overflow-hidden">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Akun Guru</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label fw-bold">Nama Lengkap &amp; Gelar</label>
-              <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd.">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Nama Lengkap &amp; Gelar</label>
+              <input type="text" class="form-control form-control-sm" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd.">
             </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Email Guru (untuk Login)</label>
-              <input type="email" class="form-control" id="guruEmail" required placeholder="guru@smantaraju.sch.id">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Email Guru (untuk Login)</label>
+              <input type="email" class="form-control form-control-sm" id="guruEmail" required placeholder="guru@smantaraju.sch.id">
             </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Password Sementara</label>
-              <input type="password" class="form-control" id="guruPassword" minlength="6" required placeholder="Minimal 6 karakter">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Password Sementara</label>
+              <input type="password" class="form-control form-control-sm" id="guruPassword" minlength="6" required placeholder="Minimal 6 karakter">
             </div>
-
-            <div class="mb-3">
-              <label for="selectMapelTambahGuru" class="form-label fw-bold">Pilih Mata Pelajaran</label>
-              <select id="selectMapelTambahGuru" class="form-select">
-                <option value="">-- Pilih Mata Pelajaran --</option>
-              </select>
-              <div class="form-text">Pilih mapel untuk mengatur target kelasnya di bawah.</div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
-              <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
-              <div id="containerMappingMapelKelasTambah" class="border p-2 rounded bg-light" style="max-height: 260px; overflow-y: auto;">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Mata Pelajaran &amp; Target Kelas Ampuan</label>
+              <div class="form-text mt-0 mb-1">Centang mapel, lalu pilih target kelas spesifik untuk mapel tersebut.</div>
+              <div id="containerMappingMapelKelasTambah" class="border p-2 rounded bg-light" style="max-height: 200px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-save me-1"></i>Simpan Akun Guru</button>
+          <div class="modal-footer bg-white border-top">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" id="btnSimpanGuruBaru" class="btn btn-primary btn-sm fw-bold">
+              <i class="bi bi-save me-1"></i>Simpan Akun Guru
+            </button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: EDIT & RESET PASSWORD GURU (DROPDOWN MAPEL + CHECKBOX KELAS AMPU) -->
+  <!-- MODAL: EDIT & RESET PASSWORD GURU (MAPEL LENGKAP + CHECKBOX TARGET KELAS) -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
-        <form id="formEditGuru">
+        <form id="formEditGuru" class="d-flex flex-column h-100 overflow-hidden">
           <input type="hidden" id="editGuruUid">
           <div class="modal-header bg-warning">
             <h5 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square me-2"></i>Edit / Reset Akun Guru</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Nama Lengkap Guru</label>
-              <input type="text" id="editGuruNama" class="form-control" required>
+            <div class="mb-2">
+              <label class="form-label fw-semibold mb-1">Nama Lengkap Guru</label>
+              <input type="text" id="editGuruNama" class="form-control form-control-sm" required>
             </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Email Login (Read Only)</label>
-              <input type="email" id="editGuruEmail" class="form-control bg-light" readonly>
+            <div class="mb-2">
+              <label class="form-label fw-semibold mb-1">Email Login (Read Only)</label>
+              <input type="email" id="editGuruEmail" class="form-control form-control-sm bg-light" readonly>
             </div>
-
-            <div class="mb-3">
-              <label for="selectMapelEditGuru" class="form-label fw-bold">Pilih Mata Pelajaran</label>
-              <select id="selectMapelEditGuru" class="form-select">
-                <option value="">-- Pilih Mata Pelajaran --</option>
-              </select>
-              <div class="form-text">Memilih mapel akan menyorot &amp; membuka pilihan checkbox kelas untuk mapel tersebut.</div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
-              <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
-              <div id="containerMappingMapelKelasEdit" class="border p-2 rounded bg-light" style="max-height: 260px; overflow-y: auto;">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Mata Pelajaran &amp; Target Kelas Ampuan</label>
+              <div class="form-text mt-0 mb-1">Centang mapel, lalu pilih target kelas spesifik untuk mapel tersebut.</div>
+              <div id="containerMappingMapelKelasEdit" class="border p-2 rounded bg-light" style="max-height: 200px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
-            <hr>
-            <div class="mb-3">
-              <label class="form-label fw-semibold text-danger"><i class="bi bi-key-fill me-1"></i>Reset Password Baru (Opsional)</label>
-              <input type="password" id="editGuruPassword" class="form-control" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6">
-              <small class="text-muted">Isi bidang ini jika guru lupa password untuk menetapkan password baru.</small>
+            <hr class="my-2">
+            <div class="mb-1">
+              <label class="form-label fw-semibold text-danger mb-1"><i class="bi bi-key-fill me-1"></i>Reset Password Baru (Opsional)</label>
+              <input type="password" id="editGuruPassword" class="form-control form-control-sm" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6">
             </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-check-circle me-1"></i>Simpan Perubahan</button>
+          <div class="modal-footer bg-white border-top">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" id="btnSimpanEditGuru" class="btn btn-warning btn-sm fw-bold">
+              <i class="bi bi-check-circle me-1"></i>Simpan Perubahan
+            </button>
           </div>
         </form>
       </div>
@@ -797,10 +797,10 @@
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Loader Mandiri Modal Guru (Hemat Download: Ambil Sekali per Buka Modal & Cache di Memori) -->
+  <!-- Loader Mandiri Modal Guru -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -847,19 +847,8 @@
       return { mapelList: cacheMapel, kelasList: cacheKelas, penggunaMap: cachePengguna };
     }
 
-    function renderMapping(containerEl, selectEl, mapelList, kelasList, existingDetail = {}) {
+    function renderMapping(containerEl, mapelList, kelasList, existingDetail = {}) {
       if (!containerEl) return;
-
-      if (selectEl) {
-        selectEl.innerHTML = `<option value="">-- Pilih Mata Pelajaran --</option>`;
-        mapelList.forEach((m, idx) => {
-          const opt = document.createElement("option");
-          opt.value = m;
-          opt.textContent = m;
-          opt.dataset.boxId = `box_kelas_${containerEl.id}_${idx}`;
-          selectEl.appendChild(opt);
-        });
-      }
 
       containerEl.innerHTML = "";
       if (!mapelList.length) {
@@ -873,10 +862,8 @@
 
         const mapelCbId = `cb_mapel_${containerEl.id}_${idx}`;
         const boxId = `box_kelas_${containerEl.id}_${idx}`;
-        const cardId = `card_mapel_${containerEl.id}_${idx}`;
 
         const card = document.createElement("div");
-        card.id = cardId;
         card.className = "border rounded bg-white p-2 mb-2";
 
         const kelasHtml = kelasList.length
@@ -917,26 +904,6 @@
 
         containerEl.appendChild(card);
       });
-
-      if (selectEl) {
-        selectEl.onchange = () => {
-          const terpilih = selectEl.value;
-          containerEl.querySelectorAll("[id^='card_mapel_']").forEach(c => c.classList.remove("border-primary", "shadow-sm"));
-          if (!terpilih) return;
-          const idx = mapelList.indexOf(terpilih);
-          if (idx >= 0) {
-            const cbMapel = document.getElementById(`cb_mapel_${containerEl.id}_${idx}`);
-            const boxEl = document.getElementById(`box_kelas_${containerEl.id}_${idx}`);
-            const cardEl = document.getElementById(`card_mapel_${containerEl.id}_${idx}`);
-            if (cbMapel && boxEl && cardEl) {
-              cbMapel.checked = true;
-              boxEl.classList.remove("d-none");
-              cardEl.classList.add("border-primary", "shadow-sm");
-              cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }
-          }
-        };
-      }
     }
 
     function ekstrakMapping(containerEl) {
@@ -966,21 +933,17 @@
       };
     }
 
-    // Saat modal Tambah Guru dibuka
     const modalTambahEl = document.getElementById("modalTambahGuru");
     modalTambahEl?.addEventListener("show.bs.modal", async () => {
       const container = document.getElementById("containerMappingMapelKelasTambah");
-      const selectMapel = document.getElementById("selectMapelTambahGuru");
       container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
       const { mapelList, kelasList } = await ambilMasterData();
-      renderMapping(container, selectMapel, mapelList, kelasList, {});
+      renderMapping(container, mapelList, kelasList, {});
     });
 
-    // Saat modal Edit Guru dibuka (isi otomatis mapel & kelas yang sudah dimiliki guru)
     const modalEditEl = document.getElementById("modalEditGuru");
     modalEditEl?.addEventListener("show.bs.modal", async () => {
       const container = document.getElementById("containerMappingMapelKelasEdit");
-      const selectMapel = document.getElementById("selectMapelEditGuru");
       container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
 
       const { mapelList, kelasList, penggunaMap } = await ambilMasterData(true);
@@ -1013,12 +976,11 @@
         }
       }
 
-      renderMapping(container, selectMapel, mapelList, kelasList, existingDetail);
+      renderMapping(container, mapelList, kelasList, existingDetail);
     });
 
-    // Simpan perubahan mapping di modal Edit Guru jika app.js belum menangani submit formEditGuru
     const formEditGuruEl = document.getElementById("formEditGuru");
-    formEditGuruEl?.addEventListener("submit", async (e) => {
+    formEditGuruEl?.addEventListener("submit", async () => {
       const uid = document.getElementById("editGuruUid")?.value;
       if (!uid) return;
       const container = document.getElementById("containerMappingMapelKelasEdit");
@@ -1036,7 +998,6 @@
       }
     });
 
-    // Simpan mapping di modal Tambah Guru jika app.js belum menangani submit formTambahGuru
     const formTambahGuruEl = document.getElementById("formTambahGuru");
     formTambahGuruEl?.addEventListener("submit", async () => {
       const email = (document.getElementById("guruEmail")?.value || "").trim().toLowerCase();
