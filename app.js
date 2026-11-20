@@ -250,8 +250,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("searchGuru")?.addEventListener("input", () => {
     if (typeof window.filterDataGuru === "function") window.filterDataGuru();
   });
-});
-
   await muatHasilUjianSekali();
 });
 
