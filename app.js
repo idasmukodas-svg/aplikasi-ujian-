@@ -377,7 +377,11 @@ onValue(ref(db, "pengguna"), (snapshot) => {
   const data = snapshot.val();
   daftarPengguna = data ? Object.values(data) : [];
   window.daftarPengguna = daftarPengguna;
-  if (typeof renderTabelPengguna === "function") renderTabelPengguna();
+  if (typeof window.filterDataGuru === "function") {
+    window.filterDataGuru();
+  } else if (typeof renderTabelPengguna === "function") {
+    renderTabelPengguna();
+  }
   if (typeof updateGuruDropdown === "function") updateGuruDropdown();
 });
 
@@ -907,17 +911,62 @@ window.hapusGuru = (uid, nama) => {
   }
 };
 
-window.renderTabelPengguna = function() {
-  const tbody = document.getElementById("tbodyPengguna");
-  if (!tbody) return;
-  tbody.innerHTML = "";
+window.filterDataGuru = () => {
+  const keyword = (document.getElementById("searchGuru")?.value || "").toLowerCase().trim();
 
-  if (daftarPengguna.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Belum ada akun guru terdaftar di Database.</td></tr>`;
+  if (!keyword) {
+    renderTabelPengguna(daftarPengguna);
     return;
   }
 
-  daftarPengguna.forEach((p, i) => {
+  const hasilFiltered = daftarPengguna.filter(p => {
+    const nama = (p.nama || "").toLowerCase();
+    const email = (p.email || "").toLowerCase();
+    const role = (p.role || "").toLowerCase();
+    const detail = normalisasiDetailAmpuan(p);
+    const detailText = Object.entries(detail)
+      .map(([m, kArr]) => `${m} ${(Array.isArray(kArr) ? kArr.join(" ") : "")}`)
+      .join(" ")
+      .toLowerCase();
+    const mapelFallback = Array.isArray(p.mapelDiampu)
+      ? p.mapelDiampu.join(" ").toLowerCase()
+      : (p.mapel || "").toLowerCase();
+    const kelasFallback = Array.isArray(p.kelasDiampu)
+      ? p.kelasDiampu.join(" ").toLowerCase()
+      : (p.kelasDiampu || "").toString().toLowerCase();
+
+    return (
+      nama.includes(keyword) ||
+      email.includes(keyword) ||
+      role.includes(keyword) ||
+      detailText.includes(keyword) ||
+      mapelFallback.includes(keyword) ||
+      kelasFallback.includes(keyword)
+    );
+  });
+
+  renderTabelPengguna(hasilFiltered);
+};
+
+window.renderTabelPengguna = function(listPengguna = daftarPengguna) {
+  const tbody = document.getElementById("tbodyPengguna");
+  const totalBadge = document.getElementById("totalGuruTampil");
+  if (!tbody) return;
+
+  const sumber = Array.isArray(listPengguna) ? listPengguna : daftarPengguna;
+  if (totalBadge) {
+    const jumlahGuru = sumber.filter(p => (p.role || "guru").toLowerCase() !== "admin").length;
+    totalBadge.innerText = `${jumlahGuru} Guru`;
+  }
+
+  tbody.innerHTML = "";
+
+  if (sumber.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Data guru tidak ditemukan.</td></tr>`;
+    return;
+  }
+
+  sumber.forEach((p, i) => {
     const isSelfAdmin = (p.role === "admin");
     const detail = normalisasiDetailAmpuan(p);
     const entries = Object.entries(detail);
