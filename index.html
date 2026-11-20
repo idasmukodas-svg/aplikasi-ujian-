@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- QRCode JS Library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  
+
   <style>
     .cursor-pointer { cursor: pointer; }
     .card-stat { transition: transform 0.2s; }
@@ -50,7 +50,7 @@
     </a>
     <div class="d-flex align-items-center gap-2">
       <span id="userDisplayName" class="text-white fw-semibold me-2"></span>
-      <button class="btn btn-outline-light btn-sm" onclick="logout()">
+      <button type="button" class="btn btn-outline-light btn-sm" onclick="logout()">
         <i class="bi bi-box-arrow-right me-1"></i>Keluar
       </button>
     </div>
@@ -98,13 +98,13 @@
 
     <!-- TOMBOL AKSI MANAJEMEN ADMIN -->
     <div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
-      <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
         <i class="bi bi-person-plus me-1"></i> Tambah Guru
       </button>
-      <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalTambahKelas">
+      <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalKelolaKelas">
         <i class="bi bi-building me-1"></i> Kelola Kelas
       </button>
-      <button class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#modalMapel">
+      <button type="button" class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#modalMapel">
         <i class="bi bi-book me-1"></i> Kelola Mata Pelajaran
       </button>
     </div>
@@ -144,11 +144,11 @@
       <!-- TAB 1: KELOLA UJIAN & BANK SOAL -->
       <div class="tab-pane fade show active" id="contentUjian" role="tabpanel">
         <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="fw-bold mb-0 text-primary">
               <i class="bi bi-list-task me-2"></i>Daftar Ujian & Bank Soal
             </h5>
-            <button class="btn btn-primary" onclick="openModalTambahUjian()">
+            <button type="button" class="btn btn-primary" onclick="openModalTambahUjian()">
               <i class="bi bi-plus-lg me-1"></i>Buat Ujian Baru
             </button>
           </div>
@@ -185,26 +185,26 @@
               <i class="bi bi-people me-2"></i>Data Siswa Terdaftar
             </h5>
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-outline-primary btn-sm" onclick="cetakKartuUjianSiswa()">
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="cetakKartuUjianSiswa()">
                 <i class="bi bi-printer me-1"></i>Cetak Kartu Ujian
               </button>
-              <button class="btn btn-outline-dark btn-sm" onclick="openModalKelolaKelas()">
+              <button type="button" class="btn btn-outline-dark btn-sm" onclick="openModalKelolaKelas()">
                 <i class="bi bi-building-gear me-1"></i>Kelola Kelas
               </button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSiswa()">
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSiswa()">
                 <i class="bi bi-download me-1"></i>Template Excel
               </button>
               <label class="btn btn-success btn-sm mb-0 cursor-pointer">
                 <i class="bi bi-file-earmark-excel me-1"></i>Import Excel
                 <input type="file" id="fileExcelSiswa" accept=".xlsx, .xls" class="d-none">
               </label>
-              <button class="btn btn-primary btn-sm" onclick="openModalTambahSiswa()">
+              <button type="button" class="btn btn-primary btn-sm" onclick="openModalTambahSiswa()">
                 <i class="bi bi-plus-lg me-1"></i>Tambah Siswa
               </button>
             </div>
           </div>
           <div class="card-body p-3">
-            
+
             <!-- PANEL FILTER & PENCARIAN SISWA -->
             <div class="row g-2 mb-3 align-items-center">
               <div class="col-md-4">
@@ -253,13 +253,13 @@
               </div>
               <div class="col-md-8">
                 <div class="d-flex gap-2 justify-content-md-end flex-wrap">
-                  <select id="selectFilterKelas" class="form-select form-select-sm style-select w-auto">
+                  <select id="selectFilterKelas" class="form-select form-select-sm w-auto">
                     <option value="">-- Semua Kelas --</option>
                   </select>
-                  <select id="selectFilterUjian" class="form-select form-select-sm style-select w-auto">
+                  <select id="selectFilterUjian" class="form-select form-select-sm w-auto">
                     <option value="">-- Semua Ujian --</option>
                   </select>
-                  <button id="btnExportRekap" class="btn btn-success btn-sm">
+                  <button type="button" id="btnExportRekap" class="btn btn-success btn-sm">
                     <i class="bi bi-file-earmark-excel me-1"></i>Export Rekap Nilai
                   </button>
                 </div>
@@ -295,7 +295,7 @@
             <h5 class="fw-bold mb-0 text-primary">
               <i class="bi bi-person-badge me-2"></i>Kelola Akun Guru
             </h5>
-            <button class="btn btn-primary btn-sm" onclick="openModalTambahGuru()">
+            <button type="button" class="btn btn-primary btn-sm" onclick="openModalTambahGuru()">
               <i class="bi bi-plus-lg me-1"></i>Tambah Akun Guru
             </button>
           </div>
@@ -307,7 +307,7 @@
                     <th style="width: 50px;">No</th>
                     <th>Nama Guru</th>
                     <th>Email</th>
-                    <th>Mata Pelajaran</th>
+                    <th>Mapel & Kelas Ampu</th>
                     <th>Role</th>
                     <th style="width: 120px;">Aksi</th>
                   </tr>
@@ -325,15 +325,22 @@
       <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
         <div class="card border-0 shadow-sm mt-3">
           <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Pengawasan & Reset Peserta Ujian</h5>
+            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Live Monitoring, Paksa Selesai & Reset Peserta Ujian</h5>
           </div>
           <div class="card-body">
-            <div class="row mb-4">
+            <div class="row mb-3 align-items-end g-2">
               <div class="col-md-6">
-                <label class="form-label fw-bold">Pilih Jadwal Ujian:</label>
+                <label class="form-label fw-bold">Pilih Jadwal Ujian (Terfokus Sesuai Hak Ampu / Pembuat):</label>
                 <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
                   <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
                 </select>
+              </div>
+              <div class="col-md-6">
+                <div class="alert alert-light border small mb-0 py-2">
+                  <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                  <strong>Paksa Selesai:</strong> Mengakhiri ujian &amp; mengumpulkan jawaban saat ini.
+                  <strong>Reset Awal:</strong> Mengulang dari awal khusus kendala non-teknis.
+                </div>
               </div>
             </div>
             <div class="table-responsive">
@@ -344,9 +351,9 @@
                     <th>NISN</th>
                     <th>Nama Siswa</th>
                     <th>Kelas</th>
-                    <th>Status Peserta</th>
+                    <th>Status &amp; Sinyal Konfirmasi</th>
                     <th>Waktu Mulai</th>
-                    <th class="text-center">Aksi</th>
+                    <th class="text-center">Aksi Pengawas</th>
                   </tr>
                 </thead>
                 <tbody id="tabelMonitoringBody">
@@ -381,7 +388,7 @@
         </div>
         <div class="modal-body">
           <form id="formTambahKelas" class="mb-3 d-flex gap-2">
-            <input type="text" id="inputNamaKelas" class="form-control" placeholder="Nama Kelas (Contoh: X IPA 1)" required>
+            <input type="text" id="inputNamaKelas" class="form-control" placeholder="Nama Kelas (Contoh: XII.01)" required>
             <button type="submit" class="btn btn-primary text-nowrap"><i class="bi bi-plus-lg me-1"></i>Tambah</button>
           </form>
           <hr>
@@ -417,7 +424,7 @@
     </div>
   </div>
 
-  <!-- MODAL: BUAT / EDIT UJIAN (MULTI-SELECT KELAS TARGET) -->
+  <!-- MODAL: BUAT UJIAN (MULTI-SELECT KELAS TARGET) -->
   <div class="modal fade" id="modalUjian" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -427,7 +434,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            
+
             <!-- Mata Pelajaran Dropdown -->
             <div class="mb-3">
               <label class="form-label fw-semibold">Mata Pelajaran</label>
@@ -438,7 +445,7 @@
 
             <!-- CHECKBOX MULTI-SELECT TARGET KELAS -->
             <div class="mb-3">
-              <label class="form-label fw-semibold d-block">Target Kelas (Bisa Pilih > 1)</label>
+              <label class="form-label fw-semibold d-block">Target Kelas (Bisa Pilih &gt; 1)</label>
               <div class="border rounded p-3 bg-light" style="max-height: 150px; overflow-y: auto;">
                 <div class="form-check mb-2">
                   <input class="form-check-input check-kelas-target" type="checkbox" id="checkKelasSemua" value="Semua">
@@ -471,7 +478,7 @@
                 <option value="">-- Pilih Guru Pengampu --</option>
               </select>
             </div>
-            
+
             <div class="mb-3">
               <label class="form-label fw-semibold">Status Ujian (Saklar Manual)</label>
               <select id="ujianStatus" class="form-select">
@@ -488,7 +495,7 @@
       </div>
     </div>
   </div>
-  
+
   <!-- MODAL: EDIT UJIAN -->
   <div class="modal fade" id="modalEditUjian" tabindex="-1">
     <div class="modal-dialog">
@@ -537,10 +544,10 @@
             <!-- Form Input Soal -->
             <div class="col-md-7">
               <div class="card border">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
                   <span class="fw-bold"><i class="bi bi-pencil-square me-1"></i>Form Tambah Soal</span>
                   <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSoal()">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadTemplateSoal()">
                       <i class="bi bi-download me-1"></i>Template Soal
                     </button>
                     <label class="btn btn-success btn-sm mb-0 cursor-pointer">
@@ -564,16 +571,15 @@
                       <textarea id="soalPertanyaan" class="form-control" rows="3" required></textarea>
                     </div>
                     <div class="mb-3">
-                      <label class="form-label fw-bold">Unggah Gambar Soal (Opsional)</label>
-                      <input type="file" id="soalGambarFile" class="form-control" accept="image/*">
-                      <div class="form-text">Format yang didukung: JPG, PNG, WEBP. Ukuran disarankan tidak terlalu besar.</div>
-                
-                      <!-- Tempat preview gambar jika sudah dipilih atau saat diedit -->
+                      <label class="form-label fw-bold">Unggah Gambar Soal (Opsional - Maks. 1 MB)</label>
+                      <input type="file" id="soalGambarFile" class="form-control" accept="image/jpeg,image/png,image/webp">
+                      <div class="form-text">Format: JPG, PNG, WEBP. Otomatis dikompresi agar hemat kuota download siswa.</div>
+
                       <div id="previewGambarContainer" class="mt-2 text-center d-none">
                         <img id="previewGambar" src="" class="img-fluid rounded border" style="max-height: 150px;" alt="Preview">
                       </div>
                     </div>
-                    
+
                     <!-- Container Opsi PG / PG Kompleks (A-E) -->
                     <div id="containerPG">
                       <div class="row g-2 mb-2">
@@ -602,13 +608,13 @@
 
                       <!-- Kunci PG Kompleks (A-E) -->
                       <div id="boxKunciKompleks" class="mb-3 d-none">
-                        <label class="form-label fw-semibold">Kunci Jawaban Benar (Bisa > 1)</label>
+                        <label class="form-label fw-semibold">Kunci Jawaban Benar (Bisa &gt; 1)</label>
                         <div class="d-flex gap-3 flex-wrap">
-                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksA" value="A"><label class="form-check-label">A</label></div>
-                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksB" value="B"><label class="form-check-label">B</label></div>
-                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksC" value="C"><label class="form-check-label">C</label></div>
-                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksD" value="D"><label class="form-check-label">D</label></div>
-                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksE" value="E"><label class="form-check-label">E</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksA" value="A"><label class="form-check-label" for="kunciKompleksA">A</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksB" value="B"><label class="form-check-label" for="kunciKompleksB">B</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksC" value="C"><label class="form-check-label" for="kunciKompleksC">C</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksD" value="D"><label class="form-check-label" for="kunciKompleksD">D</label></div>
+                          <div class="form-check"><input class="form-check-input" type="checkbox" id="kunciKompleksE" value="E"><label class="form-check-label" for="kunciKompleksE">E</label></div>
                         </div>
                       </div>
                     </div>
@@ -655,54 +661,6 @@
     </div>
   </div>
 
-  <!-- Modal Tambah Guru -->
-<div class="modal fade" id="modalTambahGuru" tabindex="-1" aria-labelledby="modalTambahGuruLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="formTambahGuru">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="modalTambahGuruLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Akun Guru Baru</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="guruNama" class="form-label fw-semibold">Nama Lengkap & Gelar</label>
-            <input type="text" class="form-control" id="guruNama" placeholder="Contoh: Budi Santoso, S.Pd." required>
-          </div>
-          <div class="mb-3">
-            <label for="guruEmail" class="form-label fw-semibold">Email Guru (untuk Login)</label>
-            <input type="email" class="form-control" id="guruEmail" placeholder="guru@smantaraju.sch.id" required>
-          </div>
-          <div class="mb-3">
-            <label for="guruPassword" class="form-label fw-semibold">Password Sementara</label>
-            <input type="password" class="form-control" id="guruPassword" placeholder="Minimal 6 karakter" required>
-          </div>
-
-          <!-- Pilihan Mata Pelajaran (Multi-Mapel Checkbox Dinamis) -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Mata Pelajaran yang Diampu (Bisa Pilih Lebih dari Satu)</label>
-            <div id="containerCheckboxMapel" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
-              <small class="text-muted">Memuat daftar mata pelajaran...</small>
-            </div>
-          </div>
-
-          <!-- Pilihan Kelas Ampuan (Multi-Class Checkbox Dinamis) -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Kelas Ampuan</label>
-            <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
-              <small class="text-muted">Memuat daftar kelas...</small>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-save me-1"></i>Simpan Akun Guru</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-  
   <!-- MODAL: TAMBAH SISWA -->
   <div class="modal fade" id="modalSiswa" tabindex="-1">
     <div class="modal-dialog">
@@ -737,44 +695,44 @@
     </div>
   </div>
 
-  <!-- MODAL: TAMBAH AKUN GURU -->
+  <!-- MODAL: TAMBAH AKUN GURU (TUNGGAL & TERKUNCI MAPEL + KELAS AMPU) -->
   <div class="modal fade" id="modalTambahGuru" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
         <form id="formTambahGuru">
-          <div class="modal-header">
+          <div class="modal-header bg-primary text-white">
             <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Tambah Akun Guru</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label fw-bold">Nama Lengkap Guru</label>
-              <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd">
+              <label class="form-label fw-bold">Nama Lengkap &amp; Gelar</label>
+              <input type="text" class="form-control" id="guruNama" required placeholder="Contoh: Budi Santoso, S.Pd.">
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Email Login</label>
-              <input type="email" class="form-control" id="guruEmail" required placeholder="email@guru.sma.belajar.id">
+              <label class="form-label fw-bold">Email Guru (untuk Login)</label>
+              <input type="email" class="form-control" id="guruEmail" required placeholder="guru@smantaraju.sch.id">
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Password</label>
-              <input type="password" class="form-control" id="guruPassword" required placeholder="Minimal 6 karakter">
+              <label class="form-label fw-bold">Password Sementara</label>
+              <input type="password" class="form-control" id="guruPassword" minlength="6" required placeholder="Minimal 6 karakter">
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Mata Pelajaran yang Diampu (Checkbox)</label>
-              <div id="containerCheckboxMapel" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <label class="form-label fw-bold">Mata Pelajaran yang Diampu (Bisa Pilih Lebih dari Satu)</label>
+              <div id="containerCheckboxMapel" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran...</small>
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+              <label class="form-label fw-bold">Kelas yang Diampu (Mengunci Akses Soal, Ujian &amp; Monitoring)</label>
               <div id="containerTambahKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-                <!-- Checkbox akan otomatis terisi secara dinamis melalui app.js -->
+                <small class="text-muted">Memuat daftar kelas...</small>
               </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary fw-bold">Buat Akun Guru</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-save me-1"></i>Simpan Akun Guru</button>
           </div>
         </form>
       </div>
@@ -783,7 +741,7 @@
 
   <!-- MODAL: EDIT & RESET PASSWORD GURU -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
         <form id="formEditGuru">
           <input type="hidden" id="editGuruUid">
@@ -802,14 +760,14 @@
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Mata Pelajaran yang Diampu</label>
-              <div id="containerEditMapelGuru" class="border p-2 rounded bg-light" style="max-height: 120px; overflow-y: auto;">
+              <div id="containerEditMapelGuru" class="border p-2 rounded bg-light" style="max-height: 140px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran...</small>
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">Kelas yang Diampu (Hak Akses Ujian):</label>
+              <label class="form-label fw-bold">Kelas yang Diampu (Mengunci Akses Soal, Ujian &amp; Monitoring)</label>
               <div id="containerEditKelasGuru" class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
-                <!-- Checkbox kelas akan dirender otomatis di sini -->
+                <small class="text-muted">Memuat daftar kelas...</small>
               </div>
             </div>
             <hr>
@@ -827,7 +785,7 @@
       </div>
     </div>
   </div>
-  
+
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- App JS -->
