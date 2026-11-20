@@ -239,6 +239,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderUserInfoNav();
   }
 
+  document.getElementById("searchUjian")?.addEventListener("input", () => {
+    if (typeof window.filterDataUjian === "function") window.filterDataUjian();
+  });
+
+  document.getElementById("filterStatusUjian")?.addEventListener("change", () => {
+    if (typeof window.filterDataUjian === "function") window.filterDataUjian();
+  });
+
+  document.getElementById("searchGuru")?.addEventListener("input", () => {
+    if (typeof window.filterDataGuru === "function") window.filterDataGuru();
+  });
+});
+
   await muatHasilUjianSekali();
 });
 
@@ -312,9 +325,11 @@ onValue(ref(db, "daftarUjian"), (snapshot) => {
   window.daftarUjian = daftarUjian;
 
   if (typeof renderStats === "function") renderStats();
-  if (typeof window.renderTabelUjian === "function") window.renderTabelUjian();
-  if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
-  if (typeof window.loadDaftarUjianMonitoring === "function") window.loadDaftarUjianMonitoring();
+  if (typeof window.filterDataUjian === "function") {
+  window.filterDataUjian();
+} else if (typeof window.renderTabelUjian === "function") {
+  window.renderTabelUjian();
+}
    
   const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
   if (activeId) {
@@ -682,15 +697,41 @@ function updateAllClassDropdowns() {
 /* ===================================================
    1. KELOLA UJIAN & BANK SOAL
    =================================================== */
-window.renderTabelUjian = function() {
+window.filterDataUjian = () => {
+  const dataSumber = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+  const keyword = (document.getElementById("searchUjian")?.value || "").toLowerCase().trim();
+  const statusFilter = (document.getElementById("filterStatusUjian")?.value || "").toLowerCase().trim();
+
+  const hasilFiltered = dataSumber.filter(u => {
+    const mapel = (u.mapel || "").toLowerCase();
+    const judul = (u.judul || "").toLowerCase();
+    const token = (u.token || "").toLowerCase();
+    const kelasText = (Array.isArray(u.kelasTarget) ? u.kelasTarget.join(" ") : (u.kelasTarget || "")).toLowerCase();
+    const statusUjian = (u.status || "nonaktif").toLowerCase().trim();
+
+    const matchStatus = statusFilter ? (statusUjian === statusFilter) : true;
+    const matchSearch = keyword
+      ? (mapel.includes(keyword) || judul.includes(keyword) || token.includes(keyword) || kelasText.includes(keyword))
+      : true;
+
+    return matchStatus && matchSearch;
+  });
+
+  window.renderTabelUjian(hasilFiltered);
+};
+
+window.renderTabelUjian = function(listUjian = window.daftarUjian) {
   const tbody = document.getElementById("tbodyUjian");
+  const totalBadge = document.getElementById("totalUjianTampil");
   if (!tbody) return;
+
+  const dataSumber = Array.isArray(listUjian) ? listUjian : [];
+  if (totalBadge) totalBadge.innerText = `${dataSumber.length} Ujian`;
+
   tbody.innerHTML = "";
 
-  const dataSumber = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
-
   if (dataSumber.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Belum ada jadwal ujian/bank soal di Database.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Data ujian tidak ditemukan.</td></tr>`;
     return;
   }
 
