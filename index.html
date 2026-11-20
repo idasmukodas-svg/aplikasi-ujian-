@@ -695,7 +695,7 @@
     </div>
   </div>
 
-  <!-- MODAL: TAMBAH AKUN GURU (MAPEL -> TARGET KELAS BERSARANG) -->
+  <!-- MODAL: TAMBAH AKUN GURU (DROPDOWN MAPEL + CHECKBOX KELAS AMPU) -->
   <div class="modal fade" id="modalTambahGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
@@ -717,10 +717,19 @@
               <label class="form-label fw-bold">Password Sementara</label>
               <input type="password" class="form-control" id="guruPassword" minlength="6" required placeholder="Minimal 6 karakter">
             </div>
+
+            <div class="mb-3">
+              <label for="selectMapelTambahGuru" class="form-label fw-bold">Pilih Mata Pelajaran</label>
+              <select id="selectMapelTambahGuru" class="form-select">
+                <option value="">-- Pilih Mata Pelajaran --</option>
+              </select>
+              <div class="form-text">Pilih mapel untuk mengatur target kelasnya di bawah.</div>
+            </div>
+
             <div class="mb-3">
               <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
               <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
-              <div id="containerMappingMapelKelasTambah" class="border p-2 rounded bg-light" style="max-height: 280px; overflow-y: auto;">
+              <div id="containerMappingMapelKelasTambah" class="border p-2 rounded bg-light" style="max-height: 260px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
@@ -734,7 +743,7 @@
     </div>
   </div>
 
-  <!-- MODAL: EDIT & RESET PASSWORD GURU (MAPEL -> TARGET KELAS BERSARANG) -->
+  <!-- MODAL: EDIT & RESET PASSWORD GURU (DROPDOWN MAPEL + CHECKBOX KELAS AMPU) -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
@@ -753,10 +762,19 @@
               <label class="form-label fw-semibold">Email Login (Read Only)</label>
               <input type="email" id="editGuruEmail" class="form-control bg-light" readonly>
             </div>
+
+            <div class="mb-3">
+              <label for="selectMapelEditGuru" class="form-label fw-bold">Pilih Mata Pelajaran</label>
+              <select id="selectMapelEditGuru" class="form-select">
+                <option value="">-- Pilih Mata Pelajaran --</option>
+              </select>
+              <div class="form-text">Memilih mapel akan menyorot &amp; membuka pilihan checkbox kelas untuk mapel tersebut.</div>
+            </div>
+
             <div class="mb-3">
               <label class="form-label fw-bold">Mata Pelajaran &amp; Target Kelas Ampuan</label>
               <div class="form-text mb-2">Centang mata pelajaran, lalu pilih target kelas spesifik yang diampu untuk mapel tersebut.</div>
-              <div id="containerMappingMapelKelasEdit" class="border p-2 rounded bg-light" style="max-height: 280px; overflow-y: auto;">
+              <div id="containerMappingMapelKelasEdit" class="border p-2 rounded bg-light" style="max-height: 260px; overflow-y: auto;">
                 <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
@@ -778,6 +796,268 @@
 
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Loader Mandiri Modal Guru (Hemat Download: Ambil Sekali per Buka Modal & Cache di Memori) -->
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, get, update, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
+      authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
+      databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "aplikasi-ujian-8e501",
+      storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
+      messagingSenderId: "945781407027",
+      appId: "1:945781407027:web:4672d4c894e143c9b05246",
+      measurementId: "G-CBH4C0BVXD"
+    };
+
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let cacheMapel = null;
+    let cacheKelas = null;
+    let cachePengguna = null;
+
+    async function ambilMasterData(force = false) {
+      if (!force && cacheMapel && cacheKelas && cachePengguna) {
+        return { mapelList: cacheMapel, kelasList: cacheKelas, penggunaMap: cachePengguna };
+      }
+
+      const [snapMapel, snapKelas, snapPengguna] = await Promise.all([
+        get(ref(db, "daftarMapel")),
+        get(ref(db, "daftarKelas")),
+        get(ref(db, "pengguna"))
+      ]);
+
+      const rawMapel = snapMapel.exists() ? snapMapel.val() : {};
+      cacheMapel = Object.values(rawMapel)
+        .map(m => typeof m === "string" ? m : (m.nama || m.mapel || ""))
+        .map(s => String(s).trim())
+        .filter(Boolean);
+
+      const rawKelas = snapKelas.exists() ? snapKelas.val() : {};
+      cacheKelas = Object.values(rawKelas)
+        .map(k => typeof k === "string" ? k : (k.nama || k.kelas || ""))
+        .map(s => String(s).trim())
+        .filter(Boolean);
+
+      cachePengguna = snapPengguna.exists() ? snapPengguna.val() : {};
+      return { mapelList: cacheMapel, kelasList: cacheKelas, penggunaMap: cachePengguna };
+    }
+
+    function renderMapping(containerEl, selectEl, mapelList, kelasList, existingDetail = {}) {
+      if (!containerEl) return;
+
+      if (selectEl) {
+        selectEl.innerHTML = `<option value="">-- Pilih Mata Pelajaran --</option>`;
+        mapelList.forEach((m, idx) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          opt.dataset.boxId = `box_kelas_${containerEl.id}_${idx}`;
+          selectEl.appendChild(opt);
+        });
+      }
+
+      containerEl.innerHTML = "";
+      if (!mapelList.length) {
+        containerEl.innerHTML = `<small class="text-muted">Belum ada mata pelajaran terdaftar.</small>`;
+        return;
+      }
+
+      mapelList.forEach((mapel, idx) => {
+        const isMapelChecked = Object.prototype.hasOwnProperty.call(existingDetail, mapel);
+        const kelasDipilih = isMapelChecked && Array.isArray(existingDetail[mapel]) ? existingDetail[mapel] : [];
+
+        const mapelCbId = `cb_mapel_${containerEl.id}_${idx}`;
+        const boxId = `box_kelas_${containerEl.id}_${idx}`;
+        const cardId = `card_mapel_${containerEl.id}_${idx}`;
+
+        const card = document.createElement("div");
+        card.id = cardId;
+        card.className = "border rounded bg-white p-2 mb-2";
+
+        const kelasHtml = kelasList.length
+          ? kelasList.map((k, kIdx) => {
+              const kId = `cb_kelas_${containerEl.id}_${idx}_${kIdx}`;
+              const checked = kelasDipilih.includes(k) ? "checked" : "";
+              return `
+                <div class="form-check form-check-inline mb-1">
+                  <input class="form-check-input kelas-item" type="checkbox" id="${kId}" value="${k.replace(/"/g, "&quot;")}" ${checked}>
+                  <label class="form-check-label small" for="${kId}">${k}</label>
+                </div>
+              `;
+            }).join("")
+          : `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
+
+        card.innerHTML = `
+          <div class="form-check">
+            <input class="form-check-input mapel-toggle" type="checkbox" id="${mapelCbId}" data-box="${boxId}" value="${mapel.replace(/"/g, "&quot;")}" ${isMapelChecked ? "checked" : ""}>
+            <label class="form-check-label fw-bold" for="${mapelCbId}">${mapel}</label>
+          </div>
+          <div id="${boxId}" class="mt-2 ps-4 pt-2 border-top ${isMapelChecked ? "" : "d-none"}">
+            <div class="small text-muted mb-1">Target kelas untuk <strong>${mapel}</strong>:</div>
+            ${kelasHtml}
+          </div>
+        `;
+
+        const mapelCb = card.querySelector(`#${mapelCbId}`);
+        const boxEl = card.querySelector(`#${boxId}`);
+
+        mapelCb.addEventListener("change", () => {
+          if (mapelCb.checked) {
+            boxEl.classList.remove("d-none");
+          } else {
+            boxEl.classList.add("d-none");
+            boxEl.querySelectorAll("input.kelas-item").forEach(cb => { cb.checked = false; });
+          }
+        });
+
+        containerEl.appendChild(card);
+      });
+
+      if (selectEl) {
+        selectEl.onchange = () => {
+          const terpilih = selectEl.value;
+          containerEl.querySelectorAll("[id^='card_mapel_']").forEach(c => c.classList.remove("border-primary", "shadow-sm"));
+          if (!terpilih) return;
+          const idx = mapelList.indexOf(terpilih);
+          if (idx >= 0) {
+            const cbMapel = document.getElementById(`cb_mapel_${containerEl.id}_${idx}`);
+            const boxEl = document.getElementById(`box_kelas_${containerEl.id}_${idx}`);
+            const cardEl = document.getElementById(`card_mapel_${containerEl.id}_${idx}`);
+            if (cbMapel && boxEl && cardEl) {
+              cbMapel.checked = true;
+              boxEl.classList.remove("d-none");
+              cardEl.classList.add("border-primary", "shadow-sm");
+              cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          }
+        };
+      }
+    }
+
+    function ekstrakMapping(containerEl) {
+      const detailAmpuan = {};
+      const mapelDiampu = [];
+      const kelasSet = new Set();
+
+      if (!containerEl) return { mapelDiampu, kelasDiampu: [], detailAmpuan };
+
+      containerEl.querySelectorAll("input.mapel-toggle:checked").forEach(cbMapel => {
+        const mapel = cbMapel.value;
+        const boxId = cbMapel.getAttribute("data-box");
+        const boxEl = document.getElementById(boxId);
+        const kelasDipilih = boxEl
+          ? Array.from(boxEl.querySelectorAll("input.kelas-item:checked")).map(k => k.value)
+          : [];
+
+        mapelDiampu.push(mapel);
+        detailAmpuan[mapel] = kelasDipilih;
+        kelasDipilih.forEach(k => kelasSet.add(k));
+      });
+
+      return {
+        mapelDiampu,
+        kelasDiampu: Array.from(kelasSet),
+        detailAmpuan
+      };
+    }
+
+    // Saat modal Tambah Guru dibuka
+    const modalTambahEl = document.getElementById("modalTambahGuru");
+    modalTambahEl?.addEventListener("show.bs.modal", async () => {
+      const container = document.getElementById("containerMappingMapelKelasTambah");
+      const selectMapel = document.getElementById("selectMapelTambahGuru");
+      container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
+      const { mapelList, kelasList } = await ambilMasterData();
+      renderMapping(container, selectMapel, mapelList, kelasList, {});
+    });
+
+    // Saat modal Edit Guru dibuka (isi otomatis mapel & kelas yang sudah dimiliki guru)
+    const modalEditEl = document.getElementById("modalEditGuru");
+    modalEditEl?.addEventListener("show.bs.modal", async () => {
+      const container = document.getElementById("containerMappingMapelKelasEdit");
+      const selectMapel = document.getElementById("selectMapelEditGuru");
+      container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
+
+      const { mapelList, kelasList, penggunaMap } = await ambilMasterData(true);
+      const uid = document.getElementById("editGuruUid")?.value || "";
+      const emailVal = (document.getElementById("editGuruEmail")?.value || "").toLowerCase().trim();
+
+      let guruData = penggunaMap[uid] || null;
+      if (!guruData && emailVal) {
+        guruData = Object.values(penggunaMap).find(p => String(p.email || "").toLowerCase().trim() === emailVal) || null;
+      }
+
+      const existingDetail = {};
+      if (guruData) {
+        if (guruData.detailAmpuan && typeof guruData.detailAmpuan === "object") {
+          Object.entries(guruData.detailAmpuan).forEach(([m, kArr]) => {
+            existingDetail[String(m).trim()] = Array.isArray(kArr) ? kArr : [];
+          });
+        } else {
+          const arrMapel = Array.isArray(guruData.mapelDiampu)
+            ? guruData.mapelDiampu
+            : (guruData.mapel ? [guruData.mapel] : []);
+          const arrKelas = Array.isArray(guruData.kelasDiampu)
+            ? guruData.kelasDiampu
+            : (typeof guruData.kelasDiampu === "string" && guruData.kelasDiampu.trim()
+                ? guruData.kelasDiampu.split(",").map(s => s.trim())
+                : []);
+          arrMapel.forEach(m => {
+            if (m) existingDetail[String(m).trim()] = arrKelas;
+          });
+        }
+      }
+
+      renderMapping(container, selectMapel, mapelList, kelasList, existingDetail);
+    });
+
+    // Simpan perubahan mapping di modal Edit Guru jika app.js belum menangani submit formEditGuru
+    const formEditGuruEl = document.getElementById("formEditGuru");
+    formEditGuruEl?.addEventListener("submit", async (e) => {
+      const uid = document.getElementById("editGuruUid")?.value;
+      if (!uid) return;
+      const container = document.getElementById("containerMappingMapelKelasEdit");
+      const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMapping(container);
+      try {
+        await update(ref(db, `pengguna/${uid}`), {
+          mapelDiampu,
+          kelasDiampu,
+          detailAmpuan,
+          mapel: mapelDiampu[0] || ""
+        });
+        cachePengguna = null;
+      } catch (err) {
+        console.warn("Update detailAmpuan:", err);
+      }
+    });
+
+    // Simpan mapping di modal Tambah Guru jika app.js belum menangani submit formTambahGuru
+    const formTambahGuruEl = document.getElementById("formTambahGuru");
+    formTambahGuruEl?.addEventListener("submit", async () => {
+      const email = (document.getElementById("guruEmail")?.value || "").trim().toLowerCase();
+      if (!email) return;
+      const container = document.getElementById("containerMappingMapelKelasTambah");
+      const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMapping(container);
+      const safeKey = email.replace(/[.#$\[\]@]/g, "_");
+      try {
+        await update(ref(db, `pendingGuruAmpuan/${safeKey}`), {
+          email,
+          mapelDiampu,
+          kelasDiampu,
+          detailAmpuan,
+          mapel: mapelDiampu[0] || ""
+        });
+      } catch (err) {
+        console.warn("Simpan pendingGuruAmpuan:", err);
+      }
+    });
+  </script>
+
   <!-- App JS -->
   <script type="module" src="app.js"></script>
 </body>
