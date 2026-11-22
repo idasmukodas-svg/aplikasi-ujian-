@@ -1526,6 +1526,51 @@ window.hapusSiswa = (nisn) => {
   }
 };
 
+window.downloadTemplateSoal = () => {
+  const sampleRows = [
+    {
+      Tipe: "pg",
+      Pertanyaan: "Contoh soal pilihan ganda tunggal?",
+      GambarURL: "",
+      A: "Pilihan A",
+      B: "Pilihan B",
+      C: "Pilihan C",
+      D: "Pilihan D",
+      E: "Pilihan E",
+      Kunci: "A",
+      Pasangan: ""
+    },
+    {
+      Tipe: "pg_kompleks",
+      Pertanyaan: "Contoh soal pilihan ganda kompleks (pilih lebih dari satu)?",
+      GambarURL: "",
+      A: "Opsi A",
+      B: "Opsi B",
+      C: "Opsi C",
+      D: "Opsi D",
+      E: "Opsi E",
+      Kunci: "A, C",
+      Pasangan: ""
+    },
+    {
+      Tipe: "mencocokkan",
+      Pertanyaan: "Pasangkan pernyataan berikut dengan jawaban yang sesuai.",
+      GambarURL: "",
+      A: "",
+      B: "",
+      C: "",
+      D: "",
+      E: "",
+      Kunci: "",
+      Pasangan: "Pernyataan 1=Pasangan 1; Pernyataan 2=Pasangan 2"
+    }
+  ];
+  const ws = XLSX.utils.json_to_sheet(sampleRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
+  XLSX.writeFile(wb, "Template_Soal_CBT.xlsx");
+};
+
 window.downloadTemplateSiswa = () => {
   const data = [
     { NISN: "0081234561", NAMA: "Ahmad Rizky", KELAS: "X IPA 1" },
