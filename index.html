@@ -128,7 +128,7 @@
     <ul class="nav nav-pills bg-white p-2 rounded shadow-sm mb-4" id="mainTab" role="tablist">
       <li class="nav-item" role="presentation">
         <button class="nav-link active fw-semibold" id="tabUjian" data-bs-toggle="pill" data-bs-target="#contentUjian" type="button" role="tab">
-          <i class="bi bi-journal-text me-1"></i>Kelola Ujian & Bank Soal
+          <i class="bi bi-journal-text me-1"></i>Kelola Ujian &amp; Bank Soal
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -211,7 +211,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- TAB 2: DATA SISWA -->
       <div class="tab-pane fade" id="contentSiswa" role="tabpanel">
         <div class="card border-0 shadow-sm">
@@ -309,9 +309,10 @@
                     <th style="width: 50px;">No</th>
                     <th>NISN</th>
                     <th>Nama Siswa</th>
-                    <th>Mata Pelajaran & Judul Ujian</th>
+                    <th>Mata Pelajaran &amp; Judul Ujian</th>
                     <th>Nilai</th>
                     <th>Waktu Selesai</th>
+                    <th class="text-center" style="width: 100px;">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="tbodyNilai">
@@ -368,7 +369,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- TAB 5: MONITORING UJIAN -->
       <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
         <div class="card border-0 shadow-sm mt-3">
@@ -830,10 +831,10 @@
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Loader Mandiri Modal Guru -->
+  <!-- Loader Mandiri Modal Guru & Interaksi Checkbox Kelas -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -939,33 +940,6 @@
       });
     }
 
-    function ekstrakMapping(containerEl) {
-      const detailAmpuan = {};
-      const mapelDiampu = [];
-      const kelasSet = new Set();
-
-      if (!containerEl) return { mapelDiampu, kelasDiampu: [], detailAmpuan };
-
-      containerEl.querySelectorAll("input.mapel-toggle:checked").forEach(cbMapel => {
-        const mapel = cbMapel.value;
-        const boxId = cbMapel.getAttribute("data-box");
-        const boxEl = document.getElementById(boxId);
-        const kelasDipilih = boxEl
-          ? Array.from(boxEl.querySelectorAll("input.kelas-item:checked")).map(k => k.value)
-          : [];
-
-        mapelDiampu.push(mapel);
-        detailAmpuan[mapel] = kelasDipilih;
-        kelasDipilih.forEach(k => kelasSet.add(k));
-      });
-
-      return {
-        mapelDiampu,
-        kelasDiampu: Array.from(kelasSet),
-        detailAmpuan
-      };
-    }
-
     const modalTambahEl = document.getElementById("modalTambahGuru");
     modalTambahEl?.addEventListener("show.bs.modal", async () => {
       const container = document.getElementById("containerMappingMapelKelasTambah");
@@ -1012,43 +986,15 @@
       renderMapping(container, mapelList, kelasList, existingDetail);
     });
 
-    const formEditGuruEl = document.getElementById("formEditGuru");
-    formEditGuruEl?.addEventListener("submit", async () => {
-      const uid = document.getElementById("editGuruUid")?.value;
-      if (!uid) return;
-      const container = document.getElementById("containerMappingMapelKelasEdit");
-      const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMapping(container);
-      try {
-        await update(ref(db, `pengguna/${uid}`), {
-          mapelDiampu,
-          kelasDiampu,
-          detailAmpuan,
-          mapel: mapelDiampu[0] || ""
-        });
-        cachePengguna = null;
-      } catch (err) {
-        console.warn("Update detailAmpuan:", err);
-      }
-    });
-
-    const formTambahGuruEl = document.getElementById("formTambahGuru");
-    formTambahGuruEl?.addEventListener("submit", async () => {
-      const email = (document.getElementById("guruEmail")?.value || "").trim().toLowerCase();
-      if (!email) return;
-      const container = document.getElementById("containerMappingMapelKelasTambah");
-      const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMapping(container);
-      const safeKey = email.replace(/[.#$\[\]@]/g, "_");
-      try {
-        await update(ref(db, `pendingGuruAmpuan/${safeKey}`), {
-          email,
-          mapelDiampu,
-          kelasDiampu,
-          detailAmpuan,
-          mapel: mapelDiampu[0] || ""
-        });
-      } catch (err) {
-        console.warn("Simpan pendingGuruAmpuan:", err);
-      }
+    // Sinkronisasi checkbox "Semua Kelas" pada modal Buat Ujian Baru
+    const checkKelasSemua = document.getElementById("checkKelasSemua");
+    const containerCheckboxKelas = document.getElementById("containerCheckboxKelas");
+    checkKelasSemua?.addEventListener("change", () => {
+      if (!containerCheckboxKelas) return;
+      containerCheckboxKelas.querySelectorAll("input.check-kelas-item").forEach(cb => {
+        cb.checked = false;
+        cb.disabled = checkKelasSemua.checked;
+      });
     });
   </script>
 
