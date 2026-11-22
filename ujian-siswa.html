@@ -302,11 +302,139 @@
     let warningTotal = 3;
     let isExamActive = false;
     let isSubmitting = false;
+    let isVerifyingLogin = false;
+    let lastLoginAttemptAt = 0;
     let unsubStatusPeserta = null;
     let modalKonfirmasiInstance = null;
 
+    // Cache hasil kompresi gambar per sesi agar tidak dikompres ulang saat pindah soal
+    const cacheGambarTerkompresi = new Map();
+
     function sanitizeKey(rawId) {
       return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_");
+    }
+
+    function getStorageKeySesi(ujianId, nisn) {
+      return `cbt_smantar_sesi_${sanitizeKey(ujianId)}_${sanitizeKey(nisn)}`;
+    }
+
+    function simpanProgresLokal() {
+      if (!ujianAktif || !siswaAktif) return;
+      try {
+        const key = getStorageKeySesi(ujianAktif.id, siswaAktif.nisn);
+        const payload = {
+          ujianId: ujianAktif.id,
+          nisn: siswaAktif.nisn,
+          daftarSoalAcak,
+          jawabanSiswa,
+          soalRagu,
+          indeksSoalAktif,
+          sisaDetik,
+          updatedAt: Date.now()
+        };
+        sessionStorage.setItem(key, JSON.stringify(payload));
+      } catch (err) {
+        console.warn("Gagal menyimpan progres lokal:", err);
+      }
+    }
+
+    function muatProgresLokal(ujianId, nisn) {
+      try {
+        const key = getStorageKeySesi(ujianId, nisn);
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.daftarSoalAcak) && parsed.daftarSoalAcak.length > 0) {
+          return parsed;
+        }
+      } catch (err) {
+        console.warn("Gagal membaca progres lokal:", err);
+      }
+      return null;
+    }
+
+    function hapusProgresLokal(ujianId, nisn) {
+      try {
+        if (ujianId && nisn) {
+          sessionStorage.removeItem(getStorageKeySesi(ujianId, nisn));
+        }
+      } catch (err) {
+        console.warn("Gagal menghapus progres lokal:", err);
+      }
+    }
+
+    // Kompres & perkecil dimensi gambar soal (max 800px, kualitas JPEG 0.75)
+    function kompresGambarSoal(srcUrl, maxDimensi = 800, kualitas = 0.75) {
+      if (!srcUrl || typeof srcUrl !== "string") return Promise.resolve("");
+      const trimmed = srcUrl.trim();
+      if (!trimmed) return Promise.resolve("");
+
+      if (cacheGambarTerkompresi.has(trimmed)) {
+        return Promise.resolve(cacheGambarTerkompresi.get(trimmed));
+      }
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        if (!trimmed.startsWith("data:")) {
+          img.crossOrigin = "anonymous";
+        }
+
+        img.onload = () => {
+          try {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+
+            if (!width || !height) {
+              cacheGambarTerkompresi.set(trimmed, trimmed);
+              resolve(trimmed);
+              return;
+            }
+
+            // Jika gambar sudah kecil dan bukan data URL besar, langsung pakai
+            if (width <= maxDimensi && height <= maxDimensi && !trimmed.startsWith("data:")) {
+              cacheGambarTerkompresi.set(trimmed, trimmed);
+              resolve(trimmed);
+              return;
+            }
+
+            if (width > maxDimensi || height > maxDimensi) {
+              if (width >= height) {
+                height = Math.round((height * maxDimensi) / width);
+                width = maxDimensi;
+              } else {
+                width = Math.round((width * maxDimensi) / height);
+                height = maxDimensi;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const hasilKompres = canvas.toDataURL("image/jpeg", kualitas);
+            const finalSrc = (hasilKompres && hasilKompres.length < trimmed.length) || !trimmed.startsWith("data:")
+              ? hasilKompres
+              : trimmed;
+
+            cacheGambarTerkompresi.set(trimmed, finalSrc);
+            resolve(finalSrc);
+          } catch (e) {
+            // Jika canvas tainted karena CORS server eksternal, gunakan URL asli
+            cacheGambarTerkompresi.set(trimmed, trimmed);
+            resolve(trimmed);
+          }
+        };
+
+        img.onerror = () => {
+          resolve(trimmed);
+        };
+
+        img.src = trimmed;
+      });
     }
 
     function shuffleArray(array) {
@@ -331,12 +459,22 @@
 
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (isVerifyingLogin || isExamActive) return;
+
+      const sekarang = Date.now();
+      if (sekarang - lastLoginAttemptAt < 2500) {
+        alert("Mohon tunggu sebentar sebelum mencoba masuk kembali.");
+        return;
+      }
+      lastLoginAttemptAt = sekarang;
+
       const btnSubmit = document.getElementById("btnMulaiUjian");
       const nisnInput = document.getElementById("inputNisn").value.trim();
       const tokenInput = document.getElementById("inputToken").value.trim().toUpperCase();
 
       if (!nisnInput || !tokenInput) return;
 
+      isVerifyingLogin = true;
       btnSubmit.disabled = true;
       btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memverifikasi...`;
 
@@ -344,6 +482,7 @@
         const cleanNisn = sanitizeKey(nisnInput);
         let foundSiswa = null;
 
+        // 1. Cek langsung berdasarkan key NISN (1 read tunggal)
         const snapSiswaDirect = await get(ref(db, `daftarSiswa/${cleanNisn}`));
         if (snapSiswaDirect.exists()) {
           foundSiswa = snapSiswaDirect.val();
@@ -361,6 +500,7 @@
           return;
         }
 
+        // 2. Query ujian berdasarkan token (sekali saja saat masuk)
         const qUjian = query(ref(db, "daftarUjian"), orderByChild("token"), equalTo(tokenInput));
         const snapUjian = await get(qUjian);
         let foundUjian = null;
@@ -392,6 +532,7 @@
           return;
         }
 
+        // 3. Cek status peserta di `statusPeserta/{ujianId}/{nisnKey}`
         const nisnKey = sanitizeKey(foundSiswa.nisn || cleanNisn);
         const statusRef = ref(db, `statusPeserta/${foundUjian.id}/${nisnKey}`);
         const snapStatus = await get(statusRef);
@@ -402,6 +543,7 @@
             alert("⚠️ Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
             return;
           } else if (statusData.status === "selesai") {
+            hapusProgresLokal(foundUjian.id, nisnKey);
             alert("Anda sudah menyelesaikan ujian ini sebelumnya!");
             return;
           }
@@ -425,6 +567,7 @@
         console.error("Login Error:", err);
         alert("Gagal memproses login: " + err.message);
       } finally {
+        isVerifyingLogin = false;
         btnSubmit.disabled = false;
         btnSubmit.innerHTML = `<i class="bi bi-box-arrow-in-right me-2"></i>Mulai Ujian`;
       }
@@ -473,15 +616,26 @@
       document.getElementById("infoJudulUjian").innerText = ujianAktif.judul || "";
       document.getElementById("infoNamaSiswa").innerText = `NISN: ${siswaAktif.nisn}`;
 
-      jawabanSiswa = {};
-      soalRagu = {};
-      daftarSoalAcak = siapkanSoalAcak(ujianAktif.soal);
-      indeksSoalAktif = 0;
+      const progresTersimpan = muatProgresLokal(ujianAktif.id, siswaAktif.nisn);
+      if (progresTersimpan && progresTersimpan.daftarSoalAcak.length === ujianAktif.soal.length) {
+        daftarSoalAcak = progresTersimpan.daftarSoalAcak;
+        jawabanSiswa = progresTersimpan.jawabanSiswa || {};
+        soalRagu = progresTersimpan.soalRagu || {};
+        indeksSoalAktif = Math.min(Math.max(0, progresTersimpan.indeksSoalAktif || 0), daftarSoalAcak.length - 1);
+        sisaDetik = (typeof progresTersimpan.sisaDetik === "number" && progresTersimpan.sisaDetik > 0)
+          ? progresTersimpan.sisaDetik
+          : parseInt(ujianAktif.durasi || 60, 10) * 60;
+      } else {
+        jawabanSiswa = {};
+        soalRagu = {};
+        daftarSoalAcak = siapkanSoalAcak(ujianAktif.soal);
+        indeksSoalAktif = 0;
+        sisaDetik = parseInt(ujianAktif.durasi || 60, 10) * 60;
+        simpanProgresLokal();
+      }
 
       renderNavigasiSoal();
-      tampilkanSoalKe(0);
-
-      sisaDetik = parseInt(ujianAktif.durasi || 60, 10) * 60;
+      tampilkanSoalKe(indeksSoalAktif);
       startTimer();
 
       isExamActive = true;
@@ -499,9 +653,15 @@
       unsubStatusPeserta = onValue(statusRef, async (snapshot) => {
         if (!isExamActive || isSubmitting) return;
 
+        // Jika dihapus oleh tombol "Reset Awal" di dashboard guru/admin
         if (!snapshot.exists()) {
           isExamActive = false;
           clearInterval(timerInterval);
+          hapusProgresLokal(ujianAktif.id, siswaAktif.nisn);
+          if (typeof unsubStatusPeserta === "function") {
+            unsubStatusPeserta();
+            unsubStatusPeserta = null;
+          }
           if (document.exitFullscreen) {
             document.exitFullscreen().catch(() => {});
           }
@@ -510,6 +670,7 @@
           return;
         }
 
+        // Jika status diubah menjadi "selesai" oleh tombol "Paksa Selesai" di dashboard guru/admin
         const val = snapshot.val() || {};
         if (val.status === "selesai") {
           isExamActive = false;
@@ -536,6 +697,7 @@
       if (!soal) return;
       const isChecked = document.getElementById("toggleRaguSoal")?.checked || false;
       soalRagu[soal.id] = isChecked;
+      simpanProgresLokal();
       renderNavigasiSoal();
     };
 
@@ -564,9 +726,10 @@
       }
     };
 
-    function tampilkanSoalKe(index) {
+    async function tampilkanSoalKe(index) {
       if (index < 0 || index >= daftarSoalAcak.length) return;
       indeksSoalAktif = index;
+      simpanProgresLokal();
       const s = daftarSoalAcak[index];
 
       document.getElementById("labelNomorSoal").innerText = `Soal No. ${index + 1} dari ${daftarSoalAcak.length}`;
@@ -591,13 +754,19 @@
         toggleRagu.checked = Boolean(soalRagu[s.id]);
       }
 
+      // Render & kompres gambar soal (dengan cache agar tidak diproses ulang)
       const wadahGambar = document.getElementById("wadahGambarSoal");
       if (s.gambarUrl && s.gambarUrl.trim() !== "") {
         wadahGambar.classList.remove("d-none");
-        wadahGambar.innerHTML = `
-          <img src="${s.gambarUrl}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
-            onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-warning small\\'>Gagal memuat gambar soal.</div>';">
-        `;
+        wadahGambar.innerHTML = `<div class="small text-muted py-2"><span class="spinner-border spinner-border-sm me-1"></span>Memuat gambar...</div>`;
+        const urlTerkompresi = await kompresGambarSoal(s.gambarUrl, 800, 0.75);
+        // Pastikan user masih berada di nomor soal yang sama saat gambar selesai dikompres
+        if (indeksSoalAktif === index) {
+          wadahGambar.innerHTML = `
+            <img src="${urlTerkompresi}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
+              onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-warning small\\'>Gagal memuat gambar soal.</div>';">
+          `;
+        }
       } else {
         wadahGambar.classList.add("d-none");
         wadahGambar.innerHTML = "";
@@ -628,6 +797,7 @@
           `;
           card.querySelector("input").addEventListener("change", () => {
             jawabanSiswa[s.id] = keyAsli;
+            simpanProgresLokal();
             tampilkanSoalKe(indeksSoalAktif);
           });
           wadahOpsi.appendChild(card);
@@ -658,6 +828,7 @@
             if (ev.target.checked) setJwb.add(keyAsli);
             else setJwb.delete(keyAsli);
             jawabanSiswa[s.id] = Array.from(setJwb);
+            simpanProgresLokal();
             tampilkanSoalKe(indeksSoalAktif);
           });
           wadahOpsi.appendChild(card);
@@ -690,6 +861,7 @@
               jawabanSiswa[s.id] = {};
             }
             jawabanSiswa[s.id][p.kiri] = ev.target.value;
+            simpanProgresLokal();
             renderNavigasiSoal();
           });
           wadahOpsi.appendChild(row);
@@ -702,7 +874,17 @@
       renderNavigasiSoal();
     }
 
+    function updateTampilanTimer() {
+      const jam = Math.floor(sisaDetik / 3600);
+      const menit = Math.floor((sisaDetik % 3600) / 60);
+      const detik = sisaDetik % 60;
+      document.getElementById("timerCountdown").innerText =
+        `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}:${String(detik).padStart(2, '0')}`;
+    }
+
     function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      updateTampilanTimer();
       timerInterval = setInterval(() => {
         sisaDetik--;
         if (sisaDetik <= 0) {
@@ -710,16 +892,19 @@
           alert("Waktu ujian telah habis! Sistem akan otomatis mengumpulkan jawaban Anda.");
           prosesKumpulJawaban({ waktuHabis: true });
         } else {
-          const jam = Math.floor(sisaDetik / 3600);
-          const menit = Math.floor((sisaDetik % 3600) / 60);
-          const detik = sisaDetik % 60;
-          document.getElementById("timerCountdown").innerText =
-            `${String(jam).padStart(2, '0')}:${String(menit).padStart(2, '0')}:${String(detik).padStart(2, '0')}`;
+          updateTampilanTimer();
+          if (sisaDetik % 5 === 0) {
+            simpanProgresLokal();
+          }
         }
       }, 1000);
     }
 
+    let securityListenersAttached = false;
     function pasangSistemKeamanan() {
+      if (securityListenersAttached) return;
+      securityListenersAttached = true;
+
       document.addEventListener("fullscreenchange", handleViolation);
       document.addEventListener("webkitfullscreenchange", handleViolation);
       window.addEventListener("blur", handleViolation);
@@ -738,6 +923,10 @@
         if (warningTotal <= 0) {
           isExamActive = false;
           clearInterval(timerInterval);
+          if (typeof unsubStatusPeserta === "function") {
+            unsubStatusPeserta();
+            unsubStatusPeserta = null;
+          }
           document.getElementById("warningOverlay").classList.add("d-none");
 
           const statusRef = ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`);
@@ -850,6 +1039,7 @@
           set(ref(db, `hasilUjian/${hasilId}`), payloadHasil),
           update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), payloadStatus)
         ]);
+        hapusProgresLokal(ujianAktif.id, siswaAktif.nisn);
         alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
       } catch (e) {
         console.error("Gagal simpan nilai:", e);
@@ -870,19 +1060,9 @@
     });
 
     btnKonfirmasiKirim.addEventListener("click", async () => {
-      if (!cekPernyataan.checked) return;
+      if (!cekPernyataan.checked || isSubmitting) return;
       btnKonfirmasiKirim.disabled = true;
       btnKonfirmasiKirim.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
-
-      const waktuKonfirmasi = new Date().toLocaleTimeString("id-ID", { hour12: false });
-      try {
-        await update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), {
-          konfirmasiSiswaSelesai: true,
-          waktuKonfirmasiSelesai: waktuKonfirmasi
-        });
-      } catch (err) {
-        console.warn("Gagal kirim sinyal awal konfirmasi:", err);
-      }
 
       await prosesKumpulJawaban({ konfirmasiSiswaSelesai: true });
     });
