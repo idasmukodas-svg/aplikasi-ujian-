@@ -72,6 +72,51 @@ function normalisasiDetailAmpuan(guruObj) {
   return detail;
 }
 
+function apakahUjianSesuaiHakGuru(u, session) {
+  if (!session || session.role === "admin") return true;
+
+  const detail = normalisasiDetailAmpuan(session);
+  const mapelKeys = Object.keys(detail);
+
+  let mapelGuruArray = [];
+  if (mapelKeys.length > 0) {
+    mapelGuruArray = mapelKeys.map(m => m.toLowerCase().trim());
+  } else if (Array.isArray(session.mapelDiampu) && session.mapelDiampu.length > 0) {
+    mapelGuruArray = session.mapelDiampu.map(m => m.toLowerCase().trim());
+  } else if (session.mapel) {
+    mapelGuruArray = [session.mapel.toLowerCase().trim()];
+  }
+
+  let kelasDiampuArray = [];
+  if (Array.isArray(session.kelasDiampu)) {
+    kelasDiampuArray = session.kelasDiampu.map(k => String(k).trim());
+  } else if (typeof session.kelasDiampu === "string") {
+    kelasDiampuArray = session.kelasDiampu.split(",").map(k => k.trim()).filter(Boolean);
+  }
+
+  const mapelUjian = (u.mapel || "").toLowerCase().trim();
+  const targetKelas = Array.isArray(u.kelasTarget)
+    ? u.kelasTarget.map(k => String(k).trim())
+    : (u.kelasTarget ? [String(u.kelasTarget).trim()] : []);
+
+  const cocokMapel = mapelGuruArray.length > 0 && mapelGuruArray.includes(mapelUjian);
+  if (!cocokMapel) return false;
+
+  if (mapelKeys.length > 0) {
+    const matchedMapelKey = mapelKeys.find(mk => mk.toLowerCase().trim() === mapelUjian);
+    const kelasUntukMapel = matchedMapelKey ? detail[matchedMapelKey] : [];
+    if (kelasUntukMapel && kelasUntukMapel.length > 0) {
+      return targetKelas.includes("Semua") || targetKelas.some(k => kelasUntukMapel.includes(k));
+    }
+  }
+
+  if (kelasDiampuArray.length > 0) {
+    return targetKelas.includes("Semua") || targetKelas.some(k => kelasDiampuArray.includes(k));
+  }
+
+  return false;
+}
+
 function ekstrakMappingDariContainer(containerEl) {
   const detailAmpuan = {};
   const mapelDiampu = [];
@@ -184,7 +229,7 @@ function terapkanFilterHasilUjian(rawList) {
       const kelasSiswa = (h.kelas || "").trim();
       const kelasSiswaLower = kelasSiswa.toLowerCase();
 
-      const cocokMapel = mapelGuruArray.length === 0 || mapelGuruArray.includes(mapelHasil);
+      const cocokMapel = mapelGuruArray.length > 0 && mapelGuruArray.includes(mapelHasil);
       if (!cocokMapel) return false;
 
       if (mapelKeys.length > 0) {
@@ -195,7 +240,7 @@ function terapkanFilterHasilUjian(rawList) {
         }
       }
 
-      return kelasDiampu.length === 0 || kelasDiampu.some(k => k.toLowerCase().trim() === kelasSiswaLower);
+      return kelasDiampu.length > 0 && kelasDiampu.some(k => k.toLowerCase().trim() === kelasSiswaLower);
     });
   } else {
     hasilUjian = rawList;
@@ -203,10 +248,10 @@ function terapkanFilterHasilUjian(rawList) {
 
   window.hasilUjian = hasilUjian;
   if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
-  if (typeof updateFilterUjianDropdown === "function") updateFilterUjianDropdown();
+  if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
 }
 
-// Ambil data hasilUjian via get() (hemat download dibanding onValue penuh terus-menerus)
+// Ambil data hasilUjian via get() (hemat kuota download dibanding onValue penuh terus-menerus)
 async function muatHasilUjianSekali() {
   try {
     const snapshot = await get(ref(db, "hasilUjian"));
@@ -250,6 +295,114 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("searchGuru")?.addEventListener("input", () => {
     if (typeof window.filterDataGuru === "function") window.filterDataGuru();
   });
+
+  document.getElementById("tabNilai")?.addEventListener("click", () => {
+    muatHasilUjianSekali();
+  });
+
+  document.getElementById("tabMonitoring")?.addEventListener("click", () => {
+    window.loadDaftarUjianMonitoring();
+  });
+
+  // Preview gambar soal & validasi ukuran maksimal 1 MB
+  const fileGambarInput = document.getElementById("soalGambarFile");
+  fileGambarInput?.addEventListener("change", () => {
+    const file = fileGambarInput.files && fileGambarInput.files[0];
+    const previewContainer = document.getElementById("previewGambarContainer");
+    const previewImg = document.getElementById("previewGambar");
+
+    if (!file) {
+      previewContainer?.classList.add("d-none");
+      return;
+    }
+
+    if (file.size > 1024 * 1024) {
+      alert("Ukuran gambar melebihi batas maksimal 1 MB. Gambar akan dikompresi otomatis saat disimpan.");
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (previewImg && previewContainer) {
+        previewImg.src = ev.target.result;
+        previewContainer.classList.remove("d-none");
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Form Tambah Mapel
+  document.getElementById("formTambahMapel")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inputMapel = document.getElementById("inputNamaMapel");
+    const namaMapel = inputMapel?.value.trim();
+    if (!namaMapel) return;
+
+    try {
+      const newMapelRef = push(ref(db, "daftarMapel"));
+      await set(newMapelRef, { nama: namaMapel });
+      inputMapel.value = "";
+      alert("Mata pelajaran berhasil ditambahkan!");
+    } catch (err) {
+      console.error("Gagal menambah mapel:", err);
+      alert("Terjadi kesalahan saat menyimpan mapel.");
+    }
+  });
+
+  // Form Utama & Filter Rekap Nilai
+  document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
+  document.getElementById("formEditUjian")?.addEventListener("submit", window.simpanPerubahanUjian);
+  document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
+  document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
+  document.getElementById("formEditGuru")?.addEventListener("submit", handleSimpanEditGuru);
+  document.getElementById("formTambahKelas")?.addEventListener("submit", window.handleSimpanKelas);
+  document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
+  document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
+
+  document.getElementById("selectFilterKelas")?.addEventListener("change", () => window.filterRekapNilai());
+  document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
+
+  document.getElementById("soalTipe")?.addEventListener("change", (e) => {
+    if (typeof window.switchTipeSoal === "function") window.switchTipeSoal(e.target.value);
+  });
+
+  document.getElementById("btnExportRekap")?.addEventListener("click", async () => {
+    await muatHasilUjianSekali();
+    const kelas = document.getElementById("selectFilterKelas")?.value || "";
+    const ujianId = document.getElementById("selectFilterUjian")?.value || "";
+    if (typeof window.downloadRekapNilaiPerKelas === "function") {
+      window.downloadRekapNilaiPerKelas(kelas, ujianId);
+    }
+  });
+
+  // Penyesuaian Tampilan Berdasarkan Role (Guru vs Admin)
+  if (userSession.role === "guru") {
+    document.querySelectorAll("button, a").forEach(el => {
+      const text = el.textContent.trim();
+      if (text.includes("Tambah Guru") || text.includes("Kelola Kelas") || text.includes("Kelola Mata Pelajaran") || text.includes("Kelola Akun Guru")) {
+        const container = el.closest(".btn, button, a, li");
+        if (container) container.style.display = "none";
+      }
+    });
+
+    document.querySelectorAll(".nav-link, .btn, button, a").forEach(el => {
+      if (el.textContent.includes("Kelola Akun Guru")) {
+        el.style.display = "none";
+      }
+    });
+
+    const btnCetak = document.querySelector('button[onclick*="cetakKartuUjianSiswa"]');
+    if (btnCetak) btnCetak.style.display = "none";
+
+    const btnTemplate = document.querySelector('button[onclick*="downloadTemplateSiswa"]');
+    if (btnTemplate) btnTemplate.style.display = "none";
+
+    const labelImport = document.querySelector('label[for="fileExcelSiswa"]') || document.getElementById("fileExcelSiswa")?.closest("label");
+    if (labelImport) labelImport.style.display = "none";
+
+    const btnTambahSiswa = document.querySelector('button[onclick*="openModalTambahSiswa"]');
+    if (btnTambahSiswa) btnTambahSiswa.style.display = "none";
+  }
+
   await muatHasilUjianSekali();
 });
 
@@ -262,73 +415,29 @@ onValue(ref(db, "daftarKelas"), (snapshot) => {
   if (typeof updateAllClassDropdowns === "function") updateAllClassDropdowns();
 });
 
-// 2. Load Realtime Data Ujian (Aman untuk Admin & Guru)
+// 2. Load Realtime Data Ujian (Tersaring Spesifik Mapel & Kelas Ampuan Guru)
 onValue(ref(db, "daftarUjian"), (snapshot) => {
   const data = snapshot.val();
   const rawList = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
-
   const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
 
-  if (!session || session.role === "admin") {
-    daftarUjian = rawList;
-  } else {
-    const detail = normalisasiDetailAmpuan(session);
-    const mapelKeys = Object.keys(detail);
-
-    let mapelGuruArray = [];
-    if (mapelKeys.length > 0) {
-      mapelGuruArray = mapelKeys.map(m => m.toLowerCase().trim());
-    } else if (Array.isArray(session.mapelDiampu) && session.mapelDiampu.length > 0) {
-      mapelGuruArray = session.mapelDiampu.map(m => m.toLowerCase().trim());
-    } else if (session.mapel) {
-      mapelGuruArray = [session.mapel.toLowerCase().trim()];
-    }
-
-    let kelasDiampuArray = [];
-    if (Array.isArray(session.kelasDiampu)) {
-      kelasDiampuArray = session.kelasDiampu;
-    } else if (typeof session.kelasDiampu === "string") {
-      kelasDiampuArray = session.kelasDiampu.split(",").map(k => k.trim());
-    }
-
-    const namaGuru = (session.nama || "").toLowerCase().trim();
-    const usernameGuru = (session.username || "").toLowerCase().trim();
-
-    daftarUjian = rawList.filter(u => {
-      const mapelUjian = (u.mapel || "").toLowerCase().trim();
-      const targetKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget : [];
-      const pembuatUjian = (u.createdBy || u.pembuatUsername || "").toLowerCase().trim();
-
-      const dibuatSendiri = (namaGuru && pembuatUjian.includes(namaGuru)) ||
-                            (usernameGuru && pembuatUjian.includes(usernameGuru));
-      if (dibuatSendiri) return true;
-
-      const cocokMapel = mapelGuruArray.length === 0 || mapelGuruArray.includes(mapelUjian);
-      if (!cocokMapel) return false;
-
-      if (mapelKeys.length > 0) {
-        const matchedMapelKey = mapelKeys.find(mk => mk.toLowerCase().trim() === mapelUjian);
-        const kelasUntukMapel = matchedMapelKey ? detail[matchedMapelKey] : [];
-        if (kelasUntukMapel && kelasUntukMapel.length > 0) {
-          return targetKelas.includes("Semua") || targetKelas.some(k => kelasUntukMapel.includes(k));
-        }
-      }
-
-      return kelasDiampuArray.length === 0 ||
-             targetKelas.includes("Semua") ||
-             targetKelas.some(k => kelasDiampuArray.includes(k));
-    });
-  }
-
+  daftarUjian = rawList.filter(u => apakahUjianSesuaiHakGuru(u, session));
   window.daftarUjian = daftarUjian;
 
   if (typeof renderStats === "function") renderStats();
   if (typeof window.filterDataUjian === "function") {
-  window.filterDataUjian();
-} else if (typeof window.renderTabelUjian === "function") {
-  window.renderTabelUjian();
-}
-   
+    window.filterDataUjian();
+  } else if (typeof window.renderTabelUjian === "function") {
+    window.renderTabelUjian();
+  }
+
+  if (typeof window.updateFilterUjianDropdown === "function") {
+    window.updateFilterUjianDropdown();
+  }
+  if (typeof window.loadDaftarUjianMonitoring === "function") {
+    window.loadDaftarUjianMonitoring();
+  }
+
   const activeId = window.currentUjianActiveKey || (typeof activeUjianId !== "undefined" ? activeUjianId : "");
   if (activeId) {
     const activeUjian = daftarUjian.find(u => u.id === activeId);
@@ -341,7 +450,7 @@ onValue(ref(db, "daftarUjian"), (snapshot) => {
   }
 });
 
-// 3. Load Realtime Data Siswa (Aman untuk Admin & Guru)
+// 3. Load Realtime Data Siswa (Tersaring Spesifik Kelas Ampuan Guru)
 onValue(ref(db, "daftarSiswa"), (snapshot) => {
   const data = snapshot.val();
   let rawSiswa = [];
@@ -379,14 +488,7 @@ onValue(ref(db, "daftarSiswa"), (snapshot) => {
   }
 });
 
-// 4. Refresh Hasil Ujian saat Tab Rekap Nilai dibuka
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("tabNilai")?.addEventListener("click", () => {
-    muatHasilUjianSekali();
-  });
-});
-
-// 5. Load Pengguna & Master Mapel (Admin Only) & Render Mapping Mapel -> Kelas Guru
+// 4. Load Pengguna & Master Mapel (Admin Only) & Render Mapping Mapel -> Kelas Guru
 onValue(ref(db, "pengguna"), (snapshot) => {
   const data = snapshot.val();
   daftarPengguna = data ? Object.values(data) : [];
@@ -434,54 +536,6 @@ onValue(ref(db, "daftarMapel"), (snapshot) => {
   }
 });
 
-// Preview gambar soal & cek ukuran maksimal 1 MB
-document.addEventListener("DOMContentLoaded", () => {
-  const fileGambarInput = document.getElementById("soalGambarFile");
-  fileGambarInput?.addEventListener("change", () => {
-    const file = fileGambarInput.files && fileGambarInput.files[0];
-    const previewContainer = document.getElementById("previewGambarContainer");
-    const previewImg = document.getElementById("previewGambar");
-
-    if (!file) {
-      previewContainer?.classList.add("d-none");
-      return;
-    }
-
-    if (file.size > 1024 * 1024) {
-      alert("Ukuran gambar melebihi batas maksimal 1 MB. Gambar akan dikompresi otomatis saat disimpan.");
-    }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (previewImg && previewContainer) {
-        previewImg.src = ev.target.result;
-        previewContainer.classList.remove("d-none");
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-});
-
-// Event Listener untuk Form Tambah Mapel
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("formTambahMapel")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const inputMapel = document.getElementById("inputNamaMapel");
-    const namaMapel = inputMapel?.value.trim();
-    if (!namaMapel) return;
-
-    try {
-      const newMapelRef = push(ref(db, "daftarMapel"));
-      await set(newMapelRef, { nama: namaMapel });
-      inputMapel.value = "";
-      alert("Mata pelajaran berhasil ditambahkan!");
-    } catch (err) {
-      console.error("Gagal menambah mapel:", err);
-      alert("Terjadi kesalahan saat menyimpan mapel.");
-    }
-  });
-});
-
 window.hapusMapel = async (idMapel) => {
   if (confirm("Yakin ingin menghapus mata pelajaran ini?")) {
     try {
@@ -493,33 +547,6 @@ window.hapusMapel = async (idMapel) => {
     }
   }
 };
-
-// Event Listeners Form & Input Lainnya
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("formUjian")?.addEventListener("submit", handleSimpanUjian);
-  document.getElementById("formSiswa")?.addEventListener("submit", handleSimpanSiswa);
-  document.getElementById("formTambahGuru")?.addEventListener("submit", handleTambahGuru);
-  document.getElementById("formEditGuru")?.addEventListener("submit", handleSimpanEditGuru);
-  document.getElementById("formTambahKelas")?.addEventListener("submit", handleSimpanKelas);
-  document.getElementById("fileExcelSiswa")?.addEventListener("change", importSiswaExcel);
-  document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
-
-  document.getElementById("selectFilterKelas")?.addEventListener("change", () => window.filterRekapNilai());
-  document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
-
-  document.getElementById("soalTipe")?.addEventListener("change", (e) => {
-    if (typeof window.switchTipeSoal === "function") window.switchTipeSoal(e.target.value);
-  });
-
-  document.getElementById("btnExportRekap")?.addEventListener("click", async () => {
-    await muatHasilUjianSekali();
-    const kelas = document.getElementById("selectFilterKelas")?.value || "";
-    const ujianId = document.getElementById("selectFilterUjian")?.value || "";
-    if (typeof window.downloadRekapNilaiPerKelas === "function") {
-      window.downloadRekapNilaiPerKelas(kelas, ujianId);
-    }
-  });
-});
 
 function renderUserInfoNav() {
   const userDisplayName = document.getElementById("userDisplayName");
@@ -555,24 +582,6 @@ function renderStats() {
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
-function updateFilterUjianDropdown() {
-  const selectUjian = document.getElementById("selectFilterUjian");
-  if (!selectUjian) return;
-
-  selectUjian.innerHTML = '<option value="">-- Pilih Mata Pelajaran / Ujian --</option>';
-  const sumberUjian = window.daftarUjian || [];
-
-  sumberUjian.forEach(ujian => {
-    const namaUjian = ujian.judul || ujian.mapel || ujian.namaUjian;
-    if (namaUjian) {
-      const opt = document.createElement("option");
-      opt.value = ujian.id;
-      opt.textContent = `${ujian.mapel || ""} - ${ujian.judul || ""}`;
-      selectUjian.appendChild(opt);
-    }
-  });
-}
-
 /* ===================================================
    KELOLA KELAS DINAMIS
    =================================================== */
@@ -581,22 +590,35 @@ window.openModalKelolaKelas = () => {
   if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
-function handleTambahKelas(e) {
-  e.preventDefault();
-  const namaKelas = document.getElementById("inputNamaKelas").value.trim();
-  if (!namaKelas) return;
+window.handleSimpanKelas = async function(event) {
+  if (event) event.preventDefault();
 
-  const cleanKey = namaKelas.replace(/[.#$\[\]]/g, "_");
-  set(ref(db, "daftarKelas/" + cleanKey), { nama: namaKelas })
-    .then(() => {
-      document.getElementById("formTambahKelas").reset();
-    })
-    .catch(err => alert("Gagal menambah kelas: " + err.message));
-}
+  const inputNama = document.getElementById("inputNamaKelas");
+  const namaKelas = inputNama ? inputNama.value.trim() : "";
+
+  if (!namaKelas) {
+    alert("Nama kelas tidak boleh kosong!");
+    return;
+  }
+
+  try {
+    const cleanKey = namaKelas.replace(/[.#$\[\]\/]/g, "_");
+    await set(ref(db, "daftarKelas/" + cleanKey), {
+      nama: namaKelas,
+      dibuatPada: new Date().toISOString()
+    });
+
+    alert("Kelas berhasil ditambahkan!");
+    if (inputNama) inputNama.value = "";
+  } catch (error) {
+    console.error("Gagal menyimpan kelas:", error);
+    alert("Gagal menyimpan kelas: " + error.message);
+  }
+};
 
 window.hapusKelas = (namaKelas) => {
   if (confirm(`Hapus kelas ${namaKelas}?`)) {
-    const cleanKey = namaKelas.replace(/[.#$\[\]]/g, "_");
+    const cleanKey = namaKelas.replace(/[.#$\[\]\/]/g, "_");
     remove(ref(db, "daftarKelas/" + cleanKey));
   }
 };
@@ -763,7 +785,7 @@ window.renderTabelUjian = function(listUjian = window.daftarUjian) {
             <i class="bi bi-gear-fill"></i> Soal
           </button>
           <button class="btn btn-outline-warning" onclick="window.bukaModalEditUjian('${u.id}')" title="Edit Ujian">
-           <i class="bi bi-pencil-square"></i>
+            <i class="bi bi-pencil-square"></i>
           </button>
           <button class="btn btn-outline-success" onclick="downloadArsipSoalById('${u.id}')" title="Download Arsip Soal">
             <i class="bi bi-file-earmark-excel"></i>
@@ -807,7 +829,7 @@ function handleSimpanUjian(e) {
 
   const judul = document.getElementById("ujianJudul").value.trim();
   const durasi = document.getElementById("ujianDurasi").value;
-  const token = document.getElementById("ujianToken").value.trim();
+  const token = document.getElementById("ujianToken").value.trim().toUpperCase();
   const status = document.getElementById("ujianStatus").value;
 
   let selectedKelas = [];
@@ -830,7 +852,7 @@ function handleSimpanUjian(e) {
     mapel: mapelInput,
     kelasTarget: selectedKelas,
     judul,
-    durasi: parseInt(durasi),
+    durasi: parseInt(durasi, 10),
     token,
     status,
     soal: [],
@@ -1048,7 +1070,7 @@ function handleSimpanSiswa(e) {
   const nisn = document.getElementById("siswaNisn").value.trim();
   const nama = document.getElementById("siswaNama").value.trim();
   const kelas = document.getElementById("siswaKelas").value.trim();
-  const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
+  const cleanKey = nisn.replace(/[.#$\[\]\/]/g, "_");
 
   set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas })
     .then(() => {
@@ -1145,7 +1167,7 @@ function importSiswaExcel(event) {
       const nama = String(row.NAMA || row.Nama || row.nama || "").trim();
       const kelas = String(row.KELAS || row.Kelas || row.kelas || "").trim();
       if (nisn && nama) {
-        const cleanKey = nisn.replace(/[.#$\[\]]/g, "_");
+        const cleanKey = nisn.replace(/[.#$\[\]\/]/g, "_");
         set(ref(db, "daftarSiswa/" + cleanKey), { nisn, nama, kelas });
         countAdded++;
       }
@@ -1421,6 +1443,8 @@ window.openModalTambahUjian = async () => {
 window.currentUjianActive = null;
 window.currentUjianActiveKey = "";
 window.activeUjianId = "";
+window.currentEditSoalIndex = null;
+window.currentEditGambarLama = "";
 
 window.openModalSoal = (idUjian) => {
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
@@ -1430,6 +1454,12 @@ window.openModalSoal = (idUjian) => {
   window.currentUjianActive = u;
   window.currentUjianActiveKey = idUjian;
   window.activeUjianId = idUjian;
+  window.currentEditSoalIndex = null;
+  window.currentEditGambarLama = "";
+
+  const formSoal = document.getElementById("formTambahSoal");
+  if (formSoal) formSoal.reset();
+  document.getElementById("previewGambarContainer")?.classList.add("d-none");
 
   const judulSoalEl = document.getElementById("judulUjianSoal");
   if (judulSoalEl) {
@@ -1491,7 +1521,7 @@ window.switchTipeSoal = (tipe) => {
 
 window.hapusSiswa = (nisn) => {
   if (confirm("Hapus siswa ini?")) {
-    const cleanKey = String(nisn).replace(/[.#$\[\]]/g, "_");
+    const cleanKey = String(nisn).replace(/[.#$\[\]\/]/g, "_");
     remove(ref(db, "daftarSiswa/" + cleanKey));
   }
 };
@@ -1654,7 +1684,7 @@ window.renderDaftarSoalInteraktif = function(daftarSoal) {
           </div>
 
           <p class="fw-semibold text-dark mb-2">${soal.pertanyaan}</p>
-          ${soal.gambarUrl ? `<img src="${soal.gambarUrl}" class="img-fluid rounded mb-2" style="max-height: 150px;">` : ""}
+          ${soal.gambarUrl ? `<img src="${soal.gambarUrl}" class="img-fluid rounded mb-2 border" style="max-height: 150px;" alt="Gambar Soal" onerror="this.style.display='none';">` : ""}
           ${detailOpsi}
           <div><span class="badge bg-success">Kunci: ${kunciText}</span></div>
         </div>
@@ -1815,8 +1845,6 @@ if (formTambahSoalEl) {
 
     if (isEditMode) {
       listSoal[window.currentEditSoalIndex] = itemSoal;
-      window.currentEditSoalIndex = null;
-      window.currentEditGambarLama = null;
     } else {
       listSoal.push(itemSoal);
     }
@@ -1824,7 +1852,11 @@ if (formTambahSoalEl) {
     simpanSoalUjianAktif(window.currentUjianActiveKey, listSoal)
       .then(() => {
         alert(isEditMode ? "Perubahan soal berhasil disimpan!" : "Soal berhasil ditambahkan!");
+        window.currentEditSoalIndex = null;
+        window.currentEditGambarLama = "";
         e.target.reset();
+        const fileInputEl = document.getElementById("soalGambarFile");
+        if (fileInputEl) fileInputEl.value = "";
         document.getElementById("previewGambarContainer")?.classList.add("d-none");
         if (typeof window.switchTipeSoal === "function") window.switchTipeSoal("pg");
 
@@ -1936,7 +1968,7 @@ window.simpanPerubahanUjian = (e) => {
 
   update(ref(db, `daftarUjian/${ujianId}`), {
     judul: judulBaru,
-    durasi: durasiBaru,
+    durasi: parseInt(durasiBaru, 10) || durasiBaru,
     token: tokenBaru
   }).then(() => {
     alert("Ujian dan token berhasil diperbarui!");
@@ -1949,13 +1981,6 @@ window.simpanPerubahanUjian = (e) => {
     alert("Gagal memperbarui ujian: " + error.message);
   });
 };
-
-document.addEventListener("DOMContentLoaded", () => {
-  const formEdit = document.getElementById("formEditUjian");
-  if (formEdit) {
-    formEdit.addEventListener("submit", window.simpanPerubahanUjian);
-  }
-});
 
 window.paksaSelesaiPeserta = async (ujianId, nisn) => {
   if (confirm(`Yakin ingin memaksa selesai ujian siswa dengan NISN ${nisn}?`)) {
@@ -1989,10 +2014,10 @@ window.loadDaftarUjianMonitoring = () => {
   const prevVal = selectUjian.value;
   selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
 
+  // Sumber daftarUjian sudah tersaring khusus mapel & kelas ampuan guru (atau semua untuk admin)
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
   const validIds = new Set();
 
-  // Urutkan terbaru dulu & saring ujian yang valid
   const ujianValid = sumberUjian
     .filter(u => u && u.id && (u.judul || u.mapel))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -2007,7 +2032,6 @@ window.loadDaftarUjianMonitoring = () => {
     selectUjian.appendChild(opt);
   });
 
-  // Jika ujian yang sebelumnya dipilih sudah dihapus, reset pilihan & bersihkan tabel monitoring
   if (prevVal && validIds.has(prevVal)) {
     selectUjian.value = prevVal;
   } else {
@@ -2037,6 +2061,17 @@ window.loadDataMonitoring = () => {
     return;
   }
 
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
+  const isGuru = session && session.role === "guru";
+  const ujianTerpilih = (window.daftarUjian || []).find(u => u.id === ujianId);
+  const detailGuru = isGuru ? normalisasiDetailAmpuan(session) : {};
+  const mapelUjianKey = isGuru && ujianTerpilih
+    ? Object.keys(detailGuru).find(mk => mk.toLowerCase().trim() === (ujianTerpilih.mapel || "").toLowerCase().trim())
+    : "";
+  const kelasAmpuanMapelIni = mapelUjianKey && Array.isArray(detailGuru[mapelUjianKey]) && detailGuru[mapelUjianKey].length > 0
+    ? detailGuru[mapelUjianKey]
+    : (Array.isArray(session.kelasDiampu) ? session.kelasDiampu : []);
+
   unsubMonitoring = onValue(ref(db, `statusPeserta/${ujianId}`), (snapshot) => {
     tbody.innerHTML = "";
     if (!snapshot.exists()) {
@@ -2045,9 +2080,19 @@ window.loadDataMonitoring = () => {
     }
 
     let no = 1;
+    let adaPesertaTampil = false;
+
     snapshot.forEach((childSnap) => {
       const nisn = childSnap.key;
-      const s = childSnap.val();
+      const s = childSnap.val() || {};
+
+      // Filter peserta monitoring agar guru hanya melihat siswa dari kelas yang diampunya
+      if (isGuru && kelasAmpuanMapelIni.length > 0) {
+        const kelasPeserta = (s.kelas || "").trim();
+        if (!kelasAmpuanMapelIni.includes(kelasPeserta)) return;
+      }
+
+      adaPesertaTampil = true;
 
       let badgeStatus = "";
       if (s.status === "sedang_mengerjakan") {
@@ -2085,17 +2130,12 @@ window.loadDataMonitoring = () => {
         </tr>
       `;
     });
+
+    if (!adaPesertaTampil) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada siswa dari kelas ampu Anda yang mengerjakan ujian ini.</td></tr>`;
+    }
   });
 };
-
-document.addEventListener("DOMContentLoaded", () => {
-  const tabMonitoring = document.getElementById("tabMonitoring");
-  if (tabMonitoring) {
-    tabMonitoring.addEventListener("click", () => {
-      window.loadDaftarUjianMonitoring();
-    });
-  }
-});
 
 window.hapusHasilUjian = async (resultId) => {
   if (confirm("Apakah Anda yakin ingin menghapus data hasil ujian siswa ini?")) {
@@ -2161,57 +2201,9 @@ window.updateFilterUjianDropdown = function() {
   selectUjian.value = currVal;
 };
 
-document.addEventListener("click", function(event) {
-  const target = event.target.closest("button, a, div");
-  if (target && target.textContent && target.textContent.includes("Monitoring Ujian")) {
-    setTimeout(window.updateFilterUjianDropdown, 200);
-  }
-});
-
-// Sembunyikan fitur khusus Admin jika yang login adalah Guru
-document.addEventListener("DOMContentLoaded", () => {
-  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
-  if (session && session.role === "guru") {
-    document.querySelectorAll("button, a").forEach(el => {
-      const text = el.textContent.trim();
-      if (text.includes("Tambah Guru") || text.includes("Kelola Kelas") || text.includes("Kelola Mata Pelajaran") || text.includes("Kelola Akun Guru")) {
-        const container = el.closest(".btn, button, a, li");
-        if (container) container.style.display = "none";
-      }
-    });
-
-    document.querySelectorAll(".nav-link, .btn, button, a").forEach(el => {
-      if (el.textContent.includes("Kelola Akun Guru")) {
-        el.style.display = "none";
-      }
-    });
-  }
-});
-
-// Penyesuaian Tampilan Berdasarkan Role (Guru vs Admin)
-document.addEventListener("DOMContentLoaded", () => {
-  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
-  const isGuru = session && session.role === "guru";
-
-  if (isGuru) {
-    const btnCetak = document.querySelector('button[onclick*="cetakKartuUjianSiswa"]');
-    if (btnCetak) btnCetak.style.display = "none";
-
-    const btnTemplate = document.querySelector('button[onclick*="downloadTemplateSiswa"]');
-    if (btnTemplate) btnTemplate.style.display = "none";
-
-    const labelImport = document.querySelector('label[for="fileExcelSiswa"]') || document.getElementById("fileExcelSiswa")?.closest("label");
-    if (labelImport) labelImport.style.display = "none";
-
-    const btnTambahSiswa = document.querySelector('button[onclick*="openModalTambahSiswa"]');
-    if (btnTambahSiswa) btnTambahSiswa.style.display = "none";
-  }
-});
-
 /* ===================================================
    TAMBAHAN: FUNGSI PENGACAK SOAL & OPSI JAWABAN
    =================================================== */
-
 function shuffleArray(array) {
   let currentIndex = array.length, randomIndex;
   while (currentIndex !== 0) {
@@ -2254,38 +2246,6 @@ function getAcakOpsi(soalItem) {
     kunci: kunciBaru || soalItem.kunci
   };
 }
-
-// Fungsi untuk menangani penyimpanan data kelas baru dari modal kelola kelas
-window.handleSimpanKelas = async function(event) {
-  if (event) event.preventDefault();
-
-  const inputNama = document.getElementById("inputNamaKelas");
-  const namaKelas = inputNama ? inputNama.value.trim() : "";
-
-  if (!namaKelas) {
-    alert("Nama kelas tidak boleh kosong!");
-    return;
-  }
-
-  try {
-    const kelasRef = ref(db, "daftarKelas");
-    const newKelasRef = push(kelasRef);
-    await set(newKelasRef, {
-      nama: namaKelas,
-      dibuatPada: new Date().toISOString()
-    });
-
-    alert("Kelas berhasil ditambahkan!");
-    if (inputNama) inputNama.value = "";
-
-    if (typeof loadDaftarKelas === "function") {
-      loadDaftarKelas();
-    }
-  } catch (error) {
-    console.error("Gagal menyimpan kelas:", error);
-    alert("Gagal menyimpan kelas: " + error.message);
-  }
-};
 
 // Konversi gambar dengan batas ukuran 1 MB & kompresi otomatis agar hemat bandwidth
 function convertFileToBase64(file) {
