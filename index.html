@@ -392,10 +392,35 @@
                 </div>
               </div>
             </div>
+
+            <!-- BAR PENCARIAN & AKSI MASSAL PESERTA -->
+            <div class="row g-2 mb-3 align-items-center bg-light p-2 rounded border">
+              <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                  <input type="text" id="searchMonitoring" class="form-control" placeholder="Cari NISN, nama siswa, kelas, atau status..." oninput="filterTabelMonitoring()">
+                </div>
+              </div>
+              <div class="col-md-3">
+                <span class="badge bg-secondary" id="infoPesertaTerpilih">0 Dipilih</span>
+              </div>
+              <div class="col-md-4 d-flex justify-content-md-end gap-2 flex-wrap">
+                <button type="button" id="btnMassalPaksaSelesai" class="btn btn-warning btn-sm text-dark fw-bold" onclick="aksiMassalMonitoring('paksa_selesai')" disabled>
+                  <i class="bi bi-check2-square me-1"></i>Paksa Selesai Terpilih
+                </button>
+                <button type="button" id="btnMassalResetAwal" class="btn btn-danger btn-sm fw-bold" onclick="aksiMassalMonitoring('reset_awal')" disabled>
+                  <i class="bi bi-arrow-clockwise me-1"></i>Reset Awal Terpilih
+                </button>
+              </div>
+            </div>
+
             <div class="table-responsive">
               <table class="table table-hover align-middle border">
                 <thead class="table-dark">
                   <tr>
+                    <th style="width: 40px;" class="text-center">
+                      <input type="checkbox" class="form-check-input" id="checkSemuaMonitoring" onchange="togglePilihSemuaMonitoring(this.checked)" title="Pilih Semua Peserta">
+                    </th>
                     <th>No</th>
                     <th>NISN</th>
                     <th>Nama Siswa</th>
@@ -407,7 +432,7 @@
                 </thead>
                 <tbody id="tabelMonitoringBody">
                   <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td>
+                    <td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td>
                   </tr>
                 </tbody>
               </table>
@@ -415,7 +440,6 @@
           </div>
         </div>
       </div>
-
     </div> <!-- End Tab Content -->
 
   </div> <!-- End Container Utama -->
