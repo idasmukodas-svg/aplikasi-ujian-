@@ -2074,6 +2074,167 @@ window.resetStatusPeserta = async (ujianId, nisn) => {
   }
 };
 
+let dataMonitoringPeserta = [];
+let nisnTerpilihMonitoring = new Set();
+
+function sinkronkanTombolMassalMonitoring() {
+  const jumlah = nisnTerpilihMonitoring.size;
+  const infoEl = document.getElementById("infoPesertaTerpilih");
+  const btnPaksa = document.getElementById("btnMassalPaksaSelesai");
+  const btnReset = document.getElementById("btnMassalResetAwal");
+  const checkAll = document.getElementById("checkSemuaMonitoring");
+
+  if (infoEl) infoEl.innerText = `${jumlah} Dipilih`;
+  if (btnPaksa) btnPaksa.disabled = jumlah === 0;
+  if (btnReset) btnReset.disabled = jumlah === 0;
+
+  const visibleCheckboxes = Array.from(document.querySelectorAll(".check-peserta-monitoring"));
+  if (checkAll) {
+    if (visibleCheckboxes.length === 0) {
+      checkAll.checked = false;
+      checkAll.indeterminate = false;
+    } else {
+      const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
+      checkAll.checked = checkedCount === visibleCheckboxes.length;
+      checkAll.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+    }
+  }
+}
+
+window.togglePilihSemuaMonitoring = (checked) => {
+  document.querySelectorAll(".check-peserta-monitoring").forEach(cb => {
+    cb.checked = checked;
+    const nisn = cb.getAttribute("data-nisn");
+    if (nisn) {
+      if (checked) nisnTerpilihMonitoring.add(nisn);
+      else nisnTerpilihMonitoring.delete(nisn);
+    }
+  });
+  sinkronkanTombolMassalMonitoring();
+};
+
+window.togglePilihSatuMonitoring = (nisn, checked) => {
+  if (!nisn) return;
+  if (checked) nisnTerpilihMonitoring.add(nisn);
+  else nisnTerpilihMonitoring.delete(nisn);
+  sinkronkanTombolMassalMonitoring();
+};
+
+window.filterTabelMonitoring = () => {
+  const tbody = document.getElementById("tabelMonitoringBody");
+  const ujianId = document.getElementById("selectUjianMonitoring")?.value || "";
+  if (!tbody) return;
+
+  if (!ujianId) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+    sinkronkanTombolMassalMonitoring();
+    return;
+  }
+
+  const keyword = (document.getElementById("searchMonitoring")?.value || "").toLowerCase().trim();
+  const filtered = dataMonitoringPeserta.filter(item => {
+    if (!keyword) return true;
+    const nisn = String(item.nisn || "").toLowerCase();
+    const nama = String(item.nama || "").toLowerCase();
+    const kelas = String(item.kelas || "").toLowerCase();
+    const status = String(item.status || "").toLowerCase();
+    const sinyal = String(item.sinyal || item.keterangan || "").toLowerCase();
+    return (
+      nisn.includes(keyword) ||
+      nama.includes(keyword) ||
+      kelas.includes(keyword) ||
+      status.includes(keyword) ||
+      sinyal.includes(keyword)
+    );
+  });
+
+  tbody.innerHTML = "";
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada peserta yang cocok dengan pencarian.</td></tr>`;
+    sinkronkanTombolMassalMonitoring();
+    return;
+  }
+
+  filtered.forEach((s, idx) => {
+    const nisn = s.nisn;
+    const isChecked = nisnTerpilihMonitoring.has(nisn);
+
+    let badgeStatus = "";
+    if (s.status === "sedang_mengerjakan") {
+      badgeStatus = `<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Sedang Mengerjakan</span>`;
+    } else if (s.status === "terlempar") {
+      badgeStatus = `<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Terlempar / Terkunci</span>`;
+    } else if (s.status === "selesai") {
+      badgeStatus = `<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Selesai</span>`;
+    } else {
+      badgeStatus = `<span class="badge bg-secondary">${s.status || "-"}</span>`;
+    }
+
+    const sinyalInfo = s.sinyal || s.keterangan || "-";
+
+    const tombolAksi = `
+      <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-warning text-dark fw-bold" onclick="paksaSelesaiPeserta('${ujianId}', '${nisn}')">
+          <i class="bi bi-check2-square me-1"></i>Paksa Selesai
+        </button>
+        <button class="btn btn-danger fw-bold" onclick="resetStatusPeserta('${ujianId}', '${nisn}')">
+          <i class="bi bi-arrow-clockwise me-1"></i>Reset Awal
+        </button>
+      </div>
+    `;
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="text-center">
+          <input type="checkbox" class="form-check-input check-peserta-monitoring" data-nisn="${nisn}" ${isChecked ? "checked" : ""} onchange="togglePilihSatuMonitoring('${nisn}', this.checked)">
+        </td>
+        <td>${idx + 1}</td>
+        <td>${s.nisn || nisn}</td>
+        <td class="fw-bold">${s.nama || "-"}</td>
+        <td>${s.kelas || "-"}</td>
+        <td>${badgeStatus} <div class="small text-muted mt-1">${sinyalInfo}</div></td>
+        <td>${s.waktuMulai || "-"}</td>
+        <td class="text-center">${tombolAksi}</td>
+      </tr>
+    `;
+  });
+
+  sinkronkanTombolMassalMonitoring();
+};
+
+window.aksiMassalMonitoring = async (mode) => {
+  const ujianId = document.getElementById("selectUjianMonitoring")?.value || "";
+  if (!ujianId) return alert("Pilih jadwal ujian terlebih dahulu!");
+
+  const daftarNisn = Array.from(nisnTerpilihMonitoring);
+  if (daftarNisn.length === 0) return alert("Pilih minimal satu peserta terlebih dahulu!");
+
+  const labelMode = mode === "paksa_selesai" ? "MEMAKSA SELESAI" : "MERESET AWAL";
+  if (!confirm(`Yakin ingin ${labelMode} ${daftarNisn.length} peserta terpilih?`)) return;
+
+  try {
+    const waktuSekarang = new Date().toISOString();
+    const promises = daftarNisn.map((nisn) => {
+      const pesertaRef = ref(db, `statusPeserta/${ujianId}/${nisn}`);
+      if (mode === "paksa_selesai") {
+        return update(pesertaRef, {
+          status: "selesai",
+          dipaksaSelesaiPada: waktuSekarang
+        });
+      }
+      return remove(pesertaRef);
+    });
+
+    await Promise.all(promises);
+    nisnTerpilihMonitoring.clear();
+    sinkronkanTombolMassalMonitoring();
+    alert(`Berhasil memproses ${daftarNisn.length} peserta.`);
+  } catch (err) {
+    console.error("Gagal aksi massal monitoring:", err);
+    alert("Gagal memproses aksi massal: " + err.message);
+  }
+};
+
 window.loadDaftarUjianMonitoring = () => {
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
@@ -2107,10 +2268,13 @@ window.loadDaftarUjianMonitoring = () => {
       unsubMonitoring();
       unsubMonitoring = null;
     }
+    nisnTerpilihMonitoring.clear();
+    dataMonitoringPeserta = [];
     const tbody = document.getElementById("tabelMonitoringBody");
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
     }
+    sinkronkanTombolMassalMonitoring();
   }
 };
 
@@ -2120,11 +2284,15 @@ window.loadDataMonitoring = () => {
     unsubMonitoring = null;
   }
 
+  nisnTerpilihMonitoring.clear();
+  dataMonitoringPeserta = [];
+
   const ujianId = document.getElementById("selectUjianMonitoring").value;
   const tbody = document.getElementById("tabelMonitoringBody");
 
   if (!ujianId) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+    sinkronkanTombolMassalMonitoring();
     return;
   }
 
@@ -2140,15 +2308,14 @@ window.loadDataMonitoring = () => {
     : (Array.isArray(session.kelasDiampu) ? session.kelasDiampu : []);
 
   unsubMonitoring = onValue(ref(db, `statusPeserta/${ujianId}`), (snapshot) => {
-    tbody.innerHTML = "";
     if (!snapshot.exists()) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
+      dataMonitoringPeserta = [];
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
+      sinkronkanTombolMassalMonitoring();
       return;
     }
 
-    let no = 1;
-    let adaPesertaTampil = false;
-
+    const listPeserta = [];
     snapshot.forEach((childSnap) => {
       const nisn = childSnap.key;
       const s = childSnap.val() || {};
@@ -2159,48 +2326,26 @@ window.loadDataMonitoring = () => {
         if (!kelasAmpuanMapelIni.includes(kelasPeserta)) return;
       }
 
-      adaPesertaTampil = true;
-
-      let badgeStatus = "";
-      if (s.status === "sedang_mengerjakan") {
-        badgeStatus = `<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Sedang Mengerjakan</span>`;
-      } else if (s.status === "terlempar") {
-        badgeStatus = `<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Terlempar / Terkunci</span>`;
-      } else if (s.status === "selesai") {
-        badgeStatus = `<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Selesai</span>`;
-      } else {
-        badgeStatus = `<span class="badge bg-secondary">${s.status || "-"}</span>`;
-      }
-
-      const sinyalInfo = s.sinyal || s.keterangan || "-";
-
-      const tombolAksi = `
-        <div class="btn-group btn-group-sm" role="group">
-          <button class="btn btn-warning text-dark fw-bold" onclick="paksaSelesaiPeserta('${ujianId}', '${nisn}')">
-            <i class="bi bi-check2-square me-1"></i>Paksa Selesai
-          </button>
-          <button class="btn btn-danger fw-bold" onclick="resetStatusPeserta('${ujianId}', '${nisn}')">
-            <i class="bi bi-arrow-clockwise me-1"></i>Reset Awal
-          </button>
-        </div>
-      `;
-
-      tbody.innerHTML += `
-        <tr>
-          <td>${no++}</td>
-          <td>${s.nisn || nisn}</td>
-          <td class="fw-bold">${s.nama || "-"}</td>
-          <td>${s.kelas || "-"}</td>
-          <td>${badgeStatus} <div class="small text-muted mt-1">${sinyalInfo}</div></td>
-          <td>${s.waktuMulai || "-"}</td>
-          <td class="text-center">${tombolAksi}</td>
-        </tr>
-      `;
+      listPeserta.push({
+        ...s,
+        nisn: s.nisn || nisn
+      });
     });
 
-    if (!adaPesertaTampil) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada siswa dari kelas ampu Anda yang mengerjakan ujian ini.</td></tr>`;
+    const nisnAktifSet = new Set(listPeserta.map(p => p.nisn));
+    Array.from(nisnTerpilihMonitoring).forEach(n => {
+      if (!nisnAktifSet.has(n)) nisnTerpilihMonitoring.delete(n);
+    });
+
+    dataMonitoringPeserta = listPeserta;
+
+    if (dataMonitoringPeserta.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa dari kelas ampu Anda yang mengerjakan ujian ini.</td></tr>`;
+      sinkronkanTombolMassalMonitoring();
+      return;
     }
+
+    window.filterTabelMonitoring();
   });
 };
 
