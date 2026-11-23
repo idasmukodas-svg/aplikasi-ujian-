@@ -1918,6 +1918,20 @@ if (formTambahSoalEl) {
   };
 }
 
+function sanitasiSelExcel(nilai, maxLen = 32000) {
+  if (nilai === null || nilai === undefined) return "";
+  if (typeof nilai === "number" || typeof nilai === "boolean") return nilai;
+
+  const teks = typeof nilai === "object" ? JSON.stringify(nilai) : String(nilai);
+  if (teks.startsWith("data:image")) {
+    return "[Gambar terlampir di soal]";
+  }
+  if (teks.length > maxLen) {
+    return teks.slice(0, maxLen) + "...";
+  }
+  return teks;
+}
+
 window.downloadArsipSoalById = (ujianId) => {
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
   const u = sumberUjian.find(item => item.id === ujianId);
@@ -1925,31 +1939,39 @@ window.downloadArsipSoalById = (ujianId) => {
     return alert("Ujian ini belum memiliki soal untuk diunduh!");
   }
 
-  const excelData = u.soal.map((s, index) => {
-    const kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
-    const pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan) ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ") : "";
+  try {
+    const excelData = u.soal.map((s, index) => {
+      const kunciFormatted = Array.isArray(s.kunci) ? s.kunci.join(", ") : (s.kunci || "");
+      const pasanganFormatted = (s.tipe === "mencocokkan" && s.pasangan)
+        ? s.pasangan.map(p => `${p.kiri}=${p.kanan}`).join("; ")
+        : "";
 
-    return {
-      "No": index + 1,
-      "Tipe": (s.tipe || "pg").toUpperCase(),
-      "Pertanyaan": s.pertanyaan || "",
-      "GambarURL": s.gambarUrl || "",
-      "A": s.opsi ? (s.opsi.A || "") : "",
-      "B": s.opsi ? (s.opsi.B || "") : "",
-      "C": s.opsi ? (s.opsi.C || "") : "",
-      "D": s.opsi ? (s.opsi.D || "") : "",
-      "E": s.opsi ? (s.opsi.E || "") : "",
-      "Kunci": kunciFormatted,
-      "Pasangan": pasanganFormatted
-    };
-  });
+      return {
+        "No": index + 1,
+        "Tipe": sanitasiSelExcel((s.tipe || "pg").toUpperCase(), 100),
+        "Pertanyaan": sanitasiSelExcel(s.pertanyaan || ""),
+        "GambarURL": sanitasiSelExcel(s.gambarUrl || ""),
+        "A": sanitasiSelExcel(s.opsi ? (s.opsi.A || "") : ""),
+        "B": sanitasiSelExcel(s.opsi ? (s.opsi.B || "") : ""),
+        "C": sanitasiSelExcel(s.opsi ? (s.opsi.C || "") : ""),
+        "D": sanitasiSelExcel(s.opsi ? (s.opsi.D || "") : ""),
+        "E": sanitasiSelExcel(s.opsi ? (s.opsi.E || "") : ""),
+        "Kunci": sanitasiSelExcel(kunciFormatted),
+        "Pasangan": sanitasiSelExcel(pasanganFormatted)
+      };
+    });
 
-  const ws = XLSX.utils.json_to_sheet(excelData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Arsip Soal");
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Arsip Soal");
 
-  const namaFileClean = (u.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
-  XLSX.writeFile(wb, `Arsip_Soal_${u.mapel}_${namaFileClean}.xlsx`);
+    const namaMapelClean = String(u.mapel || "Mapel").replace(/[^a-zA-Z0-9]/g, "_");
+    const namaFileClean = (u.judul || "Ujian").replace(/[^a-zA-Z0-9]/g, "_");
+    XLSX.writeFile(wb, `Arsip_Soal_${namaMapelClean}_${namaFileClean}.xlsx`);
+  } catch (err) {
+    console.error("Gagal mengunduh arsip soal:", err);
+    alert("Gagal mengunduh arsip soal ke Excel: " + err.message);
+  }
 };
 
 function updateGuruDropdown() {
@@ -1959,7 +1981,7 @@ function updateGuruDropdown() {
   selectPembuat.innerHTML = '<option value="">-- Pilih Guru Pengampu --</option>';
   const addedNames = new Set();
 
-  if (daftarPengguna && daftarPengguna.length > 0) {
+  if (typeof daftarPengguna !== "undefined" && Array.isArray(daftarPengguna) && daftarPengguna.length > 0) {
     daftarPengguna.forEach(p => {
       const isGuru = p.role && p.role.toLowerCase() === "guru";
       if (isGuru && p.nama && !addedNames.has(p.nama)) {
