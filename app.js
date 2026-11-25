@@ -1,10 +1,22 @@
 /* ===================================================
    APP.JS - LMS & CBT SMAN 1 TARAJU (WITH PRINT CARDS & MULTI-CLASS)
+   + FIRESTORE MIGRATION & USE_FIRESTORE FALLBACK TOGGLE
    =================================================== */
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, get, update, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -20,6 +32,12 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
+const firestoreDb = getFirestore(app);
+
+// Tetap false selama persiapan/impor; ubah ke true untuk memakai Firestore.
+// Ubah kembali ke false kapan saja untuk langsung memakai Realtime Database.
+const USE_FIRESTORE = true;
+window.USE_FIRESTORE = USE_FIRESTORE;
 
 let userSession = null;
 const storedUser =
@@ -63,6 +81,187 @@ function escapeHtml(str) {
 function sanitizeDbKey(raw) {
   return String(raw ?? "").trim().replace(/[.#$\[\]\/]/g, "_");
 }
+
+function sanitizeFirestoreId(raw) {
+  return String(raw ?? "").trim().replace(/\//g, "_") || "default";
+}
+
+function normalisasiArraySoal(rawSoal) {
+  if (!rawSoal) return [];
+  const items = Array.isArray(rawSoal)
+    ? rawSoal.filter(Boolean)
+    : (typeof rawSoal === "object" ? Object.entries(rawSoal).map(([k, v]) => ({ id: k, ...(v || {}) })) : []);
+
+  const hasil = items.map((item, idx) => {
+    const soalBersih = {
+      id: String(item.id || `SOAL-${idx + 1}`),
+      tipe: String(item.tipe || "pg"),
+      pertanyaan: String(item.pertanyaan || ""),
+      gambarUrl: typeof sanitizeGambarUrl === "function"
+        ? sanitizeGambarUrl(item.gambarUrl)
+        : (typeof item.gambarUrl === "string" && item.gambarUrl.startsWith("data:image") ? "" : String(item.gambarUrl || "")),
+      opsi: item.opsi && typeof item.opsi === "object" ? { ...item.opsi } : {},
+      kunci: item.kunci !== undefined && item.kunci !== null ? item.kunci : ""
+    };
+
+    if (Array.isArray(item.pasangan)) {
+      soalBersih.pasangan = item.pasangan;
+    }
+
+    return soalBersih;
+  });
+
+  return JSON.parse(JSON.stringify(hasil));
+}
+
+/* ===================================================
+   HELPER FIRESTORE & IMPOR JSON (COLEKSI: soal, jawaban_siswa)
+   =================================================== */
+async function ambilSoalFirestore(kodeUjian = "ujian_1") {
+  const cleanId = sanitizeFirestoreId(kodeUjian);
+  const snap = await getDoc(doc(firestoreDb, "soal", cleanId));
+  if (!snap.exists()) return [];
+  const data = snap.data() || {};
+  return normalisasiArraySoal(data.daftarSoal || data.soal || []);
+}
+
+async function simpanSoalFirestore(kodeUjian = "ujian_1", listSoal = [], metaTambahan = {}) {
+  const cleanId = sanitizeFirestoreId(kodeUjian);
+  const normalizedSoal = normalisasiArraySoal(listSoal);
+
+  const metaBersih = {};
+  if (metaTambahan && typeof metaTambahan === "object") {
+    Object.entries(metaTambahan).forEach(([k, v]) => {
+      if (v !== undefined) {
+        metaBersih[k] = v;
+      }
+    });
+  }
+
+  const payload = JSON.parse(
+    JSON.stringify({
+      ...metaBersih,
+      kodeUjian: cleanId,
+      status: metaBersih.status || "aktif",
+      totalSoal: normalizedSoal.length,
+      daftarSoal: normalizedSoal
+    })
+  );
+
+  await setDoc(
+    doc(firestoreDb, "soal", cleanId),
+    {
+      ...payload,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+
+  return normalizedSoal;
+}
+
+async function simpanJawabanFirestore(kodeUjian, nisn, jawabanObj = {}, meta = {}) {
+  const cleanUjian = sanitizeFirestoreId(kodeUjian || "ujian_1");
+  const cleanNisn = sanitizeFirestoreId(nisn);
+  if (!cleanNisn) throw new Error("NISN siswa tidak valid.");
+
+  const docId = `${cleanNisn}_${cleanUjian}`;
+  await setDoc(
+    doc(firestoreDb, "jawaban_siswa", docId),
+    {
+      kodeUjian: cleanUjian,
+      nisn: String(nisn),
+      answers: jawabanObj,
+      updatedAt: serverTimestamp(),
+      ...meta
+    },
+    { merge: true }
+  );
+}
+
+async function ambilSemuaJawabanFirestore(kodeUjian = "") {
+  const snap = await getDocs(collection(firestoreDb, "jawaban_siswa"));
+  const rows = [];
+  snap.forEach((docSnap) => {
+    const val = docSnap.data() || {};
+    if (!kodeUjian || val.kodeUjian === kodeUjian) {
+      rows.push({ id: docSnap.id, ...val });
+    }
+  });
+  return rows;
+}
+
+window.imporBackupJsonKeFirestore = async function(options = {}) {
+  const pathJson = options.pathJson || "./backup-rtdb.json.json";
+  const targetDocId = sanitizeFirestoreId(options.kodeUjian || "ujian_1");
+  const keyNodeSoal = options.keyNodeSoal || null;
+  const maxUjianDiimpor = Number(options.maxUjian) || 20;
+  const hapusBase64Gambar = options.hapusBase64Gambar !== false;
+
+  const bersihkanGambarBesar = (soalArr) =>
+    normalisasiArraySoal(soalArr).map((s) => ({
+      ...s,
+      gambarUrl:
+        hapusBase64Gambar && typeof s.gambarUrl === "string" && s.gambarUrl.startsWith("data:image")
+          ? ""
+          : (s.gambarUrl || "")
+    }));
+
+  try {
+    const res = await fetch(pathJson);
+    if (!res.ok) {
+      throw new Error(`Gagal memuat file ${pathJson} (HTTP ${res.status})`);
+    }
+    const rawJson = await res.json();
+
+    if (rawJson.daftarUjian && typeof rawJson.daftarUjian === "object" && !keyNodeSoal && !rawJson.soal) {
+      const entriesUjian = Object.entries(rawJson.daftarUjian).slice(0, maxUjianDiimpor);
+      let berhasil = 0;
+
+      for (const [uidUjian, uItem] of entriesUjian) {
+        if (!uItem) continue;
+        const soalBersih = bersihkanGambarBesar(uItem.soal || []);
+        const docId = entriesUjian.length === 1 ? targetDocId : sanitizeFirestoreId(uidUjian);
+        await simpanSoalFirestore(docId, soalBersih, {
+          sumberImport: pathJson,
+          judul: String(uItem.judul || ""),
+          mapel: String(uItem.mapel || ""),
+          diimporPada: new Date().toISOString()
+        });
+        berhasil++;
+      }
+
+      const pesan = `Berhasil mengimpor ${berhasil} paket ujian ke koleksi Firestore "soal".`;
+      console.log(pesan);
+      alert(pesan);
+      return berhasil;
+    }
+
+    let kandidatSoal = null;
+    if (keyNodeSoal && rawJson[keyNodeSoal]) {
+      kandidatSoal = rawJson[keyNodeSoal];
+    } else if (rawJson.soal) {
+      kandidatSoal = rawJson.soal;
+    } else {
+      kandidatSoal = rawJson;
+    }
+
+    const daftarSoalTerimpor = bersihkanGambarBesar(kandidatSoal);
+    await simpanSoalFirestore(targetDocId, daftarSoalTerimpor, {
+      sumberImport: pathJson,
+      diimporPada: new Date().toISOString()
+    });
+
+    const pesan = `Berhasil mengimpor ${daftarSoalTerimpor.length} soal ke Firestore (soal/${targetDocId}).`;
+    console.log(pesan);
+    alert(pesan);
+    return daftarSoalTerimpor;
+  } catch (err) {
+    console.error("Gagal impor JSON ke Firestore:", err);
+    alert("Gagal impor JSON ke Firestore: " + err.message);
+    throw err;
+  }
+};
 
 function normalisasiDetailAmpuan(guruObj) {
   const detail = {};
@@ -590,9 +789,34 @@ window.logout = () => {
   signOut(auth).then(bersihkanSession).catch(bersihkanSession);
 };
 
-function simpanSoalUjianAktif(ujianId, listSoal) {
-  return set(ref(db, `daftarUjian/${sanitizeDbKey(ujianId)}/soal`), listSoal);
+async function simpanSoalUjianAktif(ujianId, listSoal) {
+  const normalized = normalisasiArraySoal(listSoal);
+  if (USE_FIRESTORE) {
+    await simpanSoalFirestore(ujianId, normalized);
+  }
+  return set(ref(db, `daftarUjian/${sanitizeDbKey(ujianId)}/soal`), normalized);
 }
+
+window.muatSoalDenganSakelar = async function(kodeUjian = "ujian_1", fallbackSoal = []) {
+  if (USE_FIRESTORE) {
+    const soalFs = await ambilSoalFirestore(kodeUjian);
+    if (soalFs.length > 0) return soalFs;
+  }
+  return normalisasiArraySoal(fallbackSoal);
+};
+
+window.simpanJawabanDenganSakelar = async function(kodeUjian, nisn, jawabanMap = {}, meta = {}) {
+  if (USE_FIRESTORE) {
+    await simpanJawabanFirestore(kodeUjian, nisn, jawabanMap, meta);
+  }
+  const cleanUjian = sanitizeDbKey(kodeUjian || "ujian_1");
+  const cleanNisn = sanitizeDbKey(nisn);
+  return update(ref(db, `jawabanSiswa/${cleanUjian}/${cleanNisn}`), {
+    ...jawabanMap,
+    ...meta,
+    updatedAt: new Date().toISOString()
+  });
+};
 
 function renderStats() {
   const statSiswa = document.getElementById("statTotalSiswa");
@@ -1499,7 +1723,7 @@ window.activeUjianId = "";
 window.currentEditSoalIndex = null;
 window.currentEditGambarLama = "";
 
-window.openModalSoal = (idUjian) => {
+window.openModalSoal = async (idUjian) => {
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
   const u = sumberUjian.find(item => item.id === idUjian);
   if (!u) return alert("Ujian tidak ditemukan!");
@@ -1519,8 +1743,21 @@ window.openModalSoal = (idUjian) => {
     judulSoalEl.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${escapeHtml(u.mapel || "")} - ${escapeHtml(u.judul || "")}`;
   }
 
+  let daftarSoalTampil = u.soal || [];
+  if (USE_FIRESTORE) {
+    try {
+      const soalFs = await ambilSoalFirestore(idUjian);
+      if (soalFs.length > 0) {
+        daftarSoalTampil = soalFs;
+        u.soal = soalFs;
+      }
+    } catch (err) {
+      console.warn("Gagal membaca soal Firestore, memakai data Realtime DB:", err);
+    }
+  }
+
   if (typeof window.renderDaftarSoalInteraktif === "function") {
-    window.renderDaftarSoalInteraktif(u.soal || []);
+    window.renderDaftarSoalInteraktif(daftarSoalTampil);
   }
 
   const modalKelola = document.getElementById("modalKelolaSoal");
@@ -1539,6 +1776,9 @@ window.hapusUjian = async (id) => {
   if (!confirm("Hapus ujian beserta seluruh soalnya?")) return;
   const cleanId = sanitizeDbKey(id);
   try {
+    if (USE_FIRESTORE) {
+      await deleteDoc(doc(firestoreDb, "soal", sanitizeFirestoreId(id))).catch(() => {});
+    }
     await remove(ref(db, "daftarUjian/" + cleanId));
     await remove(ref(db, "statusPeserta/" + cleanId));
     if (document.getElementById("selectUjianMonitoring")?.value === id) {
@@ -2123,6 +2363,9 @@ window.paksaSelesaiPeserta = async (ujianId, nisn) => {
 window.resetStatusPeserta = async (ujianId, nisn) => {
   if (!confirm(`Yakin ingin mereset awal status siswa dengan NISN ${nisn}? Siswa akan dapat memulai ulang dari awal.`)) return;
   try {
+    if (USE_FIRESTORE) {
+      await deleteDoc(doc(firestoreDb, "jawaban_siswa", `${sanitizeFirestoreId(nisn)}_${sanitizeFirestoreId(ujianId)}`)).catch(() => {});
+    }
     await remove(ref(db, `statusPeserta/${sanitizeDbKey(ujianId)}/${sanitizeDbKey(nisn)}`));
     alert("Status peserta berhasil direset awal! Siswa kini dapat masuk kembali menggunakan token ujian.");
   } catch (error) {
@@ -2287,17 +2530,22 @@ window.aksiMassalMonitoring = async (mode) => {
     const waktuSekarang = new Date().toISOString();
     const multiPathUpdates = {};
 
-    daftarNisn.forEach((nisn) => {
+    for (const nisn of daftarNisn) {
       const cleanNisn = sanitizeDbKey(nisn);
-      if (!cleanNisn) return;
+      if (!cleanNisn) continue;
 
       if (mode === "paksa_selesai") {
         multiPathUpdates[`statusPeserta/${cleanUjianId}/${cleanNisn}/status`] = "selesai";
         multiPathUpdates[`statusPeserta/${cleanUjianId}/${cleanNisn}/dipaksaSelesaiPada`] = waktuSekarang;
       } else if (mode === "reset_awal") {
         multiPathUpdates[`statusPeserta/${cleanUjianId}/${cleanNisn}`] = null;
+        if (USE_FIRESTORE) {
+          await deleteDoc(
+            doc(firestoreDb, "jawaban_siswa", `${sanitizeFirestoreId(nisn)}_${sanitizeFirestoreId(ujianId)}`)
+          ).catch(() => {});
+        }
       }
-    });
+    }
 
     await update(ref(db), multiPathUpdates);
 
@@ -2547,6 +2795,15 @@ function getAcakOpsi(soalItem) {
     opsi: opsiBaru,
     kunci: kunciBaru || soalItem.kunci
   };
+}
+
+function sanitizeGambarUrl(rawUrl) {
+  const val = String(rawUrl ?? "").trim();
+  if (!val) return "";
+  // Abaikan gambar base64 mentah agar dokumen ringan dan tidak membebani migrasi
+  if (val.startsWith("data:image")) return "";
+  if (/^https?:\/\//i.test(val)) return val;
+  return "";
 }
 
 function convertFileToBase64(file) {
