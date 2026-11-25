@@ -261,7 +261,7 @@
   <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Firebase Realtime Database Logic (SMAN 1 TARAJU) -->
+  <!-- Firebase Realtime Database & Firestore Logic (SMAN 1 TARAJU) -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
@@ -275,6 +275,13 @@
       orderByChild,
       equalTo
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -289,6 +296,11 @@
 
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const firestoreDb = getFirestore(app);
+
+    // Sakelar migrasi: false = Realtime Database, true = Cloud Firestore
+    const USE_FIRESTORE = true;
+    window.USE_FIRESTORE = USE_FIRESTORE;
 
     let siswaAktif = null;
     let ujianAktif = null;
@@ -304,18 +316,59 @@
     let isSubmitting = false;
     let isVerifyingLogin = false;
     let lastLoginAttemptAt = 0;
+    let lastViolationAt = 0;
+    let violationReported = false;
     let unsubStatusPeserta = null;
     let modalKonfirmasiInstance = null;
 
-    // Cache hasil kompresi gambar per sesi agar tidak dikompres ulang saat pindah soal
+    // Cache gambar per sesi agar tidak dikompres ulang saat pindah nomor soal
     const cacheGambarTerkompresi = new Map();
 
     function sanitizeKey(rawId) {
       return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_");
     }
 
+    function sanitizeFsId(rawId) {
+      return String(rawId || "").trim().replace(/\//g, "_") || "ujian_1";
+    }
+
+    // Abaikan gambar Base64 mentah; hanya izinkan direct link http/https
+    function bersihkanGambarDirectLink(rawUrl) {
+      const val = String(rawUrl ?? "").trim();
+      if (!val || val.startsWith("data:image")) return "";
+      return /^https?:\/\//i.test(val) ? val : "";
+    }
+
     function getStorageKeySesi(ujianId, nisn) {
       return `cbt_smantar_sesi_${sanitizeKey(ujianId)}_${sanitizeKey(nisn)}`;
+    }
+
+    function getStorageKeyBankSoal(ujianId) {
+      return `cbt_smantar_bank_${sanitizeKey(ujianId)}_${USE_FIRESTORE ? "fs" : "rtdb"}`;
+    }
+
+    function bacaCacheBankSoal(ujianId) {
+      try {
+        const raw = sessionStorage.getItem(getStorageKeyBankSoal(ujianId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+        }
+      } catch (err) {
+        console.warn("Gagal membaca cache bank soal:", err);
+      }
+      return null;
+    }
+
+    function simpanCacheBankSoal(ujianId, listSoal) {
+      try {
+        if (!ujianId || !Array.isArray(listSoal) || listSoal.length === 0) return;
+        const bersih = listSoal.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+        sessionStorage.setItem(getStorageKeyBankSoal(ujianId), JSON.stringify(bersih));
+      } catch (err) {
+        console.warn("Gagal menyimpan cache bank soal:", err);
+      }
     }
 
     function simpanProgresLokal() {
@@ -363,21 +416,87 @@
       }
     }
 
-    // Kompres & perkecil dimensi gambar soal (max 800px, kualitas JPEG 0.75)
-    function kompresGambarSoal(srcUrl, maxDimensi = 800, kualitas = 0.75) {
-      if (!srcUrl || typeof srcUrl !== "string") return Promise.resolve("");
-      const trimmed = srcUrl.trim();
-      if (!trimmed) return Promise.resolve("");
+    // Muat soal sesuai USE_FIRESTORE dengan cache sesi agar tidak menyedot kuota baca berulang
+    async function muatSoalUjianTerpadu(ujianObj) {
+      const ujianId = ujianObj?.id || "ujian_1";
+      const cachedSoal = bacaCacheBankSoal(ujianId);
+      if (cachedSoal) {
+        return cachedSoal;
+      }
 
-      if (cacheGambarTerkompresi.has(trimmed)) {
-        return Promise.resolve(cacheGambarTerkompresi.get(trimmed));
+      const soalFallback = (Array.isArray(ujianObj?.soal) ? ujianObj.soal : [])
+        .filter(Boolean)
+        .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+
+      if (!USE_FIRESTORE) {
+        simpanCacheBankSoal(ujianId, soalFallback);
+        return soalFallback;
+      }
+
+      const kandidatIds = [sanitizeFsId(ujianId), "ujian_1"].filter(Boolean);
+      for (const docId of kandidatIds) {
+        const snap = await getDoc(doc(firestoreDb, "soal", docId));
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          const daftar = Array.isArray(data.daftarSoal)
+            ? data.daftarSoal
+            : (Array.isArray(data.soal) ? data.soal : []);
+          if (daftar.length > 0) {
+            const bersih = daftar
+              .filter(Boolean)
+              .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+            simpanCacheBankSoal(ujianId, bersih);
+            return bersih;
+          }
+        }
+      }
+
+      simpanCacheBankSoal(ujianId, soalFallback);
+      return soalFallback;
+    }
+
+    // Simpan hasil & status akhir ke Firestore (saat USE_FIRESTORE = true) atau Realtime Database (saat false)
+    async function simpanJawabanKeTujuan(payloadHasil, payloadStatus, opsiStatus = {}) {
+      const hasilId = sanitizeKey(`${siswaAktif.nisn}_${ujianAktif.id}`);
+      const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
+
+      if (USE_FIRESTORE) {
+        const fsDocId = `${sanitizeFsId(siswaAktif.nisn)}_${sanitizeFsId(ujianAktif.id)}`;
+        await Promise.all([
+          setDoc(
+            doc(firestoreDb, "jawaban_siswa", fsDocId),
+            {
+              ...payloadHasil,
+              answers: jawabanSiswa,
+              soalRagu,
+              status: "selesai",
+              ...(opsiStatus.diselesaikanPaksa ? { diselesaikanPaksa: true } : {}),
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          ),
+          update(statusRef, payloadStatus).catch(() => {})
+        ]);
+        return;
+      }
+
+      await Promise.all([
+        set(ref(db, `hasilUjian/${hasilId}`), payloadHasil),
+        update(statusRef, payloadStatus)
+      ]);
+    }
+
+    function kompresGambarSoal(srcUrl, maxDimensi = 800, kualitas = 0.75) {
+      const cleanSrc = bersihkanGambarDirectLink(srcUrl);
+      if (!cleanSrc) return Promise.resolve("");
+
+      if (cacheGambarTerkompresi.has(cleanSrc)) {
+        return Promise.resolve(cacheGambarTerkompresi.get(cleanSrc));
       }
 
       return new Promise((resolve) => {
         const img = new Image();
-        if (!trimmed.startsWith("data:")) {
-          img.crossOrigin = "anonymous";
-        }
+        img.crossOrigin = "anonymous";
 
         img.onload = () => {
           try {
@@ -385,15 +504,14 @@
             let height = img.naturalHeight || img.height;
 
             if (!width || !height) {
-              cacheGambarTerkompresi.set(trimmed, trimmed);
-              resolve(trimmed);
+              cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
+              resolve(cleanSrc);
               return;
             }
 
-            // Jika gambar sudah kecil dan bukan data URL besar, langsung pakai
-            if (width <= maxDimensi && height <= maxDimensi && !trimmed.startsWith("data:")) {
-              cacheGambarTerkompresi.set(trimmed, trimmed);
-              resolve(trimmed);
+            if (width <= maxDimensi && height <= maxDimensi) {
+              cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
+              resolve(cleanSrc);
               return;
             }
 
@@ -416,24 +534,21 @@
             ctx.drawImage(img, 0, 0, width, height);
 
             const hasilKompres = canvas.toDataURL("image/jpeg", kualitas);
-            const finalSrc = (hasilKompres && hasilKompres.length < trimmed.length) || !trimmed.startsWith("data:")
-              ? hasilKompres
-              : trimmed;
+            const finalSrc = hasilKompres || cleanSrc;
 
-            cacheGambarTerkompresi.set(trimmed, finalSrc);
+            cacheGambarTerkompresi.set(cleanSrc, finalSrc);
             resolve(finalSrc);
           } catch (e) {
-            // Jika canvas tainted karena CORS server eksternal, gunakan URL asli
-            cacheGambarTerkompresi.set(trimmed, trimmed);
-            resolve(trimmed);
+            cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
+            resolve(cleanSrc);
           }
         };
 
         img.onerror = () => {
-          resolve(trimmed);
+          resolve(cleanSrc);
         };
 
-        img.src = trimmed;
+        img.src = cleanSrc;
       });
     }
 
@@ -500,7 +615,7 @@
           return;
         }
 
-        // 2. Query ujian berdasarkan token (sekali saja saat masuk)
+        // 2. Query ujian berdasarkan token (1x saat masuk)
         const qUjian = query(ref(db, "daftarUjian"), orderByChild("token"), equalTo(tokenInput));
         const snapUjian = await get(qUjian);
         let foundUjian = null;
@@ -526,15 +641,16 @@
           return;
         }
 
-        const listSoalRaw = Array.isArray(foundUjian.soal) ? foundUjian.soal.filter(Boolean) : [];
-        if (listSoalRaw.length === 0) {
+        // 3. Muat soal via sakelar USE_FIRESTORE (dengan cache sesi)
+        const listSoalRaw = await muatSoalUjianTerpadu(foundUjian);
+        if (!Array.isArray(listSoalRaw) || listSoalRaw.length === 0) {
           alert("Ujian ini belum memiliki soal!");
           return;
         }
 
-        // 3. Cek status peserta di `statusPeserta/{ujianId}/{nisnKey}`
+        // 4. Cek status peserta saat ini (1x saat masuk)
         const nisnKey = sanitizeKey(foundSiswa.nisn || cleanNisn);
-        const statusRef = ref(db, `statusPeserta/${foundUjian.id}/${nisnKey}`);
+        const statusRef = ref(db, `statusPeserta/${sanitizeKey(foundUjian.id)}/${nisnKey}`);
         const snapStatus = await get(statusRef);
 
         if (snapStatus.exists()) {
@@ -578,19 +694,20 @@
       return acakSoal.map((s, idx) => {
         const soalId = s.id || `SOAL_${idx}`;
         const tipe = s.tipe || "pg";
+        const gambarUrl = bersihkanGambarDirectLink(s.gambarUrl);
 
         if ((tipe === "pg" || tipe === "pg_kompleks") && s.opsi) {
           const keysOpsi = Object.keys(s.opsi).filter(k => s.opsi[k] && String(s.opsi[k]).trim() !== "");
           const urutanOpsi = shuffleArray(keysOpsi);
-          return { ...s, id: soalId, tipe, urutanOpsi };
+          return { ...s, id: soalId, tipe, gambarUrl, urutanOpsi };
         }
 
         if (tipe === "mencocokkan" && Array.isArray(s.pasangan)) {
           const urutanKanan = shuffleArray(s.pasangan.map(p => p.kanan));
-          return { ...s, id: soalId, tipe, urutanKanan };
+          return { ...s, id: soalId, tipe, gambarUrl, urutanKanan };
         }
 
-        return { ...s, id: soalId, tipe };
+        return { ...s, id: soalId, tipe, gambarUrl };
       });
     }
 
@@ -618,7 +735,10 @@
 
       const progresTersimpan = muatProgresLokal(ujianAktif.id, siswaAktif.nisn);
       if (progresTersimpan && progresTersimpan.daftarSoalAcak.length === ujianAktif.soal.length) {
-        daftarSoalAcak = progresTersimpan.daftarSoalAcak;
+        daftarSoalAcak = progresTersimpan.daftarSoalAcak.map((s) => ({
+          ...s,
+          gambarUrl: bersihkanGambarDirectLink(s.gambarUrl)
+        }));
         jawabanSiswa = progresTersimpan.jawabanSiswa || {};
         soalRagu = progresTersimpan.soalRagu || {};
         indeksSoalAktif = Math.min(Math.max(0, progresTersimpan.indeksSoalAktif || 0), daftarSoalAcak.length - 1);
@@ -634,6 +754,7 @@
         simpanProgresLokal();
       }
 
+      violationReported = false;
       renderNavigasiSoal();
       tampilkanSoalKe(indeksSoalAktif);
       startTimer();
@@ -649,11 +770,10 @@
         unsubStatusPeserta = null;
       }
 
-      const statusRef = ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`);
+      const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
       unsubStatusPeserta = onValue(statusRef, async (snapshot) => {
         if (!isExamActive || isSubmitting) return;
 
-        // Jika dihapus oleh tombol "Reset Awal" di dashboard guru/admin
         if (!snapshot.exists()) {
           isExamActive = false;
           clearInterval(timerInterval);
@@ -670,7 +790,6 @@
           return;
         }
 
-        // Jika status diubah menjadi "selesai" oleh tombol "Paksa Selesai" di dashboard guru/admin
         const val = snapshot.val() || {};
         if (val.status === "selesai") {
           isExamActive = false;
@@ -754,13 +873,12 @@
         toggleRagu.checked = Boolean(soalRagu[s.id]);
       }
 
-      // Render & kompres gambar soal (dengan cache agar tidak diproses ulang)
       const wadahGambar = document.getElementById("wadahGambarSoal");
-      if (s.gambarUrl && s.gambarUrl.trim() !== "") {
+      const linkGambarBersih = bersihkanGambarDirectLink(s.gambarUrl);
+      if (linkGambarBersih) {
         wadahGambar.classList.remove("d-none");
         wadahGambar.innerHTML = `<div class="small text-muted py-2"><span class="spinner-border spinner-border-sm me-1"></span>Memuat gambar...</div>`;
-        const urlTerkompresi = await kompresGambarSoal(s.gambarUrl, 800, 0.75);
-        // Pastikan user masih berada di nomor soal yang sama saat gambar selesai dikompres
+        const urlTerkompresi = await kompresGambarSoal(linkGambarBersih, 800, 0.75);
         if (indeksSoalAktif === index) {
           wadahGambar.innerHTML = `
             <img src="${urlTerkompresi}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
@@ -893,7 +1011,7 @@
           prosesKumpulJawaban({ waktuHabis: true });
         } else {
           updateTampilanTimer();
-          if (sisaDetik % 5 === 0) {
+          if (sisaDetik % 10 === 0) {
             simpanProgresLokal();
           }
         }
@@ -914,13 +1032,18 @@
     }
 
     async function handleViolation() {
-      if (!isExamActive || isSubmitting) return;
+      if (!isExamActive || isSubmitting || violationReported) return;
+      const now = Date.now();
+      if (now - lastViolationAt < 1200) return;
+
       const isFull = document.fullscreenElement || document.webkitFullscreenElement;
       if (!isFull || document.hidden) {
+        lastViolationAt = now;
         warningTotal--;
         document.getElementById("warningCount").innerText = warningTotal;
 
         if (warningTotal <= 0) {
+          violationReported = true;
           isExamActive = false;
           clearInterval(timerInterval);
           if (typeof unsubStatusPeserta === "function") {
@@ -929,7 +1052,7 @@
           }
           document.getElementById("warningOverlay").classList.add("d-none");
 
-          const statusRef = ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`);
+          const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
           await update(statusRef, {
             status: "terlempar",
             waktuTerlempar: new Date().toLocaleTimeString("id-ID", { hour12: false })
@@ -1012,7 +1135,6 @@
       const waktuSelesaiStr = new Date().toLocaleString("id-ID");
       const waktuJamStr = new Date().toLocaleTimeString("id-ID", { hour12: false });
 
-      const hasilId = sanitizeKey(`${siswaAktif.nisn}_${ujianAktif.id}`);
       const payloadHasil = {
         nisn: siswaAktif.nisn,
         nama: siswaAktif.nama,
@@ -1035,10 +1157,7 @@
       };
 
       try {
-        await Promise.all([
-          set(ref(db, `hasilUjian/${hasilId}`), payloadHasil),
-          update(ref(db, `statusPeserta/${ujianAktif.id}/${siswaAktif.nisn}`), payloadStatus)
-        ]);
+        await simpanJawabanKeTujuan(payloadHasil, payloadStatus, opsiStatus);
         hapusProgresLokal(ujianAktif.id, siswaAktif.nisn);
         alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
       } catch (e) {
