@@ -2717,29 +2717,62 @@ window.aksiMassalMonitoring = async (mode) => {
   }
 };
 
-window.loadDaftarUjianMonitoring = () => {
+window.filterOpsiUjianMonitoring = () => {
+  const inputCari = document.getElementById("cariUjianMonitoring");
   const selectUjian = document.getElementById("selectUjianMonitoring");
   if (!selectUjian) return;
 
+  const keyword = (inputCari?.value || "").toLowerCase().trim();
   const prevVal = selectUjian.value;
-  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian --</option>`;
-
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
-  const validIds = new Set();
+  const seenIds = new Set();
 
   const ujianValid = sumberUjian
-    .filter(u => u && u.id && (u.judul || u.mapel))
+    .filter(u => {
+      if (!u || !u.id || !(u.judul || u.mapel)) return false;
+      if (seenIds.has(u.id)) return false;
+      seenIds.add(u.id);
+      return true;
+    })
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-  ujianValid.forEach(ujian => {
-    if (validIds.has(ujian.id)) return;
-    validIds.add(ujian.id);
+  const cocok = ujianValid.filter(ujian => {
+    if (!keyword) return true;
+    const kelasStr = Array.isArray(ujian.kelasTarget)
+      ? ujian.kelasTarget.join(" ")
+      : (ujian.kelasTarget || "");
+    const gabungan = `${ujian.mapel || ""} ${ujian.judul || ""} ${ujian.token || ""} ${kelasStr}`.toLowerCase();
+    return gabungan.includes(keyword);
+  });
 
+  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian (${cocok.length}) --</option>`;
+  cocok.forEach(ujian => {
     const opt = document.createElement("option");
     opt.value = ujian.id;
     opt.textContent = `${ujian.mapel || "Mapel"} - ${ujian.judul || "Ujian"} (Token: ${ujian.token || "-"})`;
     selectUjian.appendChild(opt);
   });
+
+  if (prevVal && cocok.some(u => u.id === prevVal)) {
+    selectUjian.value = prevVal;
+  } else if (!prevVal) {
+    selectUjian.value = "";
+  }
+};
+
+window.loadDaftarUjianMonitoring = () => {
+  const selectUjian = document.getElementById("selectUjianMonitoring");
+  if (!selectUjian) return;
+
+  const prevVal = selectUjian.value;
+  const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+  const validIds = new Set(
+    sumberUjian
+      .filter(u => u && u.id && (u.judul || u.mapel))
+      .map(u => u.id)
+  );
+
+  window.filterOpsiUjianMonitoring();
 
   if (prevVal && validIds.has(prevVal)) {
     selectUjian.value = prevVal;
