@@ -47,6 +47,10 @@
       border-color: #0d6efd;
       background-color: #e7f1ff;
     }
+    .teks-soal-format {
+      white-space: pre-line;
+      word-break: break-word;
+    }
     .nav-soal-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -177,7 +181,7 @@
 
             <div id="wadahGambarSoal" class="mb-3 text-center d-none"></div>
 
-            <div class="fs-5 text-dark mb-4" id="teksPertanyaanSoal" style="line-height: 1.6;"></div>
+            <div class="fs-5 text-dark mb-4 teks-soal-format" id="teksPertanyaanSoal" style="line-height: 1.6;"></div>
 
             <div id="wadahOpsiSoal" class="d-flex flex-column gap-2"></div>
 
@@ -332,6 +336,12 @@
       return String(rawId || "").trim().replace(/\//g, "_") || "ujian_1";
     }
 
+    // Format enter (\r\n / \n) menjadi <br> agar baris baru tetap tampil di semua browser
+    function formatTeksBarisBaru(rawText) {
+      const teks = String(rawText ?? "");
+      return teks.replace(/\r\n|\r|\n/g, "<br>");
+    }
+
     // Abaikan gambar Base64 mentah; hanya izinkan direct link http/https
     function bersihkanGambarDirectLink(rawUrl) {
       const val = String(rawUrl ?? "").trim();
@@ -349,7 +359,7 @@
 
     function bacaCacheBankSoal(ujianId) {
       try {
-        const raw = sessionStorage.getItem(getStorageKeyBankSoal(ujianId));
+        const raw = localStorage.getItem(getStorageKeyBankSoal(ujianId)) || sessionStorage.getItem(getStorageKeyBankSoal(ujianId));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -365,7 +375,12 @@
       try {
         if (!ujianId || !Array.isArray(listSoal) || listSoal.length === 0) return;
         const bersih = listSoal.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
-        sessionStorage.setItem(getStorageKeyBankSoal(ujianId), JSON.stringify(bersih));
+        const serialized = JSON.stringify(bersih);
+        try {
+          localStorage.setItem(getStorageKeyBankSoal(ujianId), serialized);
+        } catch (_) {
+          sessionStorage.setItem(getStorageKeyBankSoal(ujianId), serialized);
+        }
       } catch (err) {
         console.warn("Gagal menyimpan cache bank soal:", err);
       }
@@ -385,7 +400,12 @@
           sisaDetik,
           updatedAt: Date.now()
         };
-        sessionStorage.setItem(key, JSON.stringify(payload));
+        const serialized = JSON.stringify(payload);
+        try {
+          localStorage.setItem(key, serialized);
+        } catch (_) {
+          sessionStorage.setItem(key, serialized);
+        }
       } catch (err) {
         console.warn("Gagal menyimpan progres lokal:", err);
       }
@@ -394,7 +414,7 @@
     function muatProgresLokal(ujianId, nisn) {
       try {
         const key = getStorageKeySesi(ujianId, nisn);
-        const raw = sessionStorage.getItem(key);
+        const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.daftarSoalAcak) && parsed.daftarSoalAcak.length > 0) {
@@ -409,14 +429,16 @@
     function hapusProgresLokal(ujianId, nisn) {
       try {
         if (ujianId && nisn) {
-          sessionStorage.removeItem(getStorageKeySesi(ujianId, nisn));
+          const key = getStorageKeySesi(ujianId, nisn);
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
         }
       } catch (err) {
         console.warn("Gagal menghapus progres lokal:", err);
       }
     }
 
-    // Muat soal sesuai USE_FIRESTORE dengan cache sesi agar tidak menyedot kuota baca berulang
+    // Muat soal sesuai USE_FIRESTORE dengan cache lokal agar tidak menyedot kuota baca berulang
     async function muatSoalUjianTerpadu(ujianObj) {
       const ujianId = ujianObj?.id || "ujian_1";
       const cachedSoal = bacaCacheBankSoal(ujianId);
@@ -641,7 +663,7 @@
           return;
         }
 
-        // 3. Muat soal via sakelar USE_FIRESTORE (dengan cache sesi)
+        // 3. Muat soal via sakelar USE_FIRESTORE (dengan cache lokal)
         const listSoalRaw = await muatSoalUjianTerpadu(foundUjian);
         if (!Array.isArray(listSoalRaw) || listSoalRaw.length === 0) {
           alert("Ujian ini belum memiliki soal!");
@@ -890,7 +912,7 @@
         wadahGambar.innerHTML = "";
       }
 
-      document.getElementById("teksPertanyaanSoal").innerHTML = s.pertanyaan || "";
+      document.getElementById("teksPertanyaanSoal").innerHTML = formatTeksBarisBaru(s.pertanyaan || "");
 
       const wadahOpsi = document.getElementById("wadahOpsiSoal");
       wadahOpsi.innerHTML = "";
@@ -909,8 +931,8 @@
           card.className = `opsi-card ${isSelected ? "selected" : ""}`;
           card.innerHTML = `
             <input class="form-check-input mt-1 flex-shrink-0" type="radio" name="radio_${s.id}" value="${keyAsli}" ${isSelected ? "checked" : ""}>
-            <div class="fs-6">
-              <strong>${hurufTampil}.</strong> ${s.opsi[keyAsli]}
+            <div class="fs-6 teks-soal-format">
+              <strong>${hurufTampil}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
             </div>
           `;
           card.querySelector("input").addEventListener("change", () => {
@@ -937,8 +959,8 @@
           card.className = `opsi-card ${isChecked ? "selected" : ""}`;
           card.innerHTML = `
             <input class="form-check-input mt-1 flex-shrink-0" type="checkbox" value="${keyAsli}" ${isChecked ? "checked" : ""}>
-            <div class="fs-6">
-              <strong>${hurufTampil}.</strong> ${s.opsi[keyAsli]}
+            <div class="fs-6 teks-soal-format">
+              <strong>${hurufTampil}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
             </div>
           `;
           card.querySelector("input").addEventListener("change", (ev) => {
@@ -966,11 +988,11 @@
           const valSekarang = mapJwb[p.kiri] || "";
 
           row.innerHTML = `
-            <div class="col-md-6 fw-semibold">${pIdx + 1}. ${p.kiri}</div>
+            <div class="col-md-6 fw-semibold teks-soal-format">${pIdx + 1}. ${formatTeksBarisBaru(p.kiri || "")}</div>
             <div class="col-md-6">
               <select class="form-select">
                 <option value="">-- Pilih Pasangan --</option>
-                ${listKanan.map(k => `<option value="${k.replace(/"/g, "&quot;")}" ${valSekarang === k ? "selected" : ""}>${k}</option>`).join("")}
+                ${listKanan.map(k => `<option value="${String(k || "").replace(/"/g, "&quot;")}" ${valSekarang === k ? "selected" : ""}>${String(k || "").replace(/\r\n|\r|\n/g, " ")}</option>`).join("")}
               </select>
             </div>
           `;
