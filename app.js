@@ -238,13 +238,12 @@ async function ambilSemuaJawabanFirestore(kodeUjian = "") {
   return rows;
 }
 
-window.imporBackupJsonKeFirestore = async function(options = {}) {
-  const pathJson = options.pathJson || "./backup-rtdb.json.json";
-  const maxUjianDiimpor = Number(options.maxUjian) || 100;
-  const skipDummySiswa = options.skipDummySiswa !== false;
-  const dummyNisnSet = new Set(
-    Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(10, "0"))
-  );
+window.imporBackupJsonKeFirestore = async function () {
+  const pesan = "File backup sudah dihapus dari repository dan migrasi data ke Firestore telah selesai.";
+  console.info(pesan);
+  alert(pesan);
+  return null;
+};
 
   try {
     const res = await fetch(pathJson);
