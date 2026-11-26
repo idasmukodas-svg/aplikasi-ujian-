@@ -404,16 +404,13 @@ window.imporBackupJsonKeFirestore = async function () {
       }
     }
 
-    const pesan = `Impor selesai: ${countUjian} ujian/soal, ${countKelas} kelas, ${countMapel} mapel, ${countSiswa} siswa.`;
-    console.log(pesan);
-    alert(pesan);
-    await muatSemuaMasterFirestore(true);
-    return { countUjian, countKelas, countMapel, countSiswa };
-  } catch (err) {
-    console.error("Gagal impor JSON ke Firestore:", err);
-    alert("Gagal impor JSON ke Firestore: " + err.message);
-    throw err;
-  }
+    const pesan = "Migrasi ke Firestore sudah selesai dan file backup sudah dihapus.";
+console.info(pesan);
+alert(pesan);
+} catch (err) {
+  console.error("Gagal impor JSON ke Firestore:", err);
+  alert("Gagal impor JSON ke Firestore: " + err.message);
+}
 };
 
 function normalisasiDetailAmpuan(guruObj) {
