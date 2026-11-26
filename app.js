@@ -559,31 +559,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  const fileGambarInput = document.getElementById("soalGambarFile");
-  fileGambarInput?.addEventListener("change", () => {
-    const file = fileGambarInput.files && fileGambarInput.files[0];
+  const inputUrlGambar = document.getElementById("soalGambarUrl");
+  inputUrlGambar?.addEventListener("input", () => {
+    const cleanUrl = typeof normalisasiLinkGambarInput === "function"
+      ? normalisasiLinkGambarInput(inputUrlGambar.value)
+      : String(inputUrlGambar.value || "").trim();
     const previewContainer = document.getElementById("previewGambarContainer");
     const previewImg = document.getElementById("previewGambar");
 
-    if (!file) {
+    if (!cleanUrl) {
       previewContainer?.classList.add("d-none");
+      if (previewImg) previewImg.src = "";
       return;
     }
 
-    if (file.size > 1024 * 1024) {
-      alert("Ukuran gambar melebihi batas maksimal 1 MB. Gambar akan dikompresi otomatis saat disimpan.");
+    if (previewImg && previewContainer) {
+      previewImg.onerror = () => previewContainer.classList.add("d-none");
+      previewImg.onload = () => previewContainer.classList.remove("d-none");
+      previewImg.src = cleanUrl;
     }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (previewImg && previewContainer) {
-        previewImg.src = ev.target.result;
-        previewContainer.classList.remove("d-none");
-      }
-    };
-    reader.readAsDataURL(file);
   });
-
+   
   document.getElementById("formTambahMapel")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const inputMapel = document.getElementById("inputNamaMapel");
