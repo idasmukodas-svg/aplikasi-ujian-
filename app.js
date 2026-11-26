@@ -69,6 +69,7 @@ let sedangProsesMassalMonitoring = false;
 let rekapTerpilihIds = new Set();
 let sedangHapusRekap = false;
 let lastLoadedRekapUjianId = null;
+let currentEditGuruUid = "";
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -141,7 +142,7 @@ function normalisasiArraySoal(rawSoal) {
 }
 
 /* ===================================================
-   HELPER CLOUD FIRESTORE (COLEKSI: soal, ujian, siswa, status_peserta, jawaban_siswa, kelas, mapel, pengguna)
+   HELPER CLOUD FIRESTORE (KOLEKSI: soal, ujian, siswa, status_peserta, jawaban_siswa, kelas, mapel, pengguna)
    =================================================== */
 async function ambilSoalFirestore(kodeUjian = "ujian_1") {
   const cleanId = sanitizeFirestoreId(kodeUjian);
@@ -414,6 +415,7 @@ window.imporBackupJsonKeFirestore = async function(options = {}) {
     throw err;
   }
 };
+
 function normalisasiDetailAmpuan(guruObj) {
   const detail = {};
   if (!guruObj) return detail;
@@ -1342,7 +1344,13 @@ window.handleTambahGuru = async (e) => {
 
 async function handleSimpanEditGuru(e) {
   e.preventDefault();
-  const uid = document.getElementById("editGuruUid").value;
+  const rawUid = (document.getElementById("editGuruUid")?.value || currentEditGuruUid || "").trim();
+  const docId = sanitizeFirestoreId(rawUid);
+  if (!rawUid || !docId || docId === "default") {
+    alert("UID guru tidak ditemukan. Tutup modal lalu klik tombol Edit ulang.");
+    return;
+  }
+  const uid = rawUid;
   const nama = document.getElementById("editGuruNama").value.trim();
 
   const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
@@ -2147,8 +2155,6 @@ window.downloadTemplateSiswa = () => {
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
 };
 
-let currentEditGuruUid = "";
-
 window.openModalEditGuru = async (uid) => {
   const g = daftarPengguna.find(p => p.uid === uid || p.id === uid);
   if (!g) return alert("Data guru tidak ditemukan!");
@@ -2190,44 +2196,6 @@ window.openModalEditGuru = async (uid) => {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 };
-
-async function handleSimpanEditGuru(e) {
-  e.preventDefault();
-  const rawUid = (document.getElementById("editGuruUid")?.value || currentEditGuruUid || "").trim();
-  const docId = sanitizeFirestoreId(rawUid);
-
-  if (!rawUid || !docId || docId === "default") {
-    alert("UID guru tidak valid. Tutup modal lalu buka ulang form edit guru.");
-    return;
-  }
-
-  const nama = document.getElementById("editGuruNama").value.trim();
-  const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
-  const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMappingDariContainer(containerMapping);
-
-  if (mapelDiampu.length === 0) {
-    alert("Pilih minimal satu mata pelajaran!");
-    return;
-  }
-
-  try {
-    await updateDoc(doc(firestoreDb, "pengguna", docId), {
-      nama,
-      mapelDiampu,
-      mapel: mapelDiampu[0],
-      kelasDiampu,
-      detailAmpuan,
-      updatedAt: serverTimestamp()
-    });
-
-    alert(`Profil Guru ${nama} berhasil diperbarui!`);
-    const modalEl = document.getElementById("modalEditGuru");
-    if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl)?.hide();
-    await muatPenggunaFirestore();
-  } catch (err) {
-    alert("Gagal memperbarui data guru: " + err.message);
-  }
-}
 
 window.openModalTambahGuru = async () => {
   const formEl = document.getElementById("formTambahGuru");
@@ -3088,3 +3056,4 @@ window.updateFilterUjianDropdown = function() {
   });
   selectUjian.value = currVal;
 };
+`
