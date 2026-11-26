@@ -33,6 +33,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestoreDb = getFirestore(app);
+window.firestoreDb = firestoreDb;
 
 const USE_FIRESTORE = true;
 window.USE_FIRESTORE = USE_FIRESTORE;
