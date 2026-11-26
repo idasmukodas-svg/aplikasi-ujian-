@@ -687,20 +687,26 @@ async function muatUjianFirestore() {
 
 async function muatSiswaFirestore() {
   const session = window.userSession || userSession || {};
-  let rawSiswa = [];
 
   if (!session || session.role === "admin") {
     const snap = await getDocs(collection(firestoreDb, "siswa"));
-    rawSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-    daftarSiswa = rawSiswa;
+    daftarSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
   } else {
-    const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu.filter(Boolean) : [];
-    if (kelasDiampu.length > 0) {
-      const snap = await getDocs(collection(firestoreDb, "siswa"));
-      rawSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-      daftarSiswa = rawSiswa.filter(s => kelasDiampu.includes(String(s.kelas || "").trim()));
-    } else {
+    const kelasDiampu = Array.isArray(session.kelasDiampu)
+      ? session.kelasDiampu.map(k => String(k).trim()).filter(Boolean)
+      : [];
+
+    if (kelasDiampu.length === 0) {
       daftarSiswa = [];
+    } else {
+      const hasilSiswa = [];
+      for (let i = 0; i < kelasDiampu.length; i += 10) {
+        const chunkKelas = kelasDiampu.slice(i, i + 10);
+        const qSiswa = query(collection(firestoreDb, "siswa"), where("kelas", "in", chunkKelas));
+        const snap = await getDocs(qSiswa);
+        snap.forEach(d => hasilSiswa.push({ id: d.id, ...(d.data() || {}) }));
+      }
+      daftarSiswa = hasilSiswa;
     }
   }
 
@@ -2544,22 +2550,24 @@ function updateGuruDropdown() {
 
 window.bukaModalEditUjian = async (ujianId) => {
   try {
-    const snap = await getDoc(doc(firestoreDb, "ujian", sanitizeFirestoreId(ujianId)));
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      document.getElementById("editUjianId").value = ujianId;
-      document.getElementById("editJudulUjian").value = data.judul || "";
-      document.getElementById("editDurasiUjian").value = data.durasi || "";
+    let data = (Array.isArray(window.daftarUjian) ? window.daftarUjian : []).find(u => u.id === ujianId);
 
-      const elToken = document.getElementById("editTokenUjian");
-      if (elToken) elToken.value = data.token || "";
+    if (!data) {
+      const snap = await getDoc(doc(firestoreDb, "ujian", sanitizeFirestoreId(ujianId)));
+      if (!snap.exists()) return alert("Data ujian tidak ditemukan!");
+      data = snap.data() || {};
+    }
 
-      const modalEl = document.getElementById("modalEditUjian");
-      if (modalEl && window.bootstrap) {
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      }
-    } else {
-      alert("Data ujian tidak ditemukan!");
+    document.getElementById("editUjianId").value = ujianId;
+    document.getElementById("editJudulUjian").value = data.judul || "";
+    document.getElementById("editDurasiUjian").value = data.durasi || "";
+
+    const elToken = document.getElementById("editTokenUjian");
+    if (elToken) elToken.value = data.token || "";
+
+    const modalEl = document.getElementById("modalEditUjian");
+    if (modalEl && window.bootstrap) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   } catch (error) {
     alert("Gagal memuat data ujian: " + error.message);
