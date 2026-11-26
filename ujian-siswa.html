@@ -275,7 +275,6 @@
       getDoc,
       getDocs,
       setDoc,
-      updateDoc,
       query,
       where,
       onSnapshot,
@@ -322,6 +321,15 @@
 
     function sanitizeFsId(rawId) {
       return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_") || "item";
+    }
+
+    function escapeAttr(rawVal) {
+      return String(rawVal ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\r\n|\r|\n/g, " ");
     }
 
     function getStatusPesertaDocId(ujianId, nisn) {
@@ -445,37 +453,39 @@
     }
 
     async function muatSoalUjianFirestore(ujianObj) {
-      const ujianId = ujianObj?.id || "ujian_1";
-      const versiMetadata = ujianObj?.totalSoal || (Array.isArray(ujianObj?.soal) && ujianObj.soal.length > 0 ? ujianObj.soal.length : null);
-      const cachedSoal = bacaCacheBankSoal(ujianId, versiMetadata);
-      if (cachedSoal) {
-        return cachedSoal;
-      }
+      const ujianId = String(ujianObj?.id || "").trim();
+      if (!ujianId) return [];
 
       const soalFallback = (Array.isArray(ujianObj?.soal) ? ujianObj.soal : [])
         .filter(Boolean)
         .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
 
-      const kandidatIds = [sanitizeFsId(ujianId), "ujian_1"].filter(Boolean);
-      for (const docId of kandidatIds) {
-        const snap = await getDoc(doc(firestoreDb, "soal", docId));
-        if (snap.exists()) {
-          const data = snap.data() || {};
-          const daftar = Array.isArray(data.daftarSoal)
-            ? data.daftarSoal
-            : (Array.isArray(data.soal) ? data.soal : []);
-          if (daftar.length > 0) {
-            const bersih = daftar
-              .filter(Boolean)
-              .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
-            const versiSimpan = data.totalSoal || bersih.length;
-            simpanCacheBankSoal(ujianId, bersih, versiSimpan);
-            return bersih;
-          }
+      const versiMetadata =
+        ujianObj?.totalSoal || (soalFallback.length > 0 ? soalFallback.length : null);
+      const cachedSoal = bacaCacheBankSoal(ujianId, versiMetadata);
+      if (cachedSoal) {
+        return cachedSoal;
+      }
+
+      const snap = await getDoc(doc(firestoreDb, "soal", sanitizeFsId(ujianId)));
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        const daftar = Array.isArray(data.daftarSoal)
+          ? data.daftarSoal
+          : (Array.isArray(data.soal) ? data.soal : []);
+        if (daftar.length > 0) {
+          const bersih = daftar
+            .filter(Boolean)
+            .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+          const versiSimpan = data.totalSoal || bersih.length;
+          simpanCacheBankSoal(ujianId, bersih, versiSimpan);
+          return bersih;
         }
       }
 
-      simpanCacheBankSoal(ujianId, soalFallback, soalFallback.length);
+      if (soalFallback.length > 0) {
+        simpanCacheBankSoal(ujianId, soalFallback, soalFallback.length);
+      }
       return soalFallback;
     }
 
@@ -536,14 +546,12 @@
               return;
             }
 
-            if (width > maxDimensi || height > maxDimensi) {
-              if (width >= height) {
-                height = Math.round((height * maxDimensi) / width);
-                width = maxDimensi;
-              } else {
-                width = Math.round((width * maxDimensi) / height);
-                height = maxDimensi;
-              }
+            if (width >= height) {
+              height = Math.round((height * maxDimensi) / width);
+              width = maxDimensi;
+            } else {
+              width = Math.round((width * maxDimensi) / height);
+              height = maxDimensi;
             }
 
             const canvas = document.createElement("canvas");
@@ -559,7 +567,7 @@
 
             cacheGambarTerkompresi.set(cleanSrc, finalSrc);
             resolve(finalSrc);
-          } catch (e) {
+          } catch (_) {
             cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
             resolve(cleanSrc);
           }
@@ -611,12 +619,21 @@
     }
 
     async function cariDataUjianFirestore(tokenInput) {
+      const qAktif = query(
+        collection(firestoreDb, "ujian"),
+        where("token", "==", tokenInput),
+        where("status", "==", "aktif")
+      );
+      const snapAktif = await getDocs(qAktif);
+      if (!snapAktif.empty) {
+        return { id: snapAktif.docs[0].id, ...snapAktif.docs[0].data() };
+      }
+
       const qUjian = query(collection(firestoreDb, "ujian"), where("token", "==", tokenInput));
       const snapUjian = await getDocs(qUjian);
       if (snapUjian.empty) return null;
 
-      const listDocs = snapUjian.docs.map(d => ({ id: d.id, ...d.data() }));
-      return listDocs.find(u => u.status === "aktif") || listDocs[0];
+      return { id: snapUjian.docs[0].id, ...snapUjian.docs[0].data() };
     }
 
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
@@ -676,7 +693,7 @@
         if (snapStatus.exists()) {
           const statusData = snapStatus.data() || {};
           if (statusData.status === "sedang_mengerjakan" || statusData.status === "terlempar") {
-            alert("âš ï¸ Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
+            alert("Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
             return;
           } else if (statusData.status === "selesai") {
             hapusProgresLokal(foundUjian.id, nisnKey);
@@ -909,7 +926,7 @@
         const urlTerkompresi = await kompresGambarSoal(linkGambarBersih, 800, 0.75);
         if (indeksSoalAktif === index) {
           wadahGambar.innerHTML = `
-            <img src="${urlTerkompresi}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
+            <img src="${escapeAttr(urlTerkompresi)}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
               onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-warning small\\'>Gagal memuat gambar soal.</div>';">
           `;
         }
@@ -936,9 +953,9 @@
           const card = document.createElement("label");
           card.className = `opsi-card ${isSelected ? "selected" : ""}`;
           card.innerHTML = `
-            <input class="form-check-input mt-1 flex-shrink-0" type="radio" name="radio_${s.id}" value="${keyAsli}" ${isSelected ? "checked" : ""}>
+            <input class="form-check-input mt-1 flex-shrink-0" type="radio" name="radio_${escapeAttr(s.id)}" value="${escapeAttr(keyAsli)}" ${isSelected ? "checked" : ""}>
             <div class="fs-6 teks-soal-format">
-              <strong>${hurufTampil}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
+              <strong>${escapeAttr(hurufTampil)}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
             </div>
           `;
           card.querySelector("input").addEventListener("change", () => {
@@ -964,9 +981,9 @@
           const card = document.createElement("label");
           card.className = `opsi-card ${isChecked ? "selected" : ""}`;
           card.innerHTML = `
-            <input class="form-check-input mt-1 flex-shrink-0" type="checkbox" value="${keyAsli}" ${isChecked ? "checked" : ""}>
+            <input class="form-check-input mt-1 flex-shrink-0" type="checkbox" value="${escapeAttr(keyAsli)}" ${isChecked ? "checked" : ""}>
             <div class="fs-6 teks-soal-format">
-              <strong>${hurufTampil}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
+              <strong>${escapeAttr(hurufTampil)}.</strong> ${formatTeksBarisBaru(s.opsi[keyAsli] || "")}
             </div>
           `;
           card.querySelector("input").addEventListener("change", (ev) => {
@@ -998,7 +1015,7 @@
             <div class="col-md-6">
               <select class="form-select">
                 <option value="">-- Pilih Pasangan --</option>
-                ${listKanan.map(k => `<option value="${String(k || "").replace(/"/g, "&quot;")}" ${valSekarang === k ? "selected" : ""}>${String(k || "").replace(/\r\n|\r|\n/g, " ")}</option>`).join("")}
+                ${listKanan.map(k => `<option value="${escapeAttr(k)}" ${valSekarang === k ? "selected" : ""}>${escapeAttr(k)}</option>`).join("")}
               </select>
             </div>
           `;
@@ -1081,11 +1098,11 @@
           document.getElementById("warningOverlay").classList.add("d-none");
 
           const statusDocRef = doc(firestoreDb, "status_peserta", getStatusPesertaDocId(ujianAktif.id, siswaAktif.nisn));
-          await updateDoc(statusDocRef, {
+          await setDoc(statusDocRef, {
             status: "terlempar",
             waktuTerlempar: new Date().toLocaleTimeString("id-ID", { hour12: false }),
             updatedAt: serverTimestamp()
-          }).catch(() => {});
+          }, { merge: true }).catch(() => {});
 
           alert("Anda telah melanggar batas kesempatan keluar dari ujian! Sesi Anda dikunci. Silakan lapor ke Pengawas untuk penanganan lebih lanjut.");
           window.location.reload();
@@ -1206,7 +1223,6 @@
         }
         hapusProgresLokal(ujianAktif.id, siswaAktif.nisn);
 
-        // Nilai disimpan untuk rekap admin, tidak ditampilkan ke layar siswa
         alert("Ujian Selesai! Jawaban Anda telah berhasil dikirim dan tercatat di sistem.");
         if (document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
@@ -1217,7 +1233,7 @@
         sedangKumpul = false;
         isSubmitting = false;
         setStatusTombolKirim(false);
-        alert("Pengiriman sempat tertunda karena jaringan. Jawaban Anda tetap aman di perangkat iniâ€”silakan coba kirim kembali.");
+        alert("Pengiriman sempat tertunda karena jaringan. Jawaban Anda tetap aman di perangkat ini - silakan coba kirim kembali.");
       }
     }
 
