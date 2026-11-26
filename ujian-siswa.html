@@ -265,32 +265,26 @@
   <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Firebase Realtime Database & Firestore Logic (SMAN 1 TARAJU) -->
+  <!-- Cloud Firestore Logic (SMAN 1 TARAJU) -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import {
-      getDatabase,
-      ref,
-      get,
-      set,
-      update,
-      onValue,
-      query,
-      orderByChild,
-      equalTo
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import {
       getFirestore,
+      collection,
       doc,
       getDoc,
+      getDocs,
       setDoc,
+      updateDoc,
+      query,
+      where,
+      onSnapshot,
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
       authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
-      databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "aplikasi-ujian-8e501",
       storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
       messagingSenderId: "945781407027",
@@ -299,10 +293,8 @@
     };
 
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const db = getDatabase(app);
     const firestoreDb = getFirestore(app);
 
-    // Sakelar migrasi: false = Realtime Database, true = Cloud Firestore
     const USE_FIRESTORE = true;
     window.USE_FIRESTORE = USE_FIRESTORE;
 
@@ -326,24 +318,25 @@
     let unsubStatusPeserta = null;
     let modalKonfirmasiInstance = null;
 
-    // Cache gambar per sesi agar tidak dikompres ulang saat pindah nomor soal
     const cacheGambarTerkompresi = new Map();
 
-    function sanitizeKey(rawId) {
-      return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_");
-    }
-
     function sanitizeFsId(rawId) {
-      return String(rawId || "").trim().replace(/\//g, "_") || "ujian_1";
+      return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_") || "item";
     }
 
-    // Format enter (\r\n / \n) menjadi <br> agar baris baru tetap tampil di semua browser
+    function getStatusPesertaDocId(ujianId, nisn) {
+      return `${sanitizeFsId(ujianId)}__${sanitizeFsId(nisn)}`;
+    }
+
+    function getJawabanDocId(nisn, ujianId) {
+      return `${sanitizeFsId(nisn)}_${sanitizeFsId(ujianId)}`;
+    }
+
     function formatTeksBarisBaru(rawText) {
       const teks = String(rawText ?? "");
       return teks.replace(/\r\n|\r|\n/g, "<br>");
     }
 
-    // Abaikan gambar Base64 mentah; hanya izinkan direct link http/https
     function bersihkanGambarDirectLink(rawUrl) {
       const val = String(rawUrl ?? "").trim();
       if (!val || val.startsWith("data:image")) return "";
@@ -351,11 +344,11 @@
     }
 
     function getStorageKeySesi(ujianId, nisn) {
-      return `cbt_smantar_sesi_${sanitizeKey(ujianId)}_${sanitizeKey(nisn)}`;
+      return `cbt_smantar_sesi_${sanitizeFsId(ujianId)}_${sanitizeFsId(nisn)}`;
     }
 
     function getStorageKeyBankSoal(ujianId) {
-      return `cbt_smantar_bank_${sanitizeKey(ujianId)}_${USE_FIRESTORE ? "fs" : "rtdb"}`;
+      return `cbt_smantar_bank_${sanitizeFsId(ujianId)}_fs`;
     }
 
     function bacaCacheBankSoal(ujianId, expectedVersi = null) {
@@ -451,8 +444,7 @@
       }
     }
 
-    // Muat soal sesuai USE_FIRESTORE dengan cache lokal per ujianId + versi/jumlah soal
-    async function muatSoalUjianTerpadu(ujianObj) {
+    async function muatSoalUjianFirestore(ujianObj) {
       const ujianId = ujianObj?.id || "ujian_1";
       const versiMetadata = ujianObj?.totalSoal || (Array.isArray(ujianObj?.soal) && ujianObj.soal.length > 0 ? ujianObj.soal.length : null);
       const cachedSoal = bacaCacheBankSoal(ujianId, versiMetadata);
@@ -463,11 +455,6 @@
       const soalFallback = (Array.isArray(ujianObj?.soal) ? ujianObj.soal : [])
         .filter(Boolean)
         .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
-
-      if (!USE_FIRESTORE) {
-        simpanCacheBankSoal(ujianId, soalFallback, soalFallback.length);
-        return soalFallback;
-      }
 
       const kandidatIds = [sanitizeFsId(ujianId), "ujian_1"].filter(Boolean);
       for (const docId of kandidatIds) {
@@ -492,34 +479,31 @@
       return soalFallback;
     }
 
-    // Simpan hasil & status akhir ke Firestore (saat USE_FIRESTORE = true) atau Realtime Database (saat false)
-    async function simpanJawabanKeTujuan(payloadHasil, payloadStatus, opsiStatus = {}) {
-      const hasilId = sanitizeKey(`${siswaAktif.nisn}_${ujianAktif.id}`);
-      const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
-
-      if (USE_FIRESTORE) {
-        const fsDocId = `${sanitizeFsId(siswaAktif.nisn)}_${sanitizeFsId(ujianAktif.id)}`;
-        await Promise.all([
-          setDoc(
-            doc(firestoreDb, "jawaban_siswa", fsDocId),
-            {
-              ...payloadHasil,
-              answers: jawabanSiswa,
-              soalRagu,
-              status: "selesai",
-              ...(opsiStatus.diselesaikanPaksa ? { diselesaikanPaksa: true } : {}),
-              updatedAt: serverTimestamp()
-            },
-            { merge: true }
-          ),
-          update(statusRef, payloadStatus).catch(() => {})
-        ]);
-        return;
-      }
+    async function simpanJawabanFirestore(payloadHasil, payloadStatus, opsiStatus = {}) {
+      const fsDocId = getJawabanDocId(siswaAktif.nisn, ujianAktif.id);
+      const statusDocRef = doc(firestoreDb, "status_peserta", getStatusPesertaDocId(ujianAktif.id, siswaAktif.nisn));
 
       await Promise.all([
-        set(ref(db, `hasilUjian/${hasilId}`), payloadHasil),
-        update(statusRef, payloadStatus)
+        setDoc(
+          doc(firestoreDb, "jawaban_siswa", fsDocId),
+          {
+            ...payloadHasil,
+            answers: jawabanSiswa,
+            soalRagu,
+            status: "selesai",
+            ...(opsiStatus.diselesaikanPaksa ? { diselesaikanPaksa: true } : {}),
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        ),
+        setDoc(
+          statusDocRef,
+          {
+            ...payloadStatus,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        ).catch(() => {})
       ]);
     }
 
@@ -609,6 +593,32 @@
       return targets.includes(kSiswa);
     }
 
+    async function cariDataSiswaFirestore(nisnInput) {
+      const cleanId = sanitizeFsId(nisnInput);
+      const directSnap = await getDoc(doc(firestoreDb, "siswa", cleanId));
+      if (directSnap.exists()) {
+        return { id: directSnap.id, ...directSnap.data() };
+      }
+
+      const qSiswa = query(collection(firestoreDb, "siswa"), where("nisn", "==", nisnInput));
+      const snapQ = await getDocs(qSiswa);
+      if (!snapQ.empty) {
+        const firstDoc = snapQ.docs[0];
+        return { id: firstDoc.id, ...firstDoc.data() };
+      }
+
+      return null;
+    }
+
+    async function cariDataUjianFirestore(tokenInput) {
+      const qUjian = query(collection(firestoreDb, "ujian"), where("token", "==", tokenInput));
+      const snapUjian = await getDocs(qUjian);
+      if (snapUjian.empty) return null;
+
+      const listDocs = snapUjian.docs.map(d => ({ id: d.id, ...d.data() }));
+      return listDocs.find(u => u.status === "aktif") || listDocs[0];
+    }
+
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (isVerifyingLogin || isExamActive) return;
@@ -631,38 +641,13 @@
       btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memverifikasi...`;
 
       try {
-        const cleanNisn = sanitizeKey(nisnInput);
-        let foundSiswa = null;
-
-        // 1. Cek langsung berdasarkan key NISN (1 read tunggal)
-        const snapSiswaDirect = await get(ref(db, `daftarSiswa/${cleanNisn}`));
-        if (snapSiswaDirect.exists()) {
-          foundSiswa = snapSiswaDirect.val();
-        } else {
-          const qSiswa = query(ref(db, "daftarSiswa"), orderByChild("nisn"), equalTo(nisnInput));
-          const snapQ = await get(qSiswa);
-          if (snapQ.exists()) {
-            const vals = Object.values(snapQ.val());
-            foundSiswa = vals[0];
-          }
-        }
-
+        const foundSiswa = await cariDataSiswaFirestore(nisnInput);
         if (!foundSiswa) {
           alert("NISN tidak ditemukan! Silakan periksa kembali atau hubungi Guru/Admin.");
           return;
         }
 
-        // 2. Query ujian berdasarkan token (1x saat masuk)
-        const qUjian = query(ref(db, "daftarUjian"), orderByChild("token"), equalTo(tokenInput));
-        const snapUjian = await get(qUjian);
-        let foundUjian = null;
-
-        if (snapUjian.exists()) {
-          const entries = Object.entries(snapUjian.val());
-          const aktifEntry = entries.find(([, u]) => u.status === "aktif") || entries[0];
-          foundUjian = { ...aktifEntry[1], id: aktifEntry[0] };
-        }
-
+        const foundUjian = await cariDataUjianFirestore(tokenInput);
         if (!foundUjian) {
           alert("Token Ujian tidak valid atau salah!");
           return;
@@ -678,22 +663,20 @@
           return;
         }
 
-        // 3. Muat soal via sakelar USE_FIRESTORE (dengan cache lokal)
-        const listSoalRaw = await muatSoalUjianTerpadu(foundUjian);
+        const listSoalRaw = await muatSoalUjianFirestore(foundUjian);
         if (!Array.isArray(listSoalRaw) || listSoalRaw.length === 0) {
           alert("Ujian ini belum memiliki soal!");
           return;
         }
 
-        // 4. Cek status peserta saat ini (1x saat masuk)
-        const nisnKey = sanitizeKey(foundSiswa.nisn || cleanNisn);
-        const statusRef = ref(db, `statusPeserta/${sanitizeKey(foundUjian.id)}/${nisnKey}`);
-        const snapStatus = await get(statusRef);
+        const nisnKey = sanitizeFsId(foundSiswa.nisn || nisnInput);
+        const statusDocRef = doc(firestoreDb, "status_peserta", getStatusPesertaDocId(foundUjian.id, nisnKey));
+        const snapStatus = await getDoc(statusDocRef);
 
         if (snapStatus.exists()) {
-          const statusData = snapStatus.val();
+          const statusData = snapStatus.data() || {};
           if (statusData.status === "sedang_mengerjakan" || statusData.status === "terlempar") {
-            alert("⚠️ Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
+            alert("âš ï¸ Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
             return;
           } else if (statusData.status === "selesai") {
             hapusProgresLokal(foundUjian.id, nisnKey);
@@ -705,14 +688,20 @@
         siswaAktif = { ...foundSiswa, nisn: nisnKey };
         ujianAktif = { ...foundUjian, soal: listSoalRaw };
 
-        await set(statusRef, {
-          nisn: siswaAktif.nisn,
-          nama: siswaAktif.nama,
-          kelas: siswaAktif.kelas || "-",
-          status: "sedang_mengerjakan",
-          konfirmasiSiswaSelesai: false,
-          waktuMulai: new Date().toLocaleTimeString("id-ID", { hour12: false })
-        });
+        await setDoc(
+          statusDocRef,
+          {
+            ujianId: ujianAktif.id,
+            nisn: siswaAktif.nisn,
+            nama: siswaAktif.nama,
+            kelas: siswaAktif.kelas || "-",
+            status: "sedang_mengerjakan",
+            konfirmasiSiswaSelesai: false,
+            waktuMulai: new Date().toLocaleTimeString("id-ID", { hour12: false }),
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        );
 
         mulaiUjianFull();
 
@@ -807,8 +796,8 @@
         unsubStatusPeserta = null;
       }
 
-      const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
-      unsubStatusPeserta = onValue(statusRef, async (snapshot) => {
+      const statusDocRef = doc(firestoreDb, "status_peserta", getStatusPesertaDocId(ujianAktif.id, siswaAktif.nisn));
+      unsubStatusPeserta = onSnapshot(statusDocRef, async (snapshot) => {
         if (!isExamActive || isSubmitting || sedangKumpul) return;
 
         if (!snapshot.exists()) {
@@ -827,13 +816,15 @@
           return;
         }
 
-        const val = snapshot.val() || {};
+        const val = snapshot.data() || {};
         if (val.status === "selesai") {
           isExamActive = false;
           clearInterval(timerInterval);
           alert("Pengawas/Guru telah mengakhiri sesi ujian Anda. Jawaban Anda saat ini otomatis dikumpulkan.");
           await prosesKumpulJawaban({ diselesaikanPaksa: true });
         }
+      }, (err) => {
+        console.warn("Listener status peserta terputus:", err);
       });
     }
 
@@ -1089,10 +1080,11 @@
           }
           document.getElementById("warningOverlay").classList.add("d-none");
 
-          const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
-          await update(statusRef, {
+          const statusDocRef = doc(firestoreDb, "status_peserta", getStatusPesertaDocId(ujianAktif.id, siswaAktif.nisn));
+          await updateDoc(statusDocRef, {
             status: "terlempar",
-            waktuTerlempar: new Date().toLocaleTimeString("id-ID", { hour12: false })
+            waktuTerlempar: new Date().toLocaleTimeString("id-ID", { hour12: false }),
+            updatedAt: serverTimestamp()
           }).catch(() => {});
 
           alert("Anda telah melanggar batas kesempatan keluar dari ujian! Sesi Anda dikunci. Silakan lapor ke Pengawas untuk penanganan lebih lanjut.");
@@ -1201,7 +1193,7 @@
       };
 
       try {
-        await simpanJawabanKeTujuan(payloadHasil, payloadStatus, opsiStatus);
+        await simpanJawabanFirestore(payloadHasil, payloadStatus, opsiStatus);
 
         isExamActive = false;
         clearInterval(timerInterval);
@@ -1222,11 +1214,10 @@
         window.location.reload();
       } catch (e) {
         console.error("Gagal simpan nilai:", e);
-        // Kembalikan flag dan tombol agar siswa bisa mencoba kirim ulang jika jaringan bermasalah
         sedangKumpul = false;
         isSubmitting = false;
         setStatusTombolKirim(false);
-        alert("Pengiriman sempat tertunda karena jaringan. Jawaban Anda tetap aman di perangkat ini—silakan coba kirim kembali.");
+        alert("Pengiriman sempat tertunda karena jaringan. Jawaban Anda tetap aman di perangkat iniâ€”silakan coba kirim kembali.");
       }
     }
 
@@ -1280,5 +1271,3 @@
   </script>
 </body>
 </html>
-
-Apakah ada bagian lain yang ingin kamu periksa sebelum sesi dimulai?
