@@ -113,10 +113,10 @@
 
     <!-- TOMBOL AKSI MANAJEMEN ADMIN -->
     <div class="d-flex flex-wrap gap-2 mb-4 align-items-center">
-      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+      <button type="button" class="btn btn-outline-primary" onclick="openModalTambahGuru()">
         <i class="bi bi-person-plus me-1"></i> Tambah Guru
       </button>
-      <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalKelolaKelas">
+      <button type="button" class="btn btn-outline-success" onclick="openModalKelolaKelas()">
         <i class="bi bi-building me-1"></i> Kelola Kelas
       </button>
       <button type="button" class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#modalMapel">
@@ -817,14 +817,14 @@
     </div>
   </div>
 
-  <!-- MODAL: EDIT & RESET PASSWORD GURU (MAPEL LENGKAP + CHECKBOX TARGET KELAS) -->
+  <!-- MODAL: EDIT AKUN GURU (MAPEL LENGKAP + CHECKBOX TARGET KELAS) -->
   <div class="modal fade" id="modalEditGuru" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
       <div class="modal-content">
         <form id="formEditGuru" class="d-flex flex-column h-100 overflow-hidden">
           <input type="hidden" id="editGuruUid">
           <div class="modal-header bg-warning">
-            <h5 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square me-2"></i>Edit / Reset Akun Guru</h5>
+            <h5 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square me-2"></i>Edit Akun Guru</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
@@ -843,11 +843,6 @@
                 <small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>
               </div>
             </div>
-            <hr class="my-2">
-            <div class="mb-1">
-              <label class="form-label fw-semibold text-danger mb-1"><i class="bi bi-key-fill me-1"></i>Reset Password Baru (Opsional)</label>
-              <input type="password" id="editGuruPassword" class="form-control form-control-sm" placeholder="Kosongkan jika tidak ingin mengubah password" minlength="6">
-            </div>
           </div>
           <div class="modal-footer bg-white border-top">
             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
@@ -863,174 +858,22 @@
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Loader Mandiri Modal Guru & Interaksi Checkbox Kelas -->
-  <script type="module">
-    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
-      authDomain: "aplikasi-ujian-8e501.firebaseapp.com",
-      databaseURL: "https://aplikasi-ujian-8e501-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "aplikasi-ujian-8e501",
-      storageBucket: "aplikasi-ujian-8e501.firebasestorage.app",
-      messagingSenderId: "945781407027",
-      appId: "1:945781407027:web:4672d4c894e143c9b05246",
-      measurementId: "G-CBH4C0BVXD"
-    };
-
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    let cacheMapel = null;
-    let cacheKelas = null;
-    let cachePengguna = null;
-
-    async function ambilMasterData(force = false) {
-      if (!force && cacheMapel && cacheKelas && cachePengguna) {
-        return { mapelList: cacheMapel, kelasList: cacheKelas, penggunaMap: cachePengguna };
-      }
-
-      const [snapMapel, snapKelas, snapPengguna] = await Promise.all([
-        get(ref(db, "daftarMapel")),
-        get(ref(db, "daftarKelas")),
-        get(ref(db, "pengguna"))
-      ]);
-
-      const rawMapel = snapMapel.exists() ? snapMapel.val() : {};
-      cacheMapel = Object.values(rawMapel)
-        .map(m => typeof m === "string" ? m : (m.nama || m.mapel || ""))
-        .map(s => String(s).trim())
-        .filter(Boolean);
-
-      const rawKelas = snapKelas.exists() ? snapKelas.val() : {};
-      cacheKelas = Object.values(rawKelas)
-        .map(k => typeof k === "string" ? k : (k.nama || k.kelas || ""))
-        .map(s => String(s).trim())
-        .filter(Boolean);
-
-      cachePengguna = snapPengguna.exists() ? snapPengguna.val() : {};
-      return { mapelList: cacheMapel, kelasList: cacheKelas, penggunaMap: cachePengguna };
-    }
-
-    function renderMapping(containerEl, mapelList, kelasList, existingDetail = {}) {
-      if (!containerEl) return;
-
-      containerEl.innerHTML = "";
-      if (!mapelList.length) {
-        containerEl.innerHTML = `<small class="text-muted">Belum ada mata pelajaran terdaftar.</small>`;
-        return;
-      }
-
-      mapelList.forEach((mapel, idx) => {
-        const isMapelChecked = Object.prototype.hasOwnProperty.call(existingDetail, mapel);
-        const kelasDipilih = isMapelChecked && Array.isArray(existingDetail[mapel]) ? existingDetail[mapel] : [];
-
-        const mapelCbId = `cb_mapel_${containerEl.id}_${idx}`;
-        const boxId = `box_kelas_${containerEl.id}_${idx}`;
-
-        const card = document.createElement("div");
-        card.className = "border rounded bg-white p-2 mb-2";
-
-        const kelasHtml = kelasList.length
-          ? kelasList.map((k, kIdx) => {
-              const kId = `cb_kelas_${containerEl.id}_${idx}_${kIdx}`;
-              const checked = kelasDipilih.includes(k) ? "checked" : "";
-              return `
-                <div class="form-check form-check-inline mb-1">
-                  <input class="form-check-input kelas-item" type="checkbox" id="${kId}" value="${k.replace(/"/g, "&quot;")}" ${checked}>
-                  <label class="form-check-label small" for="${kId}">${k}</label>
-                </div>
-              `;
-            }).join("")
-          : `<small class="text-muted">Belum ada data kelas terdaftar.</small>`;
-
-        card.innerHTML = `
-          <div class="form-check">
-            <input class="form-check-input mapel-toggle" type="checkbox" id="${mapelCbId}" data-box="${boxId}" value="${mapel.replace(/"/g, "&quot;")}" ${isMapelChecked ? "checked" : ""}>
-            <label class="form-check-label fw-bold" for="${mapelCbId}">${mapel}</label>
-          </div>
-          <div id="${boxId}" class="mt-2 ps-4 pt-2 border-top ${isMapelChecked ? "" : "d-none"}">
-            <div class="small text-muted mb-1">Target kelas untuk <strong>${mapel}</strong>:</div>
-            ${kelasHtml}
-          </div>
-        `;
-
-        const mapelCb = card.querySelector(`#${mapelCbId}`);
-        const boxEl = card.querySelector(`#${boxId}`);
-
-        mapelCb.addEventListener("change", () => {
-          if (mapelCb.checked) {
-            boxEl.classList.remove("d-none");
-          } else {
-            boxEl.classList.add("d-none");
-            boxEl.querySelectorAll("input.kelas-item").forEach(cb => { cb.checked = false; });
-          }
+  <!-- Sinkronisasi Checkbox "Semua Kelas" pada Modal Buat Ujian -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const checkKelasSemua = document.getElementById("checkKelasSemua");
+      const containerCheckboxKelas = document.getElementById("containerCheckboxKelas");
+      checkKelasSemua?.addEventListener("change", () => {
+        if (!containerCheckboxKelas) return;
+        containerCheckboxKelas.querySelectorAll("input.check-kelas-item").forEach(cb => {
+          cb.checked = false;
+          cb.disabled = checkKelasSemua.checked;
         });
-
-        containerEl.appendChild(card);
-      });
-    }
-
-    const modalTambahEl = document.getElementById("modalTambahGuru");
-    modalTambahEl?.addEventListener("show.bs.modal", async () => {
-      const container = document.getElementById("containerMappingMapelKelasTambah");
-      container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
-      const { mapelList, kelasList } = await ambilMasterData(false);
-      renderMapping(container, mapelList, kelasList, {});
-    });
-
-    const modalEditEl = document.getElementById("modalEditGuru");
-    modalEditEl?.addEventListener("show.bs.modal", async () => {
-      const container = document.getElementById("containerMappingMapelKelasEdit");
-      container.innerHTML = `<small class="text-muted">Memuat daftar mata pelajaran &amp; kelas...</small>`;
-
-      const { mapelList, kelasList, penggunaMap } = await ambilMasterData(true);
-      const uid = document.getElementById("editGuruUid")?.value || "";
-      const emailVal = (document.getElementById("editGuruEmail")?.value || "").toLowerCase().trim();
-
-      let guruData = penggunaMap[uid] || null;
-      if (!guruData && emailVal) {
-        guruData = Object.values(penggunaMap).find(p => String(p.email || "").toLowerCase().trim() === emailVal) || null;
-      }
-
-      const existingDetail = {};
-      if (guruData) {
-        if (guruData.detailAmpuan && typeof guruData.detailAmpuan === "object") {
-          Object.entries(guruData.detailAmpuan).forEach(([m, kArr]) => {
-            existingDetail[String(m).trim()] = Array.isArray(kArr) ? kArr : [];
-          });
-        } else {
-          const arrMapel = Array.isArray(guruData.mapelDiampu)
-            ? guruData.mapelDiampu
-            : (guruData.mapel ? [guruData.mapel] : []);
-          const arrKelas = Array.isArray(guruData.kelasDiampu)
-            ? guruData.kelasDiampu
-            : (typeof guruData.kelasDiampu === "string" && guruData.kelasDiampu.trim()
-                ? guruData.kelasDiampu.split(",").map(s => s.trim())
-                : []);
-          arrMapel.forEach(m => {
-            if (m) existingDetail[String(m).trim()] = arrKelas;
-          });
-        }
-      }
-
-      renderMapping(container, mapelList, kelasList, existingDetail);
-    });
-
-    // Sinkronisasi checkbox "Semua Kelas" pada modal Buat Ujian Baru
-    const checkKelasSemua = document.getElementById("checkKelasSemua");
-    const containerCheckboxKelas = document.getElementById("containerCheckboxKelas");
-    checkKelasSemua?.addEventListener("change", () => {
-      if (!containerCheckboxKelas) return;
-      containerCheckboxKelas.querySelectorAll("input.check-kelas-item").forEach(cb => {
-        cb.checked = false;
-        cb.disabled = checkKelasSemua.checked;
       });
     });
   </script>
 
-  <!-- App JS -->
+  <!-- App JS (Murni Cloud Firestore) -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
