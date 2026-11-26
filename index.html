@@ -377,15 +377,10 @@
       </div>
 
       <!-- TAB 5: MONITORING UJIAN -->
-      <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
-        <div class="card border-0 shadow-sm mt-3">
-          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-shield-check me-2"></i>Live Monitoring, Paksa Selesai &amp; Reset Peserta Ujian</h5>
-          </div>
-          <div class="card-body">
-            <div class="row mb-3 align-items-end g-2">
+      <div class="row mb-3 align-items-end g-2">
               <div class="col-md-6">
-                <label class="form-label fw-bold">Pilih Jadwal Ujian (Terfokus Sesuai Mapel/Kelas Ampu atau Pembuat):</label>
+                <label class="form-label fw-bold">Cari &amp; Pilih Jadwal Ujian (Terfokus Sesuai Mapel/Kelas Ampu atau Pembuat):</label>
+                <input type="text" id="cariUjianMonitoring" class="form-control mb-2" placeholder="Ketik kata kunci mapel, judul ujian, atau token..." oninput="filterOpsiUjianMonitoring()">
                 <select id="selectUjianMonitoring" class="form-select form-select-lg" onchange="loadDataMonitoring()">
                   <option value="">-- Pilih Mata Pelajaran / Ujian --</option>
                 </select>
@@ -398,7 +393,7 @@
                 </div>
               </div>
             </div>
-
+      
             <!-- PENCARIAN & AKSI MASSAL -->
             <div class="row g-2 mb-3 align-items-center bg-light p-2 rounded border">
               <div class="col-md-5">
