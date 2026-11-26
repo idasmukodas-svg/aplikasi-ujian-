@@ -68,6 +68,8 @@ let daftarKelas = [];
 let activeUjianId = null;
 let unsubMonitoring = null;
 let sedangProsesMassalMonitoring = false;
+let rekapTerpilihIds = new Set();
+let sedangHapusRekap = false;
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -84,6 +86,15 @@ function sanitizeDbKey(raw) {
 
 function sanitizeFirestoreId(raw) {
   return String(raw ?? "").trim().replace(/\//g, "_") || "default";
+}
+
+function formatWaktuRekap(raw) {
+  if (!raw) return "-";
+  if (typeof raw === "object" && typeof raw.toDate === "function") {
+    return raw.toDate().toLocaleString("id-ID");
+  }
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleString("id-ID");
 }
 
 function normalisasiArraySoal(rawSoal) {
@@ -184,7 +195,8 @@ async function ambilSemuaJawabanFirestore(kodeUjian = "") {
   const rows = [];
   snap.forEach((docSnap) => {
     const val = docSnap.data() || {};
-    if (!kodeUjian || val.kodeUjian === kodeUjian) {
+    const idUjianItem = val.ujianId || val.kodeUjian || "";
+    if (!kodeUjian || idUjianItem === kodeUjian) {
       rows.push({ id: docSnap.id, ...val });
     }
   });
@@ -472,12 +484,29 @@ function terapkanFilterHasilUjian(rawList) {
   }
 
   window.hasilUjian = hasilUjian;
+  const activeIdSet = new Set(hasilUjian.map(item => item.id));
+  Array.from(rekapTerpilihIds).forEach((id) => {
+    if (!activeIdSet.has(id)) rekapTerpilihIds.delete(id);
+  });
+
   if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
   if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
 }
 
 async function muatHasilUjianSekali() {
   try {
+    if (USE_FIRESTORE) {
+      const rowsFs = await ambilSemuaJawabanFirestore();
+      const rawHasilFs = rowsFs.map((item) => ({
+        ...item,
+        id: item.id,
+        ujianId: item.ujianId || item.kodeUjian || "",
+        waktuSelesai: item.waktuSelesai || formatWaktuRekap(item.updatedAt)
+      }));
+      terapkanFilterHasilUjian(rawHasilFs);
+      return;
+    }
+
     const snapshot = await get(ref(db, "hasilUjian"));
     const data = snapshot.val();
     const rawHasil = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
@@ -583,6 +612,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("selectFilterKelas")?.addEventListener("change", () => window.filterRekapNilai());
   document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
+  document.getElementById("checkSemuaRekap")?.addEventListener("change", (e) => window.togglePilihSemuaRekap(e.target.checked));
+  document.getElementById("btnHapusTerpilihRekap")?.addEventListener("click", () => window.hapusRekapTerpilih());
 
   document.getElementById("soalTipe")?.addEventListener("change", (e) => {
     if (typeof window.switchTipeSoal === "function") window.switchTipeSoal(e.target.value);
@@ -619,6 +650,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btnTambahSiswa) btnTambahSiswa.style.display = "none";
   }
 
+  sinkronkanTombolRekapTerpilih();
   await muatHasilUjianSekali();
 });
 
@@ -777,6 +809,7 @@ window.logout = () => {
     unsubMonitoring = null;
   }
   nisnTerpilihMonitoring.clear();
+  rekapTerpilihIds.clear();
   dataMonitoringPeserta = [];
 
   const bersihkanSession = () => {
@@ -1569,13 +1602,95 @@ function renderTabelSiswaFiltered(listSiswa) {
   });
 }
 
+function sinkronkanTombolRekapTerpilih() {
+  const jumlah = rekapTerpilihIds.size;
+  const btnHapusMassal = document.getElementById("btnHapusTerpilihRekap");
+  const checkAll = document.getElementById("checkSemuaRekap");
+
+  if (btnHapusMassal) {
+    btnHapusMassal.disabled = sedangHapusRekap || jumlah === 0;
+    btnHapusMassal.innerHTML = `<i class="bi bi-trash-fill me-1"></i>Hapus Terpilih (${jumlah})`;
+  }
+
+  const visibleBoxes = Array.from(document.querySelectorAll(".check-item-rekap"));
+  if (checkAll) {
+    if (visibleBoxes.length === 0) {
+      checkAll.checked = false;
+      checkAll.indeterminate = false;
+    } else {
+      const checkedCount = visibleBoxes.filter((cb) => cb.checked).length;
+      checkAll.checked = checkedCount === visibleBoxes.length;
+      checkAll.indeterminate = checkedCount > 0 && checkedCount < visibleBoxes.length;
+    }
+  }
+}
+
+window.togglePilihSemuaRekap = (checked) => {
+  document.querySelectorAll(".check-item-rekap").forEach((cb) => {
+    cb.checked = checked;
+    const docId = cb.getAttribute("data-id");
+    if (!docId) return;
+    if (checked) rekapTerpilihIds.add(docId);
+    else rekapTerpilihIds.delete(docId);
+  });
+  sinkronkanTombolRekapTerpilih();
+};
+
+window.togglePilihSatuRekap = (docId, checked) => {
+  if (!docId) return;
+  if (checked) rekapTerpilihIds.add(docId);
+  else rekapTerpilihIds.delete(docId);
+  sinkronkanTombolRekapTerpilih();
+};
+
+async function hapusSatuRekapInternal(resultId) {
+  if (!resultId) return;
+  if (USE_FIRESTORE) {
+    await deleteDoc(doc(firestoreDb, "jawaban_siswa", sanitizeFirestoreId(resultId))).catch(() => {});
+  }
+  await remove(ref(db, `hasilUjian/${sanitizeDbKey(resultId)}`)).catch(() => {});
+}
+
+window.hapusRekapTerpilih = async () => {
+  if (sedangHapusRekap) return;
+  const ids = Array.from(rekapTerpilihIds);
+  if (ids.length === 0) {
+    return alert("Pilih minimal satu data nilai terlebih dahulu!");
+  }
+
+  if (!confirm(`Yakin ingin menghapus permanen ${ids.length} data hasil ujian terpilih?`)) {
+    return;
+  }
+
+  sedangHapusRekap = true;
+  sinkronkanTombolRekapTerpilih();
+
+  try {
+    await Promise.all(ids.map((id) => hapusSatuRekapInternal(id)));
+
+    const idSet = new Set(ids);
+    hasilUjian = hasilUjian.filter((item) => !idSet.has(item.id));
+    window.hasilUjian = hasilUjian;
+    ids.forEach((id) => rekapTerpilihIds.delete(id));
+
+    window.filterRekapNilai();
+    alert(`Berhasil menghapus ${ids.length} data hasil ujian.`);
+  } catch (err) {
+    console.error("Gagal menghapus rekap terpilih:", err);
+    alert("Terjadi kesalahan saat menghapus data terpilih: " + err.message);
+  } finally {
+    sedangHapusRekap = false;
+    sinkronkanTombolRekapTerpilih();
+  }
+};
+
 window.filterRekapNilai = () => {
   const kelasSelected = document.getElementById("selectFilterKelas")?.value.toLowerCase().trim() || "";
   const ujianSelected = document.getElementById("selectFilterUjian")?.value || "";
 
   const filteredHasil = hasilUjian.filter(h => {
     const kelasSiswa = (h.kelas || "").toLowerCase().trim();
-    const ujianId = h.ujianId || "";
+    const ujianId = h.ujianId || h.kodeUjian || "";
 
     const matchKelas = kelasSelected ? (kelasSiswa === kelasSelected) : true;
     const matchUjian = ujianSelected ? (ujianId === ujianSelected) : true;
@@ -1592,14 +1707,19 @@ function renderTabelNilai(listHasil = hasilUjian) {
   tbody.innerHTML = "";
 
   if (listHasil.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada hasil ujian yang sesuai dengan filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">Tidak ada hasil ujian yang sesuai dengan filter.</td></tr>`;
+    sinkronkanTombolRekapTerpilih();
     return;
   }
 
   listHasil.forEach((h, i) => {
     const resultId = escapeHtml(h.id);
+    const checkedAttr = rekapTerpilihIds.has(h.id) ? "checked" : "";
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td class="text-center">
+        <input type="checkbox" class="form-check-input check-item-rekap" data-id="${resultId}" ${checkedAttr} onchange="togglePilihSatuRekap('${resultId}', this.checked)">
+      </td>
       <td>${i + 1}</td>
       <td class="font-monospace">${escapeHtml(h.nisn || "-")}</td>
       <td class="fw-bold">${escapeHtml(h.nama || "-")} <span class="badge bg-light text-dark border ms-1">${escapeHtml(h.kelas || "-")}</span></td>
@@ -1614,6 +1734,8 @@ function renderTabelNilai(listHasil = hasilUjian) {
     `;
     tbody.appendChild(tr);
   });
+
+  sinkronkanTombolRekapTerpilih();
 }
 
 /* EXPOSE GLOBALS TO WINDOW */
@@ -2335,7 +2457,7 @@ window.simpanPerubahanUjian = (e) => {
     alert("Ujian dan token berhasil diperbarui!");
     const modalEl = document.getElementById("modalEditUjian");
     if (modalEl && window.bootstrap) {
-      bootstrap.Modal.getInstance(modalEl)?.hide();
+      bootstrap.Modal.getOrCreateInstance(modalEl)?.hide();
     }
     if (typeof window.filterDataUjian === "function") {
       window.filterDataUjian();
@@ -2691,7 +2813,8 @@ window.loadDataMonitoring = () => {
 window.hapusHasilUjian = async (resultId) => {
   if (!confirm("Apakah Anda yakin ingin menghapus data hasil ujian siswa ini?")) return;
   try {
-    await remove(ref(db, `hasilUjian/${sanitizeDbKey(resultId)}`));
+    await hapusSatuRekapInternal(resultId);
+    rekapTerpilihIds.delete(resultId);
     hasilUjian = hasilUjian.filter(item => item.id !== resultId);
     window.hasilUjian = hasilUjian;
     window.filterRekapNilai();
@@ -2708,7 +2831,7 @@ window.downloadRekapNilaiPerKelas = (kelasFilter, ujianIdFilter) => {
   const dataFiltered = hasilUjian.filter(item => {
     let matchKelas = true, matchUjian = true;
     if (kelasFilter) matchKelas = (item.kelas && item.kelas.trim().toLowerCase() === kelasFilter.trim().toLowerCase());
-    if (ujianIdFilter) matchUjian = (item.ujianId === ujianIdFilter || item.judul === ujianIdFilter || item.mapel === ujianIdFilter);
+    if (ujianIdFilter) matchUjian = (item.ujianId === ujianIdFilter || item.kodeUjian === ujianIdFilter || item.judul === ujianIdFilter || item.mapel === ujianIdFilter);
     return matchKelas && matchUjian;
   });
 
