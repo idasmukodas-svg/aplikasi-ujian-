@@ -26,7 +26,7 @@
                 <label class="form-label fw-bold">Email</label>
                 <div class="input-group">
                   <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                  <input type="email" id="loginEmail" class="form-control" placeholder="Heri@Trihira.sch.id" required>
+                  <input type="email" id="loginEmail" class="form-control" placeholder="nama@sekolah.sch.id" required>
                 </div>
               </div>
 
@@ -55,9 +55,18 @@
   </div>
 
   <script type="module">
-    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      collection,
+      query,
+      where,
+      limit,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCWVQE9zWCgGJy_MYp47U4dp-gDsWFRE8",
@@ -73,9 +82,39 @@
     const auth = getAuth(app);
     const firestoreDb = getFirestore(app);
 
+    async function ambilProfilPengguna(uid, email) {
+      const fallbackProfile = { uid, email, role: "guru", mapel: "" };
+
+      try {
+        const snapPengguna = await getDoc(doc(firestoreDb, "pengguna", uid));
+        if (snapPengguna.exists()) {
+          return { uid, email, ...snapPengguna.data() };
+        }
+
+        const qEmail = query(
+          collection(firestoreDb, "pengguna"),
+          where("email", "==", email),
+          limit(1)
+        );
+        const byEmailSnap = await getDocs(qEmail);
+        if (!byEmailSnap.empty) {
+          return { uid, email, ...byEmailSnap.docs[0].data() };
+        }
+
+        const snapGuru = await getDoc(doc(firestoreDb, "guru", uid));
+        if (snapGuru.exists()) {
+          return { uid, email, role: "guru", ...snapGuru.data() };
+        }
+      } catch (err) {
+        console.warn("Profil Firestore tidak terbaca, menggunakan data Auth:", err);
+      }
+
+      return fallbackProfile;
+    }
+
     document.getElementById("formLogin").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const email = document.getElementById("loginEmail").value.trim();
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
       const password = document.getElementById("loginPassword").value;
       const btn = document.getElementById("btnLogin");
 
@@ -84,24 +123,34 @@
 
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const uid = userCredential.user.uid;
-
-        const snap = await getDoc(doc(firestoreDb, "pengguna", uid));
-        let sessionData = { uid, email, role: "guru", mapel: "" };
-
-        if (snap.exists()) {
-          sessionData = { uid, email, ...snap.data() };
-        }
+        const user = userCredential.user;
+        const sessionData = await ambilProfilPengguna(user.uid, user.email || email);
 
         const serialized = JSON.stringify(sessionData);
         sessionStorage.setItem("userLoggedIn", serialized);
         localStorage.setItem("cbt_current_user", serialized);
 
-        alert(`Selamat datang, ${sessionData.nama || email}!`);
+        alert(`Selamat datang, ${sessionData.nama || sessionData.email}!`);
         window.location.href = "index.html";
       } catch (error) {
         console.error("Login Gagal:", error);
-        alert("Email atau password salah! Coba periksa kembali.");
+
+        let pesan = "Gagal masuk sistem. Silakan coba lagi.";
+        if (
+          error.code === "auth/invalid-credential" ||
+          error.code === "auth/wrong-password" ||
+          error.code === "auth/user-not-found"
+        ) {
+          pesan = "Email atau password salah! Coba periksa kembali.";
+        } else if (error.code === "auth/too-many-requests") {
+          pesan = "Terlalu banyak percobaan login. Tunggu sebentar lalu coba lagi.";
+        } else if (error.code === "auth/network-request-failed") {
+          pesan = "Koneksi jaringan bermasalah saat menghubungi server login.";
+        } else if (error.message) {
+          pesan = `Gagal masuk: ${error.message}`;
+        }
+
+        alert(pesan);
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-box-arrow-in-right me-1"></i> Masuk Sistem`;
       }
