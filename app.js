@@ -2052,41 +2052,87 @@ window.downloadTemplateSiswa = () => {
   XLSX.writeFile(wb, "Template_Data_Siswa.xlsx");
 };
 
+let currentEditGuruUid = "";
+
 window.openModalEditGuru = async (uid) => {
-  const g = daftarPengguna.find(p => p.uid === uid);
+  const g = daftarPengguna.find(p => p.uid === uid || p.id === uid);
   if (!g) return alert("Data guru tidak ditemukan!");
 
-const elNama = document.getElementById("editGuruNama");
-const elEmail = document.getElementById("editGuruEmail");
-const elPass = document.getElementById("editGuruPassword");
+  const resolvedUid = String(g.uid || g.id || uid || "").trim();
+  currentEditGuruUid = resolvedUid;
 
-if (elNama) elNama.value = g.nama || "";
-if (elEmail) elEmail.value = g.email || "";
-if (elPass) elPass.value = "";
+  const elUid = document.getElementById("editGuruUid");
+  if (elUid) elUid.value = resolvedUid;
 
-if ((window.daftarKelas || daftarKelas || []).length === 0) {
-  await muatKelasFirestore();
-}
-if ((window.daftarMapelMaster || []).length === 0) {
-  await muatMapelFirestore();
-}
+  const elNama = document.getElementById("editGuruNama");
+  const elEmail = document.getElementById("editGuruEmail");
+  const elPass = document.getElementById("editGuruPassword");
 
-const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
-if (containerMapping) {
-  const existingDetail = normalisasiDetailAmpuan(g);
-  renderMappingMapelKelas(
-    containerMapping,
-    window.daftarMapelMaster || [],
-    window.daftarKelas || daftarKelas || [],
-    existingDetail
-  );
-}
-   
+  if (elNama) elNama.value = g.nama || "";
+  if (elEmail) elEmail.value = g.email || "";
+  if (elPass) elPass.value = "";
+
+  if ((window.daftarKelas || daftarKelas || []).length === 0) {
+    await muatKelasFirestore();
+  }
+  if ((window.daftarMapelMaster || []).length === 0) {
+    await muatMapelFirestore();
+  }
+
+  const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
+  if (containerMapping) {
+    const existingDetail = normalisasiDetailAmpuan(g);
+    renderMappingMapelKelas(
+      containerMapping,
+      window.daftarMapelMaster || [],
+      window.daftarKelas || daftarKelas || [],
+      existingDetail
+    );
+  }
+
   const modalEl = document.getElementById("modalEditGuru");
   if (modalEl && window.bootstrap) {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 };
+
+async function handleSimpanEditGuru(e) {
+  e.preventDefault();
+  const rawUid = (document.getElementById("editGuruUid")?.value || currentEditGuruUid || "").trim();
+  const docId = sanitizeFirestoreId(rawUid);
+
+  if (!rawUid || !docId || docId === "default") {
+    alert("UID guru tidak valid. Tutup modal lalu buka ulang form edit guru.");
+    return;
+  }
+
+  const nama = document.getElementById("editGuruNama").value.trim();
+  const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
+  const { mapelDiampu, kelasDiampu, detailAmpuan } = ekstrakMappingDariContainer(containerMapping);
+
+  if (mapelDiampu.length === 0) {
+    alert("Pilih minimal satu mata pelajaran!");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(firestoreDb, "pengguna", docId), {
+      nama,
+      mapelDiampu,
+      mapel: mapelDiampu[0],
+      kelasDiampu,
+      detailAmpuan,
+      updatedAt: serverTimestamp()
+    });
+
+    alert(`Profil Guru ${nama} berhasil diperbarui!`);
+    const modalEl = document.getElementById("modalEditGuru");
+    if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl)?.hide();
+    await muatPenggunaFirestore();
+  } catch (err) {
+    alert("Gagal memperbarui data guru: " + err.message);
+  }
+}
 
 window.openModalTambahGuru = async () => {
   const formEl = document.getElementById("formTambahGuru");
