@@ -404,9 +404,10 @@ window.imporBackupJsonKeFirestore = async function () {
       }
     }
 
-    const pesan = "Migrasi ke Firestore sudah selesai dan file backup sudah dihapus.";
+const pesan = "Migrasi ke Firestore sudah selesai dan file backup sudah dihapus.";
 console.info(pesan);
 alert(pesan);
+return null;
 } catch (err) {
   console.error("Gagal impor JSON ke Firestore:", err);
   alert("Gagal impor JSON ke Firestore: " + err.message);
