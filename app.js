@@ -2056,22 +2056,32 @@ window.openModalEditGuru = async (uid) => {
   const g = daftarPengguna.find(p => p.uid === uid);
   if (!g) return alert("Data guru tidak ditemukan!");
 
-  document.getElementById("editGuruUid").value = g.uid;
-  document.getElementById("editGuruNama").value = g.nama || "";
-  document.getElementById("editGuruEmail").value = g.email || "";
-  document.getElementById("editGuruPassword").value = "";
+const elNama = document.getElementById("editGuruNama");
+const elEmail = document.getElementById("editGuruEmail");
+const elPass = document.getElementById("editGuruPassword");
 
-  if ((window.daftarKelas || daftarKelas || []).length === 0) {
-    await muatKelasFirestore();
-  }
-  if ((window.daftarMapelMaster || []).length === 0) {
-    await muatMapelFirestore();
-  }
+if (elNama) elNama.value = g.nama || "";
+if (elEmail) elEmail.value = g.email || "";
+if (elPass) elPass.value = "";
 
-  const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
+if ((window.daftarKelas || daftarKelas || []).length === 0) {
+  await muatKelasFirestore();
+}
+if ((window.daftarMapelMaster || []).length === 0) {
+  await muatMapelFirestore();
+}
+
+const containerMapping = document.getElementById("containerMappingMapelKelasEdit");
+if (containerMapping) {
   const existingDetail = normalisasiDetailAmpuan(g);
-  renderMappingMapelKelas(containerMapping, window.daftarMapelMaster || [], window.daftarKelas || daftarKelas || [], existingDetail);
-
+  renderMappingMapelKelas(
+    containerMapping,
+    window.daftarMapelMaster || [],
+    window.daftarKelas || daftarKelas || [],
+    existingDetail
+  );
+}
+   
   const modalEl = document.getElementById("modalEditGuru");
   if (modalEl && window.bootstrap) {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
