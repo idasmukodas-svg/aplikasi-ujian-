@@ -14,6 +14,8 @@ import {
   updateDoc,
   deleteDoc,
   collection,
+  query,
+  where,
   getDocs,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -70,6 +72,7 @@ let unsubMonitoring = null;
 let sedangProsesMassalMonitoring = false;
 let rekapTerpilihIds = new Set();
 let sedangHapusRekap = false;
+let lastLoadedRekapUjianId = null;
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -191,14 +194,25 @@ async function simpanJawabanFirestore(kodeUjian, nisn, jawabanObj = {}, meta = {
 }
 
 async function ambilSemuaJawabanFirestore(kodeUjian = "") {
-  const snap = await getDocs(collection(firestoreDb, "jawaban_siswa"));
+  const colRef = collection(firestoreDb, "jawaban_siswa");
   const rows = [];
+
+  if (kodeUjian) {
+    const q1 = query(colRef, where("ujianId", "==", kodeUjian));
+    const q2 = query(colRef, where("kodeUjian", "==", kodeUjian));
+    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+    const mapDocs = new Map();
+
+    snap1.forEach((docSnap) => mapDocs.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) }));
+    snap2.forEach((docSnap) => mapDocs.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) }));
+    mapDocs.forEach((val) => rows.push(val));
+    return rows;
+  }
+
+  const snap = await getDocs(colRef);
   snap.forEach((docSnap) => {
     const val = docSnap.data() || {};
-    const idUjianItem = val.ujianId || val.kodeUjian || "";
-    if (!kodeUjian || idUjianItem === kodeUjian) {
-      rows.push({ id: docSnap.id, ...val });
-    }
+    rows.push({ id: docSnap.id, ...val });
   });
   return rows;
 }
@@ -493,16 +507,23 @@ function terapkanFilterHasilUjian(rawList) {
   if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
 }
 
-async function muatHasilUjianSekali() {
+async function muatHasilUjianSekali(kodeUjianFilter = "", forceReload = false) {
+  const targetUjian = kodeUjianFilter || document.getElementById("selectFilterUjian")?.value || "";
+  if (!forceReload && targetUjian && lastLoadedRekapUjianId === targetUjian && hasilUjian.length > 0) {
+    if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
+    return;
+  }
+
   try {
     if (USE_FIRESTORE) {
-      const rowsFs = await ambilSemuaJawabanFirestore();
+      const rowsFs = await ambilSemuaJawabanFirestore(targetUjian);
       const rawHasilFs = rowsFs.map((item) => ({
         ...item,
         id: item.id,
         ujianId: item.ujianId || item.kodeUjian || "",
         waktuSelesai: item.waktuSelesai || formatWaktuRekap(item.updatedAt)
       }));
+      lastLoadedRekapUjianId = targetUjian || "__ALL__";
       terapkanFilterHasilUjian(rawHasilFs);
       return;
     }
@@ -510,6 +531,7 @@ async function muatHasilUjianSekali() {
     const snapshot = await get(ref(db, "hasilUjian"));
     const data = snapshot.val();
     const rawHasil = data ? Object.entries(data).map(([key, val]) => ({ id: key, ...val })) : [];
+    lastLoadedRekapUjianId = targetUjian || "__ALL__";
     terapkanFilterHasilUjian(rawHasil);
   } catch (err) {
     console.error("Gagal memuat rekap nilai:", err);
@@ -550,7 +572,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("tabNilai")?.addEventListener("click", () => {
-    muatHasilUjianSekali();
+    const ujianTerpilih = document.getElementById("selectFilterUjian")?.value || "";
+    muatHasilUjianSekali(ujianTerpilih, false);
   });
 
   document.getElementById("tabMonitoring")?.addEventListener("click", () => {
@@ -579,7 +602,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       previewImg.src = cleanUrl;
     }
   });
-   
+
   document.getElementById("formTambahMapel")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const inputMapel = document.getElementById("inputNamaMapel");
@@ -607,7 +630,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("fileExcelSoal")?.addEventListener("change", importExcelSoal);
 
   document.getElementById("selectFilterKelas")?.addEventListener("change", () => window.filterRekapNilai());
-  document.getElementById("selectFilterUjian")?.addEventListener("change", () => window.filterRekapNilai());
+  document.getElementById("selectFilterUjian")?.addEventListener("change", async (e) => {
+    const ujianId = e.target.value || "";
+    if (ujianId) {
+      await muatHasilUjianSekali(ujianId, false);
+    } else {
+      window.filterRekapNilai();
+    }
+  });
   document.getElementById("checkSemuaRekap")?.addEventListener("change", (e) => window.togglePilihSemuaRekap(e.target.checked));
   document.getElementById("btnHapusTerpilihRekap")?.addEventListener("click", () => window.hapusRekapTerpilih());
 
@@ -616,9 +646,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("btnExportRekap")?.addEventListener("click", async () => {
-    await muatHasilUjianSekali();
     const kelas = document.getElementById("selectFilterKelas")?.value || "";
     const ujianId = document.getElementById("selectFilterUjian")?.value || "";
+    await muatHasilUjianSekali(ujianId, true);
     if (typeof window.downloadRekapNilaiPerKelas === "function") {
       window.downloadRekapNilaiPerKelas(kelas, ujianId);
     }
@@ -647,7 +677,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   sinkronkanTombolRekapTerpilih();
-  await muatHasilUjianSekali();
 });
 
 // 1. Load Realtime Data Kelas
