@@ -649,15 +649,14 @@
                       <textarea id="soalPertanyaan" class="form-control" rows="3" required></textarea>
                     </div>
                     <div class="mb-3">
-                      <label class="form-label fw-bold">Unggah Gambar Soal (Opsional - Maks. 1 MB)</label>
-                      <input type="file" id="soalGambarFile" class="form-control" accept="image/jpeg,image/png,image/webp">
-                      <div class="form-text">Format: JPG, PNG, WEBP. Otomatis dikompresi agar hemat kuota download siswa.</div>
-
-                      <div id="previewGambarContainer" class="mt-2 text-center d-none">
-                        <img id="previewGambar" src="" class="img-fluid rounded border" style="max-height: 150px;" alt="Preview">
-                      </div>
+                    <label for="soalGambarUrl" class="form-label fw-bold">Link / URL Gambar Soal (Opsional)</label>
+                    <input type="url" id="soalGambarUrl" class="form-control" placeholder="Tempelkan link gambar di sini (contoh: https://.../gambar.jpg)">
+                    <div class="form-text">Gunakan <strong>direct link</strong> berawalan <code>https://</code> (hasil salin alamat gambar / link langsung Google Drive).</div>
+                  
+                    <div id="previewGambarContainer" class="mt-2 text-center d-none">
+                      <img id="previewGambar" src="" class="img-fluid rounded border" style="max-height: 150px;" alt="Preview">
                     </div>
-
+                  </div>
                     <!-- Container Opsi PG / PG Kompleks (A-E) -->
                     <div id="containerPG">
                       <div class="row g-2 mb-2">
