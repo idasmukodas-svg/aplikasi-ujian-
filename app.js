@@ -238,9 +238,11 @@ async function ambilSemuaJawabanFirestore(kodeUjian = "") {
 
 window.imporBackupJsonKeFirestore = async function(options = {}) {
   const pathJson = options.pathJson || "./backup-rtdb.json.json";
-  const targetDocId = sanitizeFirestoreId(options.kodeUjian || "ujian_1");
-  const keyNodeSoal = options.keyNodeSoal || null;
-  const maxUjianDiimpor = Number(options.maxUjian) || 50;
+  const maxUjianDiimpor = Number(options.maxUjian) || 100;
+  const skipDummySiswa = options.skipDummySiswa !== false;
+  const dummyNisnSet = new Set(
+    Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(10, "0"))
+  );
 
   try {
     const res = await fetch(pathJson);
@@ -249,14 +251,126 @@ window.imporBackupJsonKeFirestore = async function(options = {}) {
     }
     const rawJson = await res.json();
 
-    if (rawJson.daftarUjian && typeof rawJson.daftarUjian === "object" && !keyNodeSoal && !rawJson.soal) {
+    let countKelas = 0;
+    let countMapel = 0;
+    let countSiswa = 0;
+    let countUjian = 0;
+
+    // 1. Impor daftarKelas -> koleksi "kelas"
+    if (rawJson.daftarKelas) {
+      const entriesKelas = Array.isArray(rawJson.daftarKelas)
+        ? rawJson.daftarKelas.map((item, idx) => [String(idx), item])
+        : Object.entries(rawJson.daftarKelas);
+
+      for (let i = 0; i < entriesKelas.length; i += 400) {
+        const batch = writeBatch(firestoreDb);
+        let batchAdaItem = false;
+
+        for (const [key, val] of entriesKelas.slice(i, i + 400)) {
+          if (!val) continue;
+          const namaKelas = typeof val === "string"
+            ? val.trim()
+            : String(val.nama || val.kode || key || "").trim();
+          if (!namaKelas) continue;
+
+          const docId = sanitizeFirestoreId(namaKelas);
+          batch.set(
+            doc(firestoreDb, "kelas", docId),
+            {
+              ...(typeof val === "object" ? val : {}),
+              nama: namaKelas,
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          );
+          countKelas++;
+          batchAdaItem = true;
+        }
+
+        if (batchAdaItem) await batch.commit();
+      }
+    }
+
+    // 2. Impor daftarMapel -> koleksi "mapel"
+    if (rawJson.daftarMapel) {
+      const entriesMapel = Array.isArray(rawJson.daftarMapel)
+        ? rawJson.daftarMapel.map((item, idx) => [String(idx), item])
+        : Object.entries(rawJson.daftarMapel);
+
+      for (let i = 0; i < entriesMapel.length; i += 400) {
+        const batch = writeBatch(firestoreDb);
+        let batchAdaItem = false;
+
+        for (const [key, val] of entriesMapel.slice(i, i + 400)) {
+          if (!val) continue;
+          const namaMapel = typeof val === "string"
+            ? val.trim()
+            : String(val.nama || val.mapel || key || "").trim();
+          if (!namaMapel || namaMapel.toLowerCase() === "umum") continue;
+
+          const docId = sanitizeFirestoreId(namaMapel);
+          batch.set(
+            doc(firestoreDb, "mapel", docId),
+            {
+              ...(typeof val === "object" ? val : {}),
+              nama: namaMapel,
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          );
+          countMapel++;
+          batchAdaItem = true;
+        }
+
+        if (batchAdaItem) await batch.commit();
+      }
+    }
+
+    // 3. Impor daftarSiswa -> koleksi "siswa"
+    if (rawJson.daftarSiswa && typeof rawJson.daftarSiswa === "object") {
+      const entriesSiswa = Object.entries(rawJson.daftarSiswa);
+
+      for (let i = 0; i < entriesSiswa.length; i += 400) {
+        const batch = writeBatch(firestoreDb);
+        let batchAdaItem = false;
+
+        for (const [nisnKey, sItem] of entriesSiswa.slice(i, i + 400)) {
+          if (!sItem || typeof sItem !== "object") continue;
+          const nisnStr = String(sItem.nisn || nisnKey || "").trim();
+          if (!nisnStr) continue;
+          if (skipDummySiswa && dummyNisnSet.has(nisnStr)) continue;
+
+          const docId = sanitizeFirestoreId(nisnStr);
+          batch.set(
+            doc(firestoreDb, "siswa", docId),
+            {
+              nisn: nisnStr,
+              nama: String(sItem.nama || "").trim(),
+              kelas: String(sItem.kelas || "").trim(),
+              updatedAt: serverTimestamp()
+            },
+            { merge: true }
+          );
+          countSiswa++;
+          batchAdaItem = true;
+        }
+
+        if (batchAdaItem) await batch.commit();
+      }
+    }
+
+    // 4. Impor daftarUjian -> koleksi "ujian" & "soal" (dengan totalSoal akurat)
+    if (rawJson.daftarUjian && typeof rawJson.daftarUjian === "object") {
       const entriesUjian = Object.entries(rawJson.daftarUjian).slice(0, maxUjianDiimpor);
-      let berhasil = 0;
 
       for (const [uidUjian, uItem] of entriesUjian) {
-        if (!uItem) continue;
+        if (!uItem || typeof uItem !== "object") continue;
         const soalBersih = normalisasiArraySoal(uItem.soal || []);
-        const docId = entriesUjian.length === 1 ? targetDocId : sanitizeFirestoreId(uidUjian);
+        const totalSoalAkurat = soalBersih.length;
+        const docId = sanitizeFirestoreId(uItem.id || uidUjian);
+        const kelasTargetNorm = Array.isArray(uItem.kelasTarget)
+          ? uItem.kelasTarget.map(k => String(k).trim()).filter(Boolean)
+          : (uItem.kelasTarget ? [String(uItem.kelasTarget).trim()] : ["Semua"]);
 
         await setDoc(
           doc(firestoreDb, "ujian", docId),
@@ -264,12 +378,12 @@ window.imporBackupJsonKeFirestore = async function(options = {}) {
             id: docId,
             idGuru: uItem.idGuru || "",
             mapel: String(uItem.mapel || ""),
-            kelasTarget: Array.isArray(uItem.kelasTarget) ? uItem.kelasTarget : [uItem.kelasTarget || "Semua"],
+            kelasTarget: kelasTargetNorm,
             judul: String(uItem.judul || ""),
             durasi: Number(uItem.durasi) || 60,
             token: String(uItem.token || "").toUpperCase(),
             status: uItem.status || "nonaktif",
-            totalSoal: soalBersih.length,
+            totalSoal: totalSoalAkurat,
             createdBy: uItem.createdBy || "Admin",
             createdAt: uItem.createdAt || Date.now(),
             updatedAt: serverTimestamp()
@@ -281,44 +395,25 @@ window.imporBackupJsonKeFirestore = async function(options = {}) {
           sumberImport: pathJson,
           judul: String(uItem.judul || ""),
           mapel: String(uItem.mapel || ""),
+          totalSoal: totalSoalAkurat,
           diimporPada: new Date().toISOString()
         });
-        berhasil++;
+
+        countUjian++;
       }
-
-      const pesan = `Berhasil mengimpor ${berhasil} paket ujian ke Firestore ("ujian" & "soal").`;
-      console.log(pesan);
-      alert(pesan);
-      await muatSemuaMasterFirestore(true);
-      return berhasil;
     }
 
-    let kandidatSoal = null;
-    if (keyNodeSoal && rawJson[keyNodeSoal]) {
-      kandidatSoal = rawJson[keyNodeSoal];
-    } else if (rawJson.soal) {
-      kandidatSoal = rawJson.soal;
-    } else {
-      kandidatSoal = rawJson;
-    }
-
-    const daftarSoalTerimpor = normalisasiArraySoal(kandidatSoal);
-    await simpanSoalFirestore(targetDocId, daftarSoalTerimpor, {
-      sumberImport: pathJson,
-      diimporPada: new Date().toISOString()
-    });
-
-    const pesan = `Berhasil mengimpor ${daftarSoalTerimpor.length} soal ke Firestore (soal/${targetDocId}).`;
+    const pesan = `Impor selesai: ${countUjian} ujian/soal, ${countKelas} kelas, ${countMapel} mapel, ${countSiswa} siswa.`;
     console.log(pesan);
     alert(pesan);
-    return daftarSoalTerimpor;
+    await muatSemuaMasterFirestore(true);
+    return { countUjian, countKelas, countMapel, countSiswa };
   } catch (err) {
     console.error("Gagal impor JSON ke Firestore:", err);
     alert("Gagal impor JSON ke Firestore: " + err.message);
     throw err;
   }
 };
-
 function normalisasiDetailAmpuan(guruObj) {
   const detail = {};
   if (!guruObj) return detail;
