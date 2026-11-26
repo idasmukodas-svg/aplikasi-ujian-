@@ -106,7 +106,7 @@
     <h2 class="fw-bold">PERINGATAN KECURANGAN!</h2>
     <p class="fs-5 text-center px-3" id="warningText">Anda terdeteksi keluar dari layar penuh / berpindah tab!</p>
     <p class="fw-bold fs-4">Sisa Kesempatan: <span id="warningCount" class="badge bg-warning text-dark">3</span></p>
-    <button class="btn btn-light btn-lg fw-bold mt-3" onclick="kembaliKeFullscreen()">
+    <button type="button" class="btn btn-light btn-lg fw-bold mt-3" onclick="kembaliKeFullscreen()">
       <i class="bi bi-fullscreen me-2"></i>Kembali Ke Ujian (Layar Penuh)
     </button>
   </div>
@@ -223,7 +223,7 @@
               <span><i class="bi bi-square text-secondary me-1"></i>Belum</span>
             </div>
 
-            <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="konfirmasiSelesaiUjian()">
+            <button type="button" id="btnBukaKonfirmasiSelesai" class="btn btn-success w-100 py-2 fw-bold" onclick="konfirmasiSelesaiUjian()">
               <i class="bi bi-check-circle-fill me-2"></i>Selesai &amp; Kirim Ujian
             </button>
           </div>
@@ -317,6 +317,7 @@
     let sisaDetik = 0;
     let warningTotal = 3;
     let isExamActive = false;
+    let sedangKumpul = false;
     let isSubmitting = false;
     let isVerifyingLogin = false;
     let lastLoginAttemptAt = 0;
@@ -357,12 +358,20 @@
       return `cbt_smantar_bank_${sanitizeKey(ujianId)}_${USE_FIRESTORE ? "fs" : "rtdb"}`;
     }
 
-    function bacaCacheBankSoal(ujianId) {
+    function bacaCacheBankSoal(ujianId, expectedVersi = null) {
       try {
         const raw = localStorage.getItem(getStorageKeyBankSoal(ujianId)) || sessionStorage.getItem(getStorageKeyBankSoal(ujianId));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+
+        if (parsed && Array.isArray(parsed.soal) && parsed.soal.length > 0) {
+          if (expectedVersi !== null && parsed.versi !== expectedVersi) {
+            return null;
+          }
+          return parsed.soal.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
+        }
+
+        if (Array.isArray(parsed) && parsed.length > 0 && expectedVersi === null) {
           return parsed.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
         }
       } catch (err) {
@@ -371,11 +380,15 @@
       return null;
     }
 
-    function simpanCacheBankSoal(ujianId, listSoal) {
+    function simpanCacheBankSoal(ujianId, listSoal, versi = null) {
       try {
         if (!ujianId || !Array.isArray(listSoal) || listSoal.length === 0) return;
         const bersih = listSoal.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
-        const serialized = JSON.stringify(bersih);
+        const serialized = JSON.stringify({
+          versi: versi ?? bersih.length,
+          disimpanPada: Date.now(),
+          soal: bersih
+        });
         try {
           localStorage.setItem(getStorageKeyBankSoal(ujianId), serialized);
         } catch (_) {
@@ -438,10 +451,11 @@
       }
     }
 
-    // Muat soal sesuai USE_FIRESTORE dengan cache lokal agar tidak menyedot kuota baca berulang
+    // Muat soal sesuai USE_FIRESTORE dengan cache lokal per ujianId + versi/jumlah soal
     async function muatSoalUjianTerpadu(ujianObj) {
       const ujianId = ujianObj?.id || "ujian_1";
-      const cachedSoal = bacaCacheBankSoal(ujianId);
+      const versiMetadata = ujianObj?.totalSoal || (Array.isArray(ujianObj?.soal) && ujianObj.soal.length > 0 ? ujianObj.soal.length : null);
+      const cachedSoal = bacaCacheBankSoal(ujianId, versiMetadata);
       if (cachedSoal) {
         return cachedSoal;
       }
@@ -451,7 +465,7 @@
         .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
 
       if (!USE_FIRESTORE) {
-        simpanCacheBankSoal(ujianId, soalFallback);
+        simpanCacheBankSoal(ujianId, soalFallback, soalFallback.length);
         return soalFallback;
       }
 
@@ -467,13 +481,14 @@
             const bersih = daftar
               .filter(Boolean)
               .map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
-            simpanCacheBankSoal(ujianId, bersih);
+            const versiSimpan = data.totalSoal || bersih.length;
+            simpanCacheBankSoal(ujianId, bersih, versiSimpan);
             return bersih;
           }
         }
       }
 
-      simpanCacheBankSoal(ujianId, soalFallback);
+      simpanCacheBankSoal(ujianId, soalFallback, soalFallback.length);
       return soalFallback;
     }
 
@@ -794,7 +809,7 @@
 
       const statusRef = ref(db, `statusPeserta/${sanitizeKey(ujianAktif.id)}/${sanitizeKey(siswaAktif.nisn)}`);
       unsubStatusPeserta = onValue(statusRef, async (snapshot) => {
-        if (!isExamActive || isSubmitting) return;
+        if (!isExamActive || isSubmitting || sedangKumpul) return;
 
         if (!snapshot.exists()) {
           isExamActive = false;
@@ -1054,7 +1069,7 @@
     }
 
     async function handleViolation() {
-      if (!isExamActive || isSubmitting || violationReported) return;
+      if (!isExamActive || isSubmitting || sedangKumpul || violationReported) return;
       const now = Date.now();
       if (now - lastViolationAt < 1200) return;
 
@@ -1096,20 +1111,27 @@
       return { terjawab, total: daftarSoalAcak.length };
     }
 
+    function setStatusTombolKirim(sedangProses) {
+      const btnBuka = document.getElementById("btnBukaKonfirmasiSelesai");
+      const btnKirim = document.getElementById("btnKonfirmasiKirimUjian");
+      if (btnBuka) {
+        btnBuka.disabled = sedangProses;
+      }
+      if (btnKirim) {
+        btnKirim.disabled = sedangProses || !document.getElementById("cekPernyataanSelesai")?.checked;
+        if (sedangProses) {
+          btnKirim.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
+        } else {
+          btnKirim.innerHTML = `<i class="bi bi-send-check-fill me-1"></i>Kirim &amp; Selesaikan Ujian`;
+        }
+      }
+    }
+
     async function prosesKumpulJawaban(opsiStatus = {}) {
-      if (isSubmitting) return;
+      if (sedangKumpul || isSubmitting) return;
+      sedangKumpul = true;
       isSubmitting = true;
-      isExamActive = false;
-      clearInterval(timerInterval);
-
-      if (typeof unsubStatusPeserta === "function") {
-        unsubStatusPeserta();
-        unsubStatusPeserta = null;
-      }
-
-      if (modalKonfirmasiInstance) {
-        modalKonfirmasiInstance.hide();
-      }
+      setStatusTombolKirim(true);
 
       let totalPoinDiperoleh = 0;
       const totalSoal = daftarSoalAcak.length;
@@ -1180,31 +1202,43 @@
 
       try {
         await simpanJawabanKeTujuan(payloadHasil, payloadStatus, opsiStatus);
+
+        isExamActive = false;
+        clearInterval(timerInterval);
+        if (typeof unsubStatusPeserta === "function") {
+          unsubStatusPeserta();
+          unsubStatusPeserta = null;
+        }
+        if (modalKonfirmasiInstance) {
+          modalKonfirmasiInstance.hide();
+        }
         hapusProgresLokal(ujianAktif.id, siswaAktif.nisn);
-        alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
+
+        // Nilai disimpan untuk rekap admin, tidak ditampilkan ke layar siswa
+        alert("Ujian Selesai! Jawaban Anda telah berhasil dikirim dan tercatat di sistem.");
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+        window.location.reload();
       } catch (e) {
         console.error("Gagal simpan nilai:", e);
-        alert(`Ujian Selesai! Nilai Anda: ${nilaiAkhir}`);
+        // Kembalikan flag dan tombol agar siswa bisa mencoba kirim ulang jika jaringan bermasalah
+        sedangKumpul = false;
+        isSubmitting = false;
+        setStatusTombolKirim(false);
+        alert("Pengiriman sempat tertunda karena jaringan. Jawaban Anda tetap aman di perangkat ini—silakan coba kirim kembali.");
       }
-
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
-      window.location.reload();
     }
 
     const cekPernyataan = document.getElementById("cekPernyataanSelesai");
     const btnKonfirmasiKirim = document.getElementById("btnKonfirmasiKirimUjian");
 
     cekPernyataan.addEventListener("change", () => {
-      btnKonfirmasiKirim.disabled = !cekPernyataan.checked;
+      btnKonfirmasiKirim.disabled = !cekPernyataan.checked || sedangKumpul;
     });
 
     btnKonfirmasiKirim.addEventListener("click", async () => {
-      if (!cekPernyataan.checked || isSubmitting) return;
-      btnKonfirmasiKirim.disabled = true;
-      btnKonfirmasiKirim.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...`;
-
+      if (!cekPernyataan.checked || sedangKumpul || isSubmitting) return;
       await prosesKumpulJawaban({ konfirmasiSiswaSelesai: true });
     });
 
@@ -1219,6 +1253,7 @@
     };
 
     window.konfirmasiSelesaiUjian = function() {
+      if (sedangKumpul || isSubmitting) return;
       const { terjawab, total } = hitungJumlahSoalTerjawab();
       const belumDijawab = total - terjawab;
       const jumlahRagu = daftarSoalAcak.filter(s => Boolean(soalRagu[s.id])).length;
@@ -1245,3 +1280,5 @@
   </script>
 </body>
 </html>
+
+Apakah ada bagian lain yang ingin kamu periksa sebelum sesi dimulai?
