@@ -491,9 +491,40 @@ function renderMappingMapelKelas(containerEl, mapelList, kelasList, existingDeta
   });
 }
 
+function getCacheKeyRekapUjian(kodeUjian) {
+  return `cbt_rekap_ujian_${sanitizeFirestoreId(kodeUjian)}`;
+}
+
 function terapkanFilterHasilUjian(rawList) {
   const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
-  if (session && session.role === "guru") {
+  const ujianSelected = String(document.getElementById("selectFilterUjian")?.value || "").trim();
+
+  if (!ujianSelected) {
+    hasilUjian = [];
+    window.hasilUjian = [];
+    rekapTerpilihIds.clear();
+    if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
+    if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
+    return;
+  }
+
+  let listTersaring = Array.isArray(rawList) ? rawList : [];
+
+  if (session && !isUserAdmin(session)) {
+    const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+    const ujianObj = sumberUjian.find(
+      u => u.id === ujianSelected || sanitizeFirestoreId(u.id) === sanitizeFirestoreId(ujianSelected)
+    );
+
+    if (!ujianObj || !apakahUjianSesuaiHakGuru(ujianObj, session)) {
+      hasilUjian = [];
+      window.hasilUjian = [];
+      rekapTerpilihIds.clear();
+      if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
+      if (typeof window.updateFilterUjianDropdown === "function") window.updateFilterUjianDropdown();
+      return;
+    }
+
     const detail = normalisasiDetailAmpuan(session);
     const mapelKeys = Object.keys(detail);
     const mapelGuruArray = mapelKeys.length > 0
@@ -504,8 +535,8 @@ function terapkanFilterHasilUjian(rawList) {
 
     const kelasDiampu = getKelasDiampuGuru(session);
 
-    hasilUjian = rawList.filter(h => {
-      const mapelHasil = (h.mapel || "").toLowerCase().trim();
+    listTersaring = listTersaring.filter(h => {
+      const mapelHasil = (h.mapel || ujianObj.mapel || "").toLowerCase().trim();
       const kelasSiswa = (h.kelas || "").trim();
       const kelasSiswaLower = kelasSiswa.toLowerCase();
 
@@ -522,11 +553,11 @@ function terapkanFilterHasilUjian(rawList) {
 
       return kelasDiampu.length > 0 && kelasDiampu.some(k => k.toLowerCase().trim() === kelasSiswaLower);
     });
-  } else {
-    hasilUjian = rawList;
   }
 
+  hasilUjian = listTersaring;
   window.hasilUjian = hasilUjian;
+
   const activeIdSet = new Set(hasilUjian.map(item => item.id));
   Array.from(rekapTerpilihIds).forEach((id) => {
     if (!activeIdSet.has(id)) rekapTerpilihIds.delete(id);
@@ -537,10 +568,46 @@ function terapkanFilterHasilUjian(rawList) {
 }
 
 async function muatHasilUjianSekali(kodeUjianFilter = "", forceReload = false) {
-  const targetUjian = kodeUjianFilter || document.getElementById("selectFilterUjian")?.value || "";
-  if (!forceReload && targetUjian && lastLoadedRekapUjianId === targetUjian && hasilUjian.length > 0) {
+  const targetUjian = String(kodeUjianFilter || document.getElementById("selectFilterUjian")?.value || "").trim();
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {});
+
+  if (!targetUjian) {
+    hasilUjian = [];
+    window.hasilUjian = [];
+    lastLoadedRekapUjianId = null;
+    rekapTerpilihIds.clear();
     if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
-    return;
+    return [];
+  }
+
+  if (session && !isUserAdmin(session)) {
+    const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+    const ujianObj = sumberUjian.find(
+      u => u.id === targetUjian || sanitizeFirestoreId(u.id) === sanitizeFirestoreId(targetUjian)
+    );
+    if (!ujianObj || !apakahUjianSesuaiHakGuru(ujianObj, session)) {
+      hasilUjian = [];
+      window.hasilUjian = [];
+      lastLoadedRekapUjianId = null;
+      rekapTerpilihIds.clear();
+      if (typeof window.filterRekapNilai === "function") window.filterRekapNilai();
+      return [];
+    }
+  }
+
+  const cacheKey = getCacheKeyRekapUjian(targetUjian);
+  if (!forceReload) {
+    const cached = readSessionCache(cacheKey);
+    if (Array.isArray(cached)) {
+      lastLoadedRekapUjianId = targetUjian;
+      terapkanFilterHasilUjian(cached);
+      return hasilUjian;
+    }
+  }
+
+  if (!forceReload && lastLoadedRekapUjianId === targetUjian && hasilUjian.length > 0) {
+    terapkanFilterHasilUjian(hasilUjian);
+    return hasilUjian;
   }
 
   try {
@@ -551,10 +618,13 @@ async function muatHasilUjianSekali(kodeUjianFilter = "", forceReload = false) {
       ujianId: item.ujianId || item.kodeUjian || "",
       waktuSelesai: item.waktuSelesai || formatWaktuRekap(item.updatedAt)
     }));
-    lastLoadedRekapUjianId = targetUjian || "__ALL__";
+    writeSessionCache(cacheKey, rawHasilFs);
+    lastLoadedRekapUjianId = targetUjian;
     terapkanFilterHasilUjian(rawHasilFs);
+    return hasilUjian;
   } catch (err) {
     console.error("Gagal memuat rekap nilai Firestore:", err);
+    return [];
   }
 }
 
