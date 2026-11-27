@@ -202,10 +202,29 @@
               </div>
             </div>
 
+            <!-- BAR AKSI MASSAL UJIAN (PILIH SEMUA DI HEADER / SELEKSI SEBAGIAN DI SAMPING) -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light p-2 rounded border mb-3">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-secondary" id="infoUjianTerpilih">0 Dipilih</span>
+                <small class="text-muted">Centang baris ujian di samping untuk memilih sebagian, atau centang kotak di kepala tabel untuk pilih semua.</small>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" id="btnMassalNonaktifkanUjian" class="btn btn-outline-danger btn-sm fw-bold" onclick="window.aksiMassalStatusUjian('nonaktif')" disabled>
+                  <i class="bi bi-toggle-off me-1"></i>Nonaktifkan Terpilih
+                </button>
+                <button type="button" id="btnMassalAktifkanUjian" class="btn btn-outline-success btn-sm fw-bold" onclick="window.aksiMassalStatusUjian('aktif')" disabled>
+                  <i class="bi bi-toggle-on me-1"></i>Aktifkan Terpilih
+                </button>
+              </div>
+            </div>
+
             <div class="table-responsive">
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
+                    <th class="text-center" style="width: 40px;">
+                      <input type="checkbox" class="form-check-input" id="checkSemuaUjian" title="Pilih semua ujian tampil" onchange="window.togglePilihSemuaUjian(this.checked)">
+                    </th>
                     <th style="width: 50px;">No</th>
                     <th>Mata Pelajaran</th>
                     <th>Target Kelas</th>
@@ -390,7 +409,7 @@
         </div>
       </div>
 
-      <!-- TAB 5: MONITORING UJIAN (FULL WIDTH & RAPI) -->
+      <!-- TAB 5: MONITORING UJIAN (FULL WIDTH, FILTER STATUS & RAPI) -->
       <div class="tab-pane fade" id="contentMonitoring" role="tabpanel">
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
@@ -414,13 +433,19 @@
               </div>
             </div>
 
-            <!-- PENCARIAN PESERTA & AKSI MASSAL (FULL WIDTH) -->
+            <!-- PENCARIAN PESERTA, FILTER STATUS & AKSI MASSAL (FULL WIDTH) -->
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light p-3 rounded border mb-3">
               <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1" style="min-width: 260px;">
-                <div class="input-group input-group-sm" style="max-width: 360px;">
+                <div class="input-group input-group-sm" style="max-width: 300px;">
                   <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                  <input type="text" id="searchMonitoring" class="form-control" placeholder="Cari NISN, nama siswa, kelas, atau status..." oninput="filterTabelMonitoring()">
+                  <input type="text" id="searchMonitoring" class="form-control" placeholder="Cari NISN, nama siswa, atau kelas..." oninput="window.filterTabelMonitoring()">
                 </div>
+                <select id="filterStatusMonitoring" class="form-select form-select-sm w-auto" onchange="window.filterTabelMonitoring()" title="Filter status peserta">
+                  <option value="">-- Semua Status --</option>
+                  <option value="mengerjakan">Mengerjakan</option>
+                  <option value="pelanggaran">Terlempar / Pelanggaran</option>
+                  <option value="selesai">Selesai</option>
+                </select>
                 <span class="badge bg-secondary fs-6" id="infoPesertaTerpilih">0 Dipilih</span>
               </div>
 
