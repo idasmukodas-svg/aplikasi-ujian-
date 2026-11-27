@@ -63,6 +63,11 @@ function terapkanStatusModeUjianUI(aktif) {
       : "badge bg-success fw-bold";
   }
 
+  const panelSakelar = document.getElementById("panelSakelarModeUjian");
+  if (panelSakelar && !isAdmin) {
+    panelSakelar.classList.add("d-none");
+  }
+
   // Jika login sebagai guru dan mode ujian aktif, batasi akses monitoring/kelola
   let bannerGuru = document.getElementById("bannerModeUjianGuru");
   if (isGuru && window.modeUjianAktif) {
@@ -102,7 +107,7 @@ function terapkanStatusModeUjianUI(aktif) {
       bannerGuru.classList.add("d-none");
     }
     const tabMonitoring = document.querySelector('[data-bs-target="#contentMonitoring"], #tabMonitoring, [href="#contentMonitoring"]');
-    if (tabMonitoring && !isAdmin) {
+    if (tabMonitoring) {
       tabMonitoring.classList.remove("d-none");
     }
   }
@@ -901,45 +906,45 @@ async function muatMapelFirestore(forceReload = false) {
     writeSessionCache("cbt_master_mapel", mapelArray);
   }
 
-window.daftarMapel = mapelArray;
-      window.daftarMapelMaster = mapelArray;
+  window.daftarMapel = mapelArray;
+  window.daftarMapelMaster = mapelArray;
 
-      const listMapelAdmin = document.getElementById("listMapelAdmin");
-      if (listMapelAdmin) {
-        listMapelAdmin.innerHTML = "";
-        if (mapelArray.length === 0) {
-          listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
-        } else {
-          mapelArray.forEach(m => {
-            const li = document.createElement("li");
-            li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.innerHTML = `
-              <span>${escapeHtml(m.nama)}</span>
-              <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
-                <i class="bi bi-trash"></i> Hapus
-              </button>
-            `;
-            listMapelAdmin.appendChild(li);
-          });
-        }
-      }
-
-      const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
-      if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
-        renderMappingMapelKelas(
-          containerMappingTambah,
-          mapelArray,
-          window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
-          {}
-        );
-      }
-
-      if (typeof window.updateFilterMapelDropdown === "function") {
-        window.updateFilterMapelDropdown();
-      }
-
-      return mapelArray;
+  const listMapelAdmin = document.getElementById("listMapelAdmin");
+  if (listMapelAdmin) {
+    listMapelAdmin.innerHTML = "";
+    if (mapelArray.length === 0) {
+      listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
+    } else {
+      mapelArray.forEach(m => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `
+          <span>${escapeHtml(m.nama)}</span>
+          <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
+            <i class="bi bi-trash"></i> Hapus
+          </button>
+        `;
+        listMapelAdmin.appendChild(li);
+      });
     }
+  }
+
+  const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
+  if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
+    renderMappingMapelKelas(
+      containerMappingTambah,
+      mapelArray,
+      window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
+      {}
+    );
+  }
+
+  if (typeof window.updateFilterMapelDropdown === "function") {
+    window.updateFilterMapelDropdown();
+  }
+
+  return mapelArray;
+}
 
 async function muatSemuaMasterFirestore(forceReload = false) {
   await Promise.all([
@@ -963,6 +968,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!userSession) return;
 
   renderUserInfoNav();
+  await window.muatModeUjianAktif(false);
 
   await muatSemuaMasterFirestore(false).catch((err) => {
     console.error("Gagal memuat master data Firestore:", err);
@@ -986,7 +992,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.loadDataMonitoring();
     }
   });
-   
+
   const inputUrlGambar = document.getElementById("soalGambarUrl");
   inputUrlGambar?.addEventListener("input", () => {
     const cleanUrl = normalisasiLinkGambarInput(inputUrlGambar.value);
@@ -1302,6 +1308,101 @@ function updateAllClassDropdowns() {
   }
 }
 
+/* ===================================================
+   SELEKSI MASSAL UJIAN & RENDER TABEL UJIAN (#tbodyUjian)
+   =================================================== */
+window.selectedUjianIds = window.selectedUjianIds || new Set();
+
+window.updateSeleksiUjian = function () {
+  const checkboxes = Array.from(document.querySelectorAll("#tbodyUjian .check-item-ujian"));
+  const checkedBoxes = checkboxes.filter((cb) => cb.checked);
+
+  window.selectedUjianIds.clear();
+  checkedBoxes.forEach((cb) => window.selectedUjianIds.add(String(cb.value)));
+
+  const jumlah = window.selectedUjianIds.size;
+  const badge = document.getElementById("infoUjianTerpilih");
+  if (badge) badge.textContent = `${jumlah} Dipilih`;
+
+  const btnNonaktif = document.getElementById("btnMassalNonaktifkanUjian");
+  const btnAktif = document.getElementById("btnMassalAktifkanUjian");
+  if (btnNonaktif) btnNonaktif.disabled = jumlah === 0;
+  if (btnAktif) btnAktif.disabled = jumlah === 0;
+
+  const checkAll = document.getElementById("checkSemuaUjian");
+  if (checkAll) {
+    if (checkboxes.length === 0) {
+      checkAll.checked = false;
+      checkAll.indeterminate = false;
+    } else {
+      checkAll.checked = checkedBoxes.length === checkboxes.length;
+      checkAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+    }
+  }
+};
+
+window.togglePilihSemuaUjian = function (checked) {
+  const checkboxes = document.querySelectorAll("#tbodyUjian .check-item-ujian");
+  checkboxes.forEach((cb) => {
+    cb.checked = Boolean(checked);
+  });
+  window.updateSeleksiUjian();
+};
+
+window.aksiMassalStatusUjian = async function (statusTarget) {
+  const ids = Array.from(window.selectedUjianIds || []);
+  if (ids.length === 0) return;
+
+  const labelAksi = statusTarget === "nonaktif" ? "MENONAKTIFKAN" : "MENGAKTIFKAN";
+  const yakin = confirm(`Yakin ingin ${labelAksi} ${ids.length} ujian terpilih sekaligus?`);
+  if (!yakin) return;
+
+  try {
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(firestoreDb);
+      chunk.forEach((id) => {
+        const cleanId = sanitizeFirestoreId(id);
+        batch.set(doc(firestoreDb, "ujian", cleanId), {
+          status: statusTarget,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        batch.set(doc(firestoreDb, "soal", cleanId), {
+          status: statusTarget,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    const idSet = new Set(ids);
+    if (Array.isArray(window.daftarUjian)) {
+      window.daftarUjian.forEach((u) => {
+        if (idSet.has(String(u.id))) {
+          u.status = statusTarget;
+        }
+      });
+    }
+
+    const session = window.userSession || userSession || {};
+    const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "default");
+    const cacheKey = isUserAdmin(session) ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
+    writeSessionCache(cacheKey, daftarUjian);
+
+    window.selectedUjianIds.clear();
+    window.filterDataUjian();
+    if (typeof window.loadDaftarUjianMonitoring === "function") {
+      window.loadDaftarUjianMonitoring();
+    }
+    window.updateSeleksiUjian();
+    alert(`Berhasil memperbarui status ${ids.length} ujian menjadi "${statusTarget}".`);
+  } catch (err) {
+    console.error("Gagal update massal status ujian:", err);
+    alert("Terjadi kesalahan saat memperbarui status ujian terpilih: " + err.message);
+  }
+};
+
 window.filterDataUjian = () => {
   const dataSumber = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
   const keyword = (document.getElementById("searchUjian")?.value || "").toLowerCase().trim();
@@ -1336,7 +1437,8 @@ window.renderTabelUjian = function(listUjian = window.daftarUjian) {
   tbody.innerHTML = "";
 
   if (dataSumber.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-3">Data ujian tidak ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-3">Data ujian tidak ditemukan.</td></tr>`;
+    window.updateSeleksiUjian();
     return;
   }
 
@@ -1352,9 +1454,13 @@ window.renderTabelUjian = function(listUjian = window.daftarUjian) {
     const displayKelas = Array.isArray(u.kelasTarget) ? u.kelasTarget.join(", ") : (u.kelasTarget || "Semua");
     const safeId = escapeHtml(u.id);
     const safeStatus = escapeHtml(u.status || "nonaktif");
+    const isChecked = window.selectedUjianIds && window.selectedUjianIds.has(String(u.id)) ? "checked" : "";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td class="text-center">
+        <input type="checkbox" class="form-check-input check-item-ujian" value="${safeId}" ${isChecked} onchange="window.updateSeleksiUjian()">
+      </td>
       <td>${i + 1}</td>
       <td><span class="badge bg-secondary">${escapeHtml(u.mapel || "-")}</span></td>
       <td><span class="badge bg-dark">${escapeHtml(displayKelas)}</span></td>
@@ -1387,6 +1493,8 @@ window.renderTabelUjian = function(listUjian = window.daftarUjian) {
     `;
     tbody.appendChild(tr);
   });
+
+  window.updateSeleksiUjian();
 };
 
 async function handleSimpanUjian(e) {
@@ -1483,6 +1591,9 @@ window.toggleStatusUjian = async (id, currentStatus) => {
     const cacheKey = isUserAdmin(session) ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
     writeSessionCache(cacheKey, daftarUjian);
     window.filterDataUjian();
+    if (typeof window.loadDaftarUjianMonitoring === "function") {
+      window.loadDaftarUjianMonitoring();
+    }
   } catch (err) {
     alert("Gagal mengubah status ujian: " + err.message);
   }
@@ -2910,6 +3021,8 @@ window.paksaSelesaiPeserta = async (ujianId, nisn) => {
       dipaksaSelesaiPada: new Date().toISOString(),
       updatedAt: serverTimestamp()
     }, { merge: true });
+    removeSessionCache(`cbt_monitoring_${sanitizeFirestoreId(ujianId)}`);
+    await window.loadDataMonitoring(true);
     alert("Peserta berhasil ditandai selesai.");
   } catch (error) {
     alert("Gagal memaksa selesai peserta: " + error.message);
@@ -2923,6 +3036,8 @@ window.resetStatusPeserta = async (ujianId, nisn) => {
       deleteDoc(doc(firestoreDb, "jawaban_siswa", `${sanitizeFirestoreId(nisn)}_${sanitizeFirestoreId(ujianId)}`)).catch(() => {}),
       deleteDoc(doc(firestoreDb, "status_peserta", getStatusPesertaDocId(ujianId, nisn))).catch(() => {})
     ]);
+    removeSessionCache(`cbt_monitoring_${sanitizeFirestoreId(ujianId)}`);
+    await window.loadDataMonitoring(true);
     alert("Status peserta berhasil direset awal! Siswa kini dapat masuk kembali menggunakan token ujian.");
   } catch (error) {
     alert("Gagal mereset status: " + error.message);
@@ -2987,25 +3102,45 @@ window.filterTabelMonitoring = () => {
   }
 
   const keyword = (document.getElementById("searchMonitoring")?.value || "").toLowerCase().trim();
+  const statusFilter = (document.getElementById("filterStatusMonitoring")?.value || "").toLowerCase().trim();
+
   const filtered = dataMonitoringPeserta.filter(item => {
-    if (!keyword) return true;
     const nisn = String(item.nisn || "").toLowerCase();
     const nama = String(item.nama || "").toLowerCase();
     const kelas = String(item.kelas || "").toLowerCase();
-    const status = String(item.status || "").toLowerCase();
+    const statusRaw = String(item.status || "").toLowerCase().trim();
     const sinyal = String(item.sinyal || item.keterangan || "").toLowerCase();
-    return (
+
+    const cocokKata = !keyword || (
       nisn.includes(keyword) ||
       nama.includes(keyword) ||
       kelas.includes(keyword) ||
-      status.includes(keyword) ||
+      statusRaw.includes(keyword) ||
       sinyal.includes(keyword)
     );
+
+    let cocokStatus = true;
+    if (statusFilter === "mengerjakan") {
+      cocokStatus = statusRaw === "sedang_mengerjakan" || statusRaw === "mengerjakan" || statusRaw === "aktif";
+    } else if (statusFilter === "pelanggaran") {
+      cocokStatus =
+        statusRaw === "terlempar" ||
+        statusRaw === "pelanggaran" ||
+        statusRaw.includes("terlempar") ||
+        statusRaw.includes("pelanggaran") ||
+        statusRaw.includes("lock") ||
+        sinyal.includes("pelanggaran") ||
+        sinyal.includes("terlempar");
+    } else if (statusFilter === "selesai") {
+      cocokStatus = statusRaw === "selesai";
+    }
+
+    return cocokKata && cocokStatus;
   });
 
   tbody.innerHTML = "";
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada peserta yang cocok dengan pencarian.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada peserta yang cocok dengan filter/pencarian.</td></tr>`;
     sinkronkanTombolMassalMonitoring();
     return;
   }
@@ -3118,6 +3253,9 @@ window.aksiMassalMonitoring = async (mode) => {
       checkAll.indeterminate = false;
     }
 
+    removeSessionCache(`cbt_monitoring_${sanitizeFirestoreId(ujianId)}`);
+    await window.loadDataMonitoring(true);
+
     requestAnimationFrame(() => {
       setTimeout(() => {
         window.alert(`Berhasil memproses ${daftarNisn.length} peserta.`);
@@ -3139,12 +3277,17 @@ window.filterOpsiUjianMonitoring = () => {
 
   const keyword = (inputCari?.value || "").toLowerCase().trim();
   const prevVal = selectUjian.value;
-  const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
+  const sumberUjian = Array.isArray(window.daftarUjianMonitoringAktif)
+    ? window.daftarUjianMonitoringAktif
+    : (Array.isArray(window.daftarUjian)
+        ? window.daftarUjian.filter(u => String(u?.status || "").toLowerCase() === "aktif")
+        : []);
   const seenIds = new Set();
 
   const ujianValid = sumberUjian
     .filter(u => {
       if (!u || !u.id || !(u.judul || u.mapel)) return false;
+      if (String(u.status || "").toLowerCase() !== "aktif") return false;
       if (seenIds.has(u.id)) return false;
       seenIds.add(u.id);
       return true;
@@ -3160,7 +3303,7 @@ window.filterOpsiUjianMonitoring = () => {
     return gabungan.includes(keyword);
   });
 
-  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian (${cocok.length}) --</option>`;
+  selectUjian.innerHTML = `<option value="">-- Pilih Mata Pelajaran / Ujian Aktif (${cocok.length}) --</option>`;
   cocok.forEach(ujian => {
     const opt = document.createElement("option");
     opt.value = ujian.id;
@@ -3213,12 +3356,12 @@ window.loadDataMonitoring = async (forceReload = false) => {
     unsubMonitoring();
     unsubMonitoring = null;
   }
-const currentSession = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  const currentSession = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
   if (currentSession.role === "guru" && window.modeUjianAktif) {
     terapkanStatusModeUjianUI(true);
     return [];
-  }   
-   
+  }
+
   nisnTerpilihMonitoring.clear();
   dataMonitoringPeserta = [];
 
