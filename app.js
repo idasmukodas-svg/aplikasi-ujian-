@@ -760,47 +760,45 @@ async function muatMapelFirestore(forceReload = false) {
     writeSessionCache("cbt_master_mapel", mapelArray);
   }
 
-  window.daftarMapel = mapelArray;
-  window.daftarMapelMaster = mapelArray;
+window.daftarMapel = mapelArray;
+      window.daftarMapelMaster = mapelArray;
 
-  const listMapelAdmin = document.getElementById("listMapelAdmin");
-  if (listMapelAdmin) {
-    listMapelAdmin.innerHTML = "";
-    if (mapelArray.length === 0) {
-      listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
-    } else {
-      mapelArray.forEach(m => {
-        const li = document.createElement("li");
-        li.className = "list-group-item d-flex justify-content-between align-items-center";
-        li.innerHTML = `
-          <span>${escapeHtml(m.nama)}</span>
-          <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
-            <i class="bi bi-trash"></i> Hapus
-          </button>
-        `;
-        listMapelAdmin.appendChild(li);
-      });
+      const listMapelAdmin = document.getElementById("listMapelAdmin");
+      if (listMapelAdmin) {
+        listMapelAdmin.innerHTML = "";
+        if (mapelArray.length === 0) {
+          listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
+        } else {
+          mapelArray.forEach(m => {
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML = `
+              <span>${escapeHtml(m.nama)}</span>
+              <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
+                <i class="bi bi-trash"></i> Hapus
+              </button>
+            `;
+            listMapelAdmin.appendChild(li);
+          });
+        }
+      }
+
+      const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
+      if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
+        renderMappingMapelKelas(
+          containerMappingTambah,
+          mapelArray,
+          window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
+          {}
+        );
+      }
+
+      if (typeof window.updateFilterMapelDropdown === "function") {
+        window.updateFilterMapelDropdown();
+      }
+
+      return mapelArray;
     }
-  }
-
-  return mapelArray;
-}
-
-  const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
-  if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
-    renderMappingMapelKelas(
-      containerMappingTambah,
-      mapelArray,
-      window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
-      {}
-    );
-  }
-
-  if (typeof window.updateFilterMapelDropdown === "function") {
-    window.updateFilterMapelDropdown();
-  }
-  return mapelArray;
-}
 
 async function muatSemuaMasterFirestore(forceReload = false) {
   await Promise.all([
