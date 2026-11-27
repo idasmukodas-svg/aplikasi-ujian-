@@ -39,6 +39,147 @@ const USE_FIRESTORE = true;
 window.USE_FIRESTORE = USE_FIRESTORE;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
+const MODE_UJIAN_STORAGE_KEY = "cbt_mode_ujian_aktif_cache";
+window.modeUjianAktif = false;
+
+function terapkanStatusModeUjianUI(aktif) {
+  window.modeUjianAktif = Boolean(aktif);
+
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  const isGuru = session.role === "guru";
+  const isAdmin = session.role === "admin" || session.role === "superadmin";
+
+  // Sinkronkan tombol/toggle sakelar jika tersedia di halaman admin
+  const toggleAdmin = document.getElementById("toggleModeUjianAktif");
+  if (toggleAdmin) {
+    toggleAdmin.checked = window.modeUjianAktif;
+  }
+
+  const badgeMode = document.getElementById("statusBadgeModeUjian");
+  if (badgeMode) {
+    badgeMode.textContent = window.modeUjianAktif ? "MODE UJIAN AKTIF (GURU DIKUNCI)" : "MODE NORMAL (GURU AKTIF)";
+    badgeMode.className = window.modeUjianAktif
+      ? "badge bg-danger fw-bold"
+      : "badge bg-success fw-bold";
+  }
+
+  // Jika login sebagai guru dan mode ujian aktif, batasi akses monitoring/kelola
+  let bannerGuru = document.getElementById("bannerModeUjianGuru");
+  if (isGuru && window.modeUjianAktif) {
+    if (typeof unsubMonitoring === "function") {
+      try { unsubMonitoring(); } catch (e) {}
+      unsubMonitoring = null;
+    }
+
+    const tabMonitoring = document.querySelector('[data-bs-target="#contentMonitoring"], #tabMonitoring, [href="#contentMonitoring"]');
+    if (tabMonitoring) {
+      tabMonitoring.classList.add("d-none");
+    }
+
+    const contentMonitoring = document.getElementById("contentMonitoring");
+    if (contentMonitoring && contentMonitoring.classList.contains("active")) {
+      contentMonitoring.classList.remove("show", "active");
+    }
+
+    if (!bannerGuru) {
+      bannerGuru = document.createElement("div");
+      bannerGuru.id = "bannerModeUjianGuru";
+      bannerGuru.className = "alert alert-warning border-warning shadow-sm my-3";
+      bannerGuru.innerHTML = `
+        <div class="fw-bold mb-1">Sesi Ujian Sedang Berlangsung — Akses Guru Dibatasi Sementara</div>
+        <div class="small mb-0">
+          Untuk menjaga stabilitas kuota dan kelancaran ujian, pemantauan serta penanganan kendala peserta dipusatkan ke Admin/Proktor.
+          Akses guru akan otomatis terbuka kembali setelah mode ujian dinonaktifkan oleh Admin.
+        </div>
+      `;
+      const mainContainer = document.querySelector(".container, .container-fluid, main") || document.body;
+      mainContainer.prepend(bannerGuru);
+    } else {
+      bannerGuru.classList.remove("d-none");
+    }
+  } else {
+    if (bannerGuru) {
+      bannerGuru.classList.add("d-none");
+    }
+    const tabMonitoring = document.querySelector('[data-bs-target="#contentMonitoring"], #tabMonitoring, [href="#contentMonitoring"]');
+    if (tabMonitoring && !isAdmin) {
+      tabMonitoring.classList.remove("d-none");
+    }
+  }
+}
+
+window.muatModeUjianAktif = async function(forceReload = false) {
+  if (!forceReload) {
+    try {
+      const rawCache = sessionStorage.getItem(MODE_UJIAN_STORAGE_KEY);
+      if (rawCache !== null) {
+        const parsed = JSON.parse(rawCache);
+        if (typeof parsed?.aktif === "boolean") {
+          terapkanStatusModeUjianUI(parsed.aktif);
+          return parsed.aktif;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const refConfig = doc(firestoreDb, "config", "mode_ujian");
+    const snap = await getDoc(refConfig);
+    const aktif = snap.exists() ? Boolean(snap.data()?.aktif) : false;
+
+    try {
+      sessionStorage.setItem(MODE_UJIAN_STORAGE_KEY, JSON.stringify({
+        aktif,
+        savedAt: Date.now()
+      }));
+    } catch (e) {}
+
+    terapkanStatusModeUjianUI(aktif);
+    return aktif;
+  } catch (err) {
+    console.error("Gagal memuat status modeUjianAktif:", err);
+    terapkanStatusModeUjianUI(false);
+    return false;
+  }
+};
+
+window.setModeUjianAktif = async function(aktifBaru) {
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  const isAdmin = session.role === "admin" || session.role === "superadmin";
+  if (!isAdmin) {
+    alert("Hanya Admin yang dapat mengubah status Mode Ujian.");
+    return false;
+  }
+
+  const statusBool = Boolean(aktifBaru);
+
+  try {
+    const refConfig = doc(firestoreDb, "config", "mode_ujian");
+    await setDoc(refConfig, {
+      aktif: statusBool,
+      updatedAt: new Date().toISOString(),
+      updatedBy: session.email || session.nama || "admin"
+    }, { merge: true });
+
+    try {
+      sessionStorage.setItem(MODE_UJIAN_STORAGE_KEY, JSON.stringify({
+        aktif: statusBool,
+        savedAt: Date.now()
+      }));
+    } catch (e) {}
+
+    terapkanStatusModeUjianUI(statusBool);
+    alert(statusBool
+      ? "Mode Ujian AKTIF: Akses guru dibatasi sementara selama sesi ujian."
+      : "Mode Ujian NONAKTIF: Akses guru telah dibuka kembali.");
+    return true;
+  } catch (err) {
+    console.error("Gagal memperbarui modeUjianAktif:", err);
+    alert("Gagal menyimpan status Mode Ujian ke Firestore.");
+    return false;
+  }
+};
+
 function readSessionCache(key) {
   try {
     const raw = sessionStorage.getItem(key);
@@ -845,7 +986,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.loadDataMonitoring();
     }
   });
-
+   
   const inputUrlGambar = document.getElementById("soalGambarUrl");
   inputUrlGambar?.addEventListener("input", () => {
     const cleanUrl = normalisasiLinkGambarInput(inputUrlGambar.value);
@@ -3071,7 +3212,12 @@ window.loadDataMonitoring = async (forceReload = false) => {
     unsubMonitoring();
     unsubMonitoring = null;
   }
-
+const currentSession = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  if (currentSession.role === "guru" && window.modeUjianAktif) {
+    terapkanStatusModeUjianUI(true);
+    return [];
+  }   
+   
   nisnTerpilihMonitoring.clear();
   dataMonitoringPeserta = [];
 
