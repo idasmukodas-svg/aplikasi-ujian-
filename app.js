@@ -654,7 +654,6 @@ async function muatMapelFirestore(forceReload = false) {
   if (containerMappingTambah) {
     renderMappingMapelKelas(containerMappingTambah, mapelArray, window.daftarKelas || daftarKelas, {});
   }
-}
 
 async function muatSemuaMasterFirestore(forceReload = false) {
   await Promise.all([
