@@ -63,9 +63,21 @@ function writeSessionCache(key, data) {
   }
 }
 
+function removeSessionCache(key) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {}
+}
+
 function clearMasterCache() {
-  ["cbt_master_kelas", "cbt_master_mapel", "cbt_master_pengguna", "cbt_master_ujian", "cbt_master_siswa"].forEach(k => {
-    try { sessionStorage.removeItem(k); } catch {}
+  Object.keys(sessionStorage).forEach((k) => {
+    if (
+      k.startsWith("cbt_master_") ||
+      k.startsWith("cbt_siswa_kelas_") ||
+      k.startsWith("cbt_soal_")
+    ) {
+      try { sessionStorage.removeItem(k); } catch {}
+    }
   });
 }
 
@@ -114,6 +126,36 @@ function escapeHtml(str) {
 
 function sanitizeFirestoreId(raw) {
   return String(raw ?? "").trim().replace(/[.#$\[\]\/]/g, "_") || "default";
+}
+
+function isUserAdmin(sessionObj) {
+  const s = sessionObj || window.userSession || userSession || {};
+  const role = String(s.role || "").toLowerCase().trim();
+  return role === "admin" || role === "superadmin" || role === "kepsek";
+}
+
+function getKelasDiampuGuru(sessionObj) {
+  const s = sessionObj || window.userSession || userSession || {};
+  const detail = normalisasiDetailAmpuan(s);
+  const dariDetail = Object.values(detail).flat();
+  const dariField = Array.isArray(s.kelasDiampu)
+    ? s.kelasDiampu
+    : (typeof s.kelasDiampu === "string" ? s.kelasDiampu.split(",") : []);
+
+  const gabungan = [...dariField, ...dariDetail]
+    .map((k) => String(k || "").trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(gabungan));
+}
+
+function isKelasDiizinkanUntukUser(namaKelas, sessionObj) {
+  const cleanKelas = String(namaKelas || "").trim();
+  if (!cleanKelas) return false;
+  if (isUserAdmin(sessionObj)) return true;
+
+  const allowed = getKelasDiampuGuru(sessionObj).map((k) => k.toLowerCase());
+  return allowed.includes(cleanKelas.toLowerCase());
 }
 
 function getStatusPesertaDocId(ujianId, nisn) {
@@ -274,7 +316,6 @@ async function ambilSemuaJawabanFirestore(kodeUjian = "") {
   return rows;
 }
 
-// File backup sudah dihapus dari repository; fungsi dipertahankan agar panggilan lama aman tanpa 404
 window.imporBackupJsonKeFirestore = async function () {
   const pesan = "Migrasi ke Firestore sudah selesai dan file backup sudah dihapus.";
   console.info(pesan);
@@ -316,7 +357,7 @@ function normalisasiDetailAmpuan(guruObj) {
 }
 
 function apakahUjianSesuaiHakGuru(u, session) {
-  if (!session || session.role === "admin") return true;
+  if (!session || isUserAdmin(session)) return true;
 
   const detail = normalisasiDetailAmpuan(session);
   const mapelKeys = Object.keys(detail);
@@ -330,12 +371,7 @@ function apakahUjianSesuaiHakGuru(u, session) {
     mapelGuruArray = [session.mapel.toLowerCase().trim()];
   }
 
-  let kelasDiampuArray = [];
-  if (Array.isArray(session.kelasDiampu)) {
-    kelasDiampuArray = session.kelasDiampu.map(k => String(k).trim());
-  } else if (typeof session.kelasDiampu === "string") {
-    kelasDiampuArray = session.kelasDiampu.split(",").map(k => k.trim()).filter(Boolean);
-  }
+  const kelasDiampuArray = getKelasDiampuGuru(session);
 
   const mapelUjian = (u.mapel || "").toLowerCase().trim();
   const targetKelas = Array.isArray(u.kelasTarget)
@@ -466,7 +502,7 @@ function terapkanFilterHasilUjian(rawList) {
           ? session.mapelDiampu.map(m => m.toLowerCase().trim())
           : (session.mapel ? [session.mapel.toLowerCase().trim()] : []));
 
-    const kelasDiampu = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+    const kelasDiampu = getKelasDiampuGuru(session);
 
     hasilUjian = rawList.filter(h => {
       const mapelHasil = (h.mapel || "").toLowerCase().trim();
@@ -551,7 +587,7 @@ async function muatKelasFirestore(forceReload = false) {
 async function muatUjianFirestore(forceReload = false) {
   const session = window.userSession || userSession || {};
   const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "default");
-  const isAdmin = session.role === "admin" || session.role === "superadmin";
+  const isAdmin = isUserAdmin(session);
   const cacheKey = isAdmin ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
 
   let rawList = null;
@@ -561,11 +597,7 @@ async function muatUjianFirestore(forceReload = false) {
 
   if (!Array.isArray(rawList)) {
     const ujianRef = collection(firestoreDb, "ujian");
-    const qUjian = isAdmin
-      ? ujianRef
-      : query(ujianRef, where("guruEmail", "==", session.email || "")); // sesuaikan nama field pemilik ujian jika berbeda
-
-    const snap = await getDocs(qUjian);
+    const snap = await getDocs(ujianRef);
     rawList = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
     writeSessionCache(cacheKey, rawList);
   }
@@ -581,7 +613,7 @@ async function muatUjianFirestore(forceReload = false) {
   }
 }
 
-  async function muatPenggunaFirestore(forceReload = false) {
+async function muatPenggunaFirestore(forceReload = false) {
   const cacheKey = "cbt_master_guru";
   if (!forceReload) {
     const cached = readSessionCache(cacheKey);
@@ -622,43 +654,42 @@ async function muatMapelFirestore(forceReload = false) {
   }
 
   window.daftarMapel = mapelArray;
+  window.daftarMapelMaster = mapelArray;
+
+  const listMapelAdmin = document.getElementById("listMapelAdmin");
+  if (listMapelAdmin) {
+    listMapelAdmin.innerHTML = "";
+    if (mapelArray.length === 0) {
+      listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
+    } else {
+      mapelArray.forEach(m => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `
+          <span>${escapeHtml(m.nama)}</span>
+          <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
+            <i class="bi bi-trash"></i> Hapus
+          </button>
+        `;
+        listMapelAdmin.appendChild(li);
+      });
+    }
+  }
+
+  const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
+  if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
+    renderMappingMapelKelas(
+      containerMappingTambah,
+      mapelArray,
+      window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
+      {}
+    );
+  }
+
   if (typeof window.updateFilterMapelDropdown === "function") {
     window.updateFilterMapelDropdown();
   }
   return mapelArray;
-}
-
-  const listMapelData = Array.isArray(window.daftarMapel) ? window.daftarMapel : [];
-window.daftarMapelMaster = listMapelData;
-
-const listMapelAdmin = document.getElementById("listMapelAdmin");
-if (listMapelAdmin) {
-  listMapelAdmin.innerHTML = "";
-  if (listMapelData.length === 0) {
-    listMapelAdmin.innerHTML = `<li class="list-group-item text-muted text-center">Belum ada mata pelajaran.</li>`;
-  } else {
-    listMapelData.forEach(m => {
-      const li = document.createElement("li");
-      li.className = "list-group-item d-flex justify-content-between align-items-center";
-      li.innerHTML = `
-        <span>${escapeHtml(m.nama)}</span>
-        <button class="btn btn-sm btn-danger" onclick="hapusMapel('${escapeHtml(m.id)}')">
-          <i class="bi bi-trash"></i> Hapus
-        </button>
-      `;
-      listMapelAdmin.appendChild(li);
-    });
-  }
-}
-
-const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
-if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
-  renderMappingMapelKelas(
-    containerMappingTambah,
-    listMapelData,
-    window.daftarKelas || (typeof daftarKelas !== "undefined" ? daftarKelas : []),
-    {}
-  );
 }
 
 async function muatSemuaMasterFirestore(forceReload = false) {
@@ -666,9 +697,17 @@ async function muatSemuaMasterFirestore(forceReload = false) {
     muatKelasFirestore(forceReload),
     muatMapelFirestore(forceReload),
     muatPenggunaFirestore(forceReload),
-    muatUjianFirestore(forceReload),
-    muatSiswaFirestore(forceReload)
+    muatUjianFirestore(forceReload)
   ]);
+
+  // Tidak menarik seluruh data siswa saat load awal agar hemat reads;
+  // data siswa hanya ditarik ketika admin/guru memilih spesifik satu kelas.
+  daftarSiswa = [];
+  window.daftarSiswa = [];
+  renderStats();
+  if (typeof window.filterDataSiswa === "function") {
+    window.filterDataSiswa();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -683,6 +722,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("searchUjian")?.addEventListener("input", () => window.filterDataUjian());
   document.getElementById("filterStatusUjian")?.addEventListener("change", () => window.filterDataUjian());
   document.getElementById("searchGuru")?.addEventListener("input", () => window.filterDataGuru());
+
+  document.getElementById("filterKelasSiswa")?.addEventListener("change", () => window.filterDataSiswa());
+  document.getElementById("searchSiswa")?.addEventListener("input", () => window.filterDataSiswa());
 
   document.getElementById("tabNilai")?.addEventListener("click", () => {
     const ujianTerpilih = document.getElementById("selectFilterUjian")?.value || "";
@@ -809,7 +851,7 @@ function renderUserInfoNav() {
   const userDisplayName = document.getElementById("userDisplayName");
   if (userDisplayName && userSession) {
     const listMapel = Array.isArray(userSession.mapelDiampu) ? userSession.mapelDiampu.join(", ") : (userSession.mapel || "");
-    const labelRole = userSession.role === "admin" ? "ADMIN" : `Guru ${listMapel}`;
+    const labelRole = isUserAdmin(userSession) ? "ADMIN" : `Guru ${listMapel}`;
     userDisplayName.innerHTML = `<i class="bi bi-person-circle me-1"></i> ${escapeHtml(userSession.nama || userSession.email)} (${escapeHtml(labelRole)})`;
   }
 }
@@ -842,7 +884,10 @@ async function simpanSoalUjianAktif(ujianId, listSoal) {
     daftarUjian[idx].soal = normalized;
     daftarUjian[idx].totalSoal = normalized.length;
   }
-  writeSessionCache("cbt_master_ujian", daftarUjian);
+  const session = window.userSession || userSession || {};
+  const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "default");
+  const cacheKey = isUserAdmin(session) ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
+  writeSessionCache(cacheKey, daftarUjian);
   window.filterDataUjian();
 }
 
@@ -859,7 +904,10 @@ window.simpanJawabanDenganSakelar = async function(kodeUjian, nisn, jawabanMap =
 function renderStats() {
   const statSiswa = document.getElementById("statTotalSiswa");
   const statUjian = document.getElementById("statTotalUjian");
-  if (statSiswa) statSiswa.innerText = daftarSiswa.length;
+  if (statSiswa) {
+    const kelasAktif = document.getElementById("filterKelasSiswa")?.value.trim() || "";
+    statSiswa.innerText = kelasAktif ? String(daftarSiswa.length) : "0";
+  }
   if (statUjian) statUjian.innerText = daftarUjian.length;
 }
 
@@ -933,17 +981,23 @@ function renderListKelasModal() {
 function updateAllClassDropdowns() {
   const session = window.userSession || userSession || {};
   const isGuru = session && session.role === "guru";
-  const kelasDiampuGuru = Array.isArray(session.kelasDiampu) ? session.kelasDiampu : [];
+  const kelasDiampuGuru = getKelasDiampuGuru(session);
 
   let kelasTampil = daftarKelas;
   if (isGuru) {
-    kelasTampil = daftarKelas.filter(k => kelasDiampuGuru.includes(k.nama));
+    const allowedSet = new Set(kelasDiampuGuru.map(k => k.toLowerCase()));
+    const dariMaster = daftarKelas.filter(k => allowedSet.has(String(k.nama || "").trim().toLowerCase()));
+    kelasTampil = dariMaster.length > 0
+      ? dariMaster
+      : kelasDiampuGuru.map((nama, idx) => ({ id: `ampu_${idx}`, nama }));
   }
 
   const filterSiswa = document.getElementById("filterKelasSiswa");
   if (filterSiswa) {
     const currVal = filterSiswa.value;
-    filterSiswa.innerHTML = isGuru ? '<option value="">-- Kelas Ampuan --</option>' : '<option value="">-- Semua Kelas --</option>';
+    filterSiswa.innerHTML = isGuru
+      ? '<option value="">-- Pilih Kelas Ampuan --</option>'
+      : '<option value="">-- Pilih Kelas --</option>';
 
     kelasTampil.forEach(k => {
       const opt = document.createElement("option");
@@ -951,7 +1005,9 @@ function updateAllClassDropdowns() {
       opt.textContent = k.nama;
       filterSiswa.appendChild(opt);
     });
-    filterSiswa.value = currVal;
+
+    const masihValid = Array.from(filterSiswa.options).some(o => o.value === currVal);
+    filterSiswa.value = masihValid ? currVal : "";
   }
 
   const filterNilai = document.getElementById("selectFilterKelas");
@@ -1173,7 +1229,10 @@ window.toggleStatusUjian = async (id, currentStatus) => {
     ]);
     const idx = daftarUjian.findIndex(u => u.id === id);
     if (idx >= 0) daftarUjian[idx].status = newStatus;
-    writeSessionCache("cbt_master_ujian", daftarUjian);
+    const session = window.userSession || userSession || {};
+    const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "default");
+    const cacheKey = isUserAdmin(session) ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
+    writeSessionCache(cacheKey, daftarUjian);
     window.filterDataUjian();
   } catch (err) {
     alert("Gagal mengubah status ujian: " + err.message);
@@ -1377,7 +1436,7 @@ async function handleSimpanSiswa(e) {
   const kelas = document.getElementById("siswaKelas").value.trim();
   const cleanKey = sanitizeFirestoreId(nisn);
 
-  if (!cleanKey || !nama) return alert("NISN dan Nama siswa wajib diisi!");
+  if (!cleanKey || !nama || !kelas) return alert("NISN, Nama siswa, dan Kelas wajib diisi!");
 
   try {
     await setDoc(doc(firestoreDb, "siswa", cleanKey), {
@@ -1391,20 +1450,29 @@ async function handleSimpanSiswa(e) {
     document.getElementById("formSiswa").reset();
     const modalEl = document.getElementById("modalSiswa");
     if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl)?.hide();
-    await muatSiswaFirestore(true);
+
+    removeSessionCache(`cbt_siswa_kelas_${sanitizeFirestoreId(kelas)}`);
+    const filterKelasEl = document.getElementById("filterKelasSiswa");
+    if (filterKelasEl && filterKelasEl.value.trim().toLowerCase() === kelas.toLowerCase()) {
+      await muatSiswaFirestore(kelas, true);
+    }
   } catch (err) {
     alert("Gagal menyimpan siswa: " + err.message);
   }
 }
 
 window.cetakKartuUjianSiswa = () => {
-  const filterKelas = document.getElementById("filterKelasSiswa")?.value.toLowerCase().trim() || "";
+  const filterKelas = document.getElementById("filterKelasSiswa")?.value.trim() || "";
   const container = document.getElementById("containerKartuUjian");
   if (!container) return;
 
+  if (!filterKelas) {
+    return alert("Pilih kelas terlebih dahulu untuk mencetak kartu ujian!");
+  }
+
   const siswaFiltered = daftarSiswa.filter(s => {
     const k = (s.kelas || "").toLowerCase().trim();
-    return filterKelas ? (k === filterKelas) : true;
+    return k === filterKelas.toLowerCase();
   });
 
   if (siswaFiltered.length === 0) {
@@ -1467,52 +1535,89 @@ window.cetakKartuUjianSiswa = () => {
   }, 300);
 };
 
-async function muatSiswaFirestore(forceReload = false) {
+async function muatSiswaFirestore(kelasTarget = "", forceReload = false) {
   const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
-  const role = String(session.role || "").toLowerCase();
-  const isAdmin = role === "admin" || role === "superadmin" || role === "kepsek";
-  const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "guru");
-  const cacheKey = isAdmin ? "cbt_master_siswa_all" : `cbt_master_siswa_${guruKey}`;
+  const cleanKelas = String(kelasTarget || "").trim();
+
+  // Wajib memilih spesifik satu kelas untuk memuat data siswa (hemat reads)
+  if (!cleanKelas) {
+    daftarSiswa = [];
+    window.daftarSiswa = [];
+    renderStats();
+    renderTabelSiswaPrompt(
+      isUserAdmin(session)
+        ? "Silakan pilih kelas terlebih dahulu untuk menampilkan data siswa."
+        : "Silakan pilih kelas ampu Anda terlebih dahulu untuk menampilkan data siswa."
+    );
+    return [];
+  }
+
+  // Guru hanya boleh mengakses kelas yang diampunya
+  if (!isKelasDiizinkanUntukUser(cleanKelas, session)) {
+    daftarSiswa = [];
+    window.daftarSiswa = [];
+    renderStats();
+    renderTabelSiswaPrompt("Kelas yang dipilih berada di luar hak ampu Anda.");
+    return [];
+  }
+
+  const cacheKey = `cbt_siswa_kelas_${sanitizeFirestoreId(cleanKelas.toLowerCase())}`;
 
   if (!forceReload) {
     const cached = readSessionCache(cacheKey);
     if (Array.isArray(cached)) {
       daftarSiswa = cached;
       window.daftarSiswa = daftarSiswa;
-      if (typeof renderStats === "function") renderStats();
-      if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
+      renderStats();
+      terapkanFilterPencarianSiswa(cleanKelas);
       return daftarSiswa;
     }
   }
 
-  let hasilSiswa = [];
-
-  if (isAdmin) {
-    const snap = await getDocs(collection(firestoreDb, "siswa"));
-    hasilSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-  } else {
-    const kelasDiampu = Array.isArray(session.kelasDiampu)
-      ? session.kelasDiampu.map(k => String(k).trim()).filter(Boolean)
-      : [];
-
-    if (kelasDiampu.length > 0) {
-      for (let i = 0; i < kelasDiampu.length; i += 10) {
-        const chunkKelas = kelasDiampu.slice(i, i + 10);
-        const qSiswa = query(collection(firestoreDb, "siswa"), where("kelas", "in", chunkKelas));
-        const snap = await getDocs(qSiswa);
-        snap.forEach(d => hasilSiswa.push({ id: d.id, ...(d.data() || {}) }));
-      }
-    }
-  }
+  const qSiswa = query(collection(firestoreDb, "siswa"), where("kelas", "==", cleanKelas));
+  const snap = await getDocs(qSiswa);
+  const hasilSiswa = snap.docs
+    .map(d => ({ id: d.id, ...(d.data() || {}) }))
+    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || "")));
 
   daftarSiswa = hasilSiswa;
   window.daftarSiswa = daftarSiswa;
   writeSessionCache(cacheKey, daftarSiswa);
 
-  if (typeof renderStats === "function") renderStats();
-  if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
+  renderStats();
+  terapkanFilterPencarianSiswa(cleanKelas);
 
   return daftarSiswa;
+}
+
+function renderTabelSiswaPrompt(pesan) {
+  const tbody = document.getElementById("tbodySiswa");
+  const totalBadge = document.getElementById("totalSiswaTampil");
+  const session = window.userSession || userSession || {};
+  const isGuru = session && session.role === "guru";
+  const colspanNum = isGuru ? 4 : 5;
+
+  if (totalBadge) totalBadge.innerText = "0 Siswa";
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-4">${escapeHtml(pesan)}</td></tr>`;
+}
+
+function terapkanFilterPencarianSiswa(kelasAktif) {
+  const keyword = (document.getElementById("searchSiswa")?.value || "").toLowerCase().trim();
+  const kelasLower = String(kelasAktif || "").toLowerCase().trim();
+
+  const hasilFiltered = daftarSiswa.filter(s => {
+    const k = (s.kelas || "").toLowerCase().trim();
+    const nama = (s.nama || "").toLowerCase();
+    const nisn = (s.nisn || "").toLowerCase();
+
+    const matchKelas = kelasLower ? (k === kelasLower) : false;
+    const matchSearch = keyword ? (nama.includes(keyword) || nisn.includes(keyword)) : true;
+
+    return matchKelas && matchSearch;
+  });
+
+  renderTabelSiswaFiltered(hasilFiltered);
 }
 
 function importSiswaExcel(event) {
@@ -1526,12 +1631,15 @@ function importSiswaExcel(event) {
       const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
       const itemsValid = [];
+      const kelasTerdampak = new Set();
+
       json.forEach(row => {
         const nisn = String(row.NISN || row.nisn || "").trim();
         const nama = String(row.NAMA || row.Nama || row.nama || "").trim();
         const kelas = String(row.KELAS || row.Kelas || row.kelas || "").trim();
         if (nisn && nama) {
           itemsValid.push({ nisn, nama, kelas });
+          if (kelas) kelasTerdampak.add(sanitizeFirestoreId(kelas.toLowerCase()));
         }
       });
 
@@ -1551,7 +1659,12 @@ function importSiswaExcel(event) {
         await batch.commit();
       }
 
-      await muatSiswaFirestore(true);
+      kelasTerdampak.forEach(kKey => removeSessionCache(`cbt_siswa_kelas_${kKey}`));
+      const kelasAktif = document.getElementById("filterKelasSiswa")?.value.trim() || "";
+      if (kelasAktif) {
+        await muatSiswaFirestore(kelasAktif, true);
+      }
+
       alert(`Berhasil mengimpor ${itemsValid.length} data siswa ke Firestore!`);
     } catch (err) {
       console.error("Gagal impor siswa:", err);
@@ -1641,22 +1754,44 @@ function importExcelSoal(event) {
   reader.readAsArrayBuffer(file);
 }
 
-window.filterDataSiswa = () => {
-  const filterKelas = document.getElementById("filterKelasSiswa")?.value.toLowerCase().trim() || "";
-  const keyword = document.getElementById("searchSiswa")?.value.toLowerCase().trim() || "";
+window.filterDataSiswa = async (forceReload = false) => {
+  const session = window.userSession || userSession || {};
+  const selectKelasEl = document.getElementById("filterKelasSiswa");
+  const filterKelas = selectKelasEl ? selectKelasEl.value.trim() : "";
 
-  const hasilFiltered = daftarSiswa.filter(s => {
-    const k = (s.kelas || "").toLowerCase().trim();
-    const nama = (s.nama || "").toLowerCase();
-    const nisn = (s.nisn || "").toLowerCase();
+  if (!filterKelas) {
+    daftarSiswa = [];
+    window.daftarSiswa = [];
+    renderStats();
+    renderTabelSiswaPrompt(
+      isUserAdmin(session)
+        ? "Silakan pilih kelas terlebih dahulu untuk menampilkan data siswa."
+        : "Silakan pilih kelas ampu Anda terlebih dahulu untuk menampilkan data siswa."
+    );
+    return;
+  }
 
-    const matchKelas = filterKelas ? (k === filterKelas) : true;
-    const matchSearch = keyword ? (nama.includes(keyword) || nisn.includes(keyword)) : true;
+  if (!isKelasDiizinkanUntukUser(filterKelas, session)) {
+    if (selectKelasEl) selectKelasEl.value = "";
+    daftarSiswa = [];
+    window.daftarSiswa = [];
+    renderStats();
+    renderTabelSiswaPrompt("Anda hanya dapat melihat data siswa di kelas yang Anda ampu.");
+    return;
+  }
 
-    return matchKelas && matchSearch;
-  });
+  const cacheKey = `cbt_siswa_kelas_${sanitizeFirestoreId(filterKelas.toLowerCase())}`;
+  const cached = !forceReload ? readSessionCache(cacheKey) : null;
 
-  renderTabelSiswaFiltered(hasilFiltered);
+  if (Array.isArray(cached) && cached.length > 0 && cached[0] && String(cached[0].kelas || "").toLowerCase() === filterKelas.toLowerCase()) {
+    daftarSiswa = cached;
+    window.daftarSiswa = daftarSiswa;
+    renderStats();
+    terapkanFilterPencarianSiswa(filterKelas);
+    return;
+  }
+
+  await muatSiswaFirestore(filterKelas, forceReload);
 };
 
 function renderTabelSiswaFiltered(listSiswa) {
@@ -1672,7 +1807,7 @@ function renderTabelSiswaFiltered(listSiswa) {
   tbody.innerHTML = "";
 
   if (listSiswa.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-3">Data siswa tidak ditemukan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-3">Data siswa tidak ditemukan pada kelas ini.</td></tr>`;
     return;
   }
 
@@ -1685,7 +1820,7 @@ function renderTabelSiswaFiltered(listSiswa) {
       <td><span class="badge bg-secondary">${escapeHtml(s.kelas || "-")}</span></td>
       ${!isGuru ? `
       <td>
-        <button class="btn btn-sm btn-outline-danger" onclick="hapusSiswa('${escapeHtml(s.nisn)}')">
+        <button class="btn btn-sm btn-outline-danger" onclick="hapusSiswa('${escapeHtml(s.nisn)}', '${escapeHtml(s.kelas || "")}')">
           <i class="bi bi-trash"></i>
         </button>
       </td>` : ""}
@@ -1843,7 +1978,7 @@ window.openModalTambahUjian = async () => {
   if (window.userSession) {
     namaGuru = window.userSession.nama || window.userSession.username || "";
     mapelGuruList = window.userSession.mapelDiampu || (window.userSession.mapel ? [window.userSession.mapel] : []);
-    kelasDiampuGuru = window.userSession.kelasDiampu || [];
+    kelasDiampuGuru = getKelasDiampuGuru(window.userSession);
   }
 
   if (window.userSession && window.userSession.role !== "admin") {
@@ -1895,7 +2030,8 @@ window.openModalTambahUjian = async () => {
 
     let listKelasAktif = window.daftarKelas || [];
     if (window.userSession && window.userSession.role !== "admin") {
-      listKelasAktif = listKelasAktif.filter(k => kelasDiampuGuru.includes(k.nama));
+      const allowedSet = new Set(kelasDiampuGuru.map(k => k.toLowerCase()));
+      listKelasAktif = listKelasAktif.filter(k => allowedSet.has(String(k.nama || "").trim().toLowerCase()));
     }
 
     containerCheck.innerHTML = "";
@@ -1937,29 +2073,29 @@ window.openModalSoal = async (idUjian) => {
   window.currentEditGambarLama = "";
 
   const formSoal = document.getElementById("formTambahSoal");
-if (formSoal) formSoal.reset();
-document.getElementById("previewGambarContainer")?.classList.add("d-none");
+  if (formSoal) formSoal.reset();
+  document.getElementById("previewGambarContainer")?.classList.add("d-none");
 
-const judulSoalEl = document.getElementById("judulUjianSoal");
-if (judulSoalEl) {
-  judulSoalEl.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${escapeHtml(u.mapel || "")} - ${escapeHtml(u.judul || "")}`;
-}
-
-let daftarSoalTampil = Array.isArray(u.soal) ? u.soal : [];
-const paksaAmbilUlang = daftarSoalTampil.length === 0;
-
-if (paksaAmbilUlang) {
-  try {
-    const soalFs = await ambilSoalFirestore(idUjian);
-    if (Array.isArray(soalFs)) {
-      daftarSoalTampil = soalFs;
-      u.soal = soalFs;
-    }
-  } catch (err) {
-    console.warn("Gagal membaca soal Firestore:", err);
+  const judulSoalEl = document.getElementById("judulUjianSoal");
+  if (judulSoalEl) {
+    judulSoalEl.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${escapeHtml(u.mapel || "")} - ${escapeHtml(u.judul || "")}`;
   }
-}
-   
+
+  let daftarSoalTampil = Array.isArray(u.soal) ? u.soal : [];
+  const paksaAmbilUlang = daftarSoalTampil.length === 0;
+
+  if (paksaAmbilUlang) {
+    try {
+      const soalFs = await ambilSoalFirestore(idUjian);
+      if (Array.isArray(soalFs)) {
+        daftarSoalTampil = soalFs;
+        u.soal = soalFs;
+      }
+    } catch (err) {
+      console.warn("Gagal membaca soal Firestore:", err);
+    }
+  }
+
   window.renderDaftarSoalInteraktif(daftarSoalTampil);
 
   const modalKelola = document.getElementById("modalKelolaSoal");
@@ -2023,12 +2159,17 @@ window.switchTipeSoal = (tipe) => {
   }
 };
 
-window.hapusSiswa = async (nisn) => {
+window.hapusSiswa = async (nisn, kelasSiswa = "") => {
   if (!confirm("Hapus siswa ini?")) return;
   try {
     const cleanKey = sanitizeFirestoreId(nisn);
     await deleteDoc(doc(firestoreDb, "siswa", cleanKey));
-    await muatSiswaFirestore(true);
+
+    const kelasAktif = kelasSiswa || document.getElementById("filterKelasSiswa")?.value.trim() || "";
+    if (kelasAktif) {
+      removeSessionCache(`cbt_siswa_kelas_${sanitizeFirestoreId(kelasAktif.toLowerCase())}`);
+      await muatSiswaFirestore(kelasAktif, true);
+    }
   } catch (err) {
     alert("Gagal menghapus siswa: " + err.message);
   }
@@ -2846,7 +2987,7 @@ window.loadDataMonitoring = () => {
     : "";
   const kelasAmpuanMapelIni = mapelUjianKey && Array.isArray(detailGuru[mapelUjianKey]) && detailGuru[mapelUjianKey].length > 0
     ? detailGuru[mapelUjianKey]
-    : (Array.isArray(session.kelasDiampu) ? session.kelasDiampu : []);
+    : getKelasDiampuGuru(session);
 
   const qMonitoring = query(collection(firestoreDb, "status_peserta"), where("ujianId", "==", ujianId));
 
@@ -2866,8 +3007,9 @@ window.loadDataMonitoring = () => {
       const nisn = String(s.nisn || docSnap.id.split("__")[1] || "").trim();
 
       if (isGuru && kelasAmpuanMapelIni.length > 0) {
-        const kelasPeserta = (s.kelas || "").trim();
-        if (!kelasAmpuanMapelIni.includes(kelasPeserta)) return;
+        const kelasPeserta = (s.kelas || "").trim().toLowerCase();
+        const boleh = kelasAmpuanMapelIni.some(k => String(k).trim().toLowerCase() === kelasPeserta);
+        if (!boleh) return;
       }
 
       listPeserta.push({
