@@ -317,8 +317,6 @@
     let unsubStatusPeserta = null;
     let modalKonfirmasiInstance = null;
 
-    const cacheGambarTerkompresi = new Map();
-
     function sanitizeFsId(rawId) {
       return String(rawId || "").trim().replace(/[.#$\[\]\/]/g, "_") || "item";
     }
@@ -357,6 +355,25 @@
 
     function getStorageKeyBankSoal(ujianId) {
       return `cbt_smantar_bank_${sanitizeFsId(ujianId)}_fs`;
+    }
+
+    function bersihkanSoalUntukStorage(listSoal) {
+      if (!Array.isArray(listSoal)) return [];
+      return listSoal.map((s) => {
+        const item = {
+          id: s.id,
+          tipe: s.tipe || "pg",
+          pertanyaan: s.pertanyaan || "",
+          gambarUrl: bersihkanGambarDirectLink(s.gambarUrl)
+        };
+        if (s.opsi && typeof s.opsi === "object") item.opsi = s.opsi;
+        if (Array.isArray(s.urutanOpsi)) item.urutanOpsi = s.urutanOpsi;
+        if (Array.isArray(s.pasangan)) {
+          item.pasangan = s.pasangan.map((p) => ({ kiri: p.kiri, kanan: p.kanan }));
+        }
+        if (Array.isArray(s.urutanKanan)) item.urutanKanan = s.urutanKanan;
+        return item;
+      });
     }
 
     function bacaCacheBankSoal(ujianId, expectedVersi = null) {
@@ -407,7 +424,7 @@
         const payload = {
           ujianId: ujianAktif.id,
           nisn: siswaAktif.nisn,
-          daftarSoalAcak,
+          daftarSoalAcak: bersihkanSoalUntukStorage(daftarSoalAcak),
           jawabanSiswa,
           soalRagu,
           indeksSoalAktif,
@@ -517,70 +534,6 @@
       ]);
     }
 
-    function kompresGambarSoal(srcUrl, maxDimensi = 800, kualitas = 0.75) {
-      const cleanSrc = bersihkanGambarDirectLink(srcUrl);
-      if (!cleanSrc) return Promise.resolve("");
-
-      if (cacheGambarTerkompresi.has(cleanSrc)) {
-        return Promise.resolve(cacheGambarTerkompresi.get(cleanSrc));
-      }
-
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-
-        img.onload = () => {
-          try {
-            let width = img.naturalWidth || img.width;
-            let height = img.naturalHeight || img.height;
-
-            if (!width || !height) {
-              cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
-              resolve(cleanSrc);
-              return;
-            }
-
-            if (width <= maxDimensi && height <= maxDimensi) {
-              cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
-              resolve(cleanSrc);
-              return;
-            }
-
-            if (width >= height) {
-              height = Math.round((height * maxDimensi) / width);
-              width = maxDimensi;
-            } else {
-              width = Math.round((width * maxDimensi) / height);
-              height = maxDimensi;
-            }
-
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const hasilKompres = canvas.toDataURL("image/jpeg", kualitas);
-            const finalSrc = hasilKompres || cleanSrc;
-
-            cacheGambarTerkompresi.set(cleanSrc, finalSrc);
-            resolve(finalSrc);
-          } catch (_) {
-            cacheGambarTerkompresi.set(cleanSrc, cleanSrc);
-            resolve(cleanSrc);
-          }
-        };
-
-        img.onerror = () => {
-          resolve(cleanSrc);
-        };
-
-        img.src = cleanSrc;
-      });
-    }
-
     function shuffleArray(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -607,33 +560,17 @@
       if (directSnap.exists()) {
         return { id: directSnap.id, ...directSnap.data() };
       }
-
-      const qSiswa = query(collection(firestoreDb, "siswa"), where("nisn", "==", nisnInput));
-      const snapQ = await getDocs(qSiswa);
-      if (!snapQ.empty) {
-        const firstDoc = snapQ.docs[0];
-        return { id: firstDoc.id, ...firstDoc.data() };
-      }
-
       return null;
     }
 
     async function cariDataUjianFirestore(tokenInput) {
-      const qAktif = query(
-        collection(firestoreDb, "ujian"),
-        where("token", "==", tokenInput),
-        where("status", "==", "aktif")
-      );
-      const snapAktif = await getDocs(qAktif);
-      if (!snapAktif.empty) {
-        return { id: snapAktif.docs[0].id, ...snapAktif.docs[0].data() };
-      }
-
       const qUjian = query(collection(firestoreDb, "ujian"), where("token", "==", tokenInput));
       const snapUjian = await getDocs(qUjian);
       if (snapUjian.empty) return null;
 
-      return { id: snapUjian.docs[0].id, ...snapUjian.docs[0].data() };
+      const listDoc = snapUjian.docs.map(d => ({ id: d.id, ...d.data() }));
+      const aktifDoc = listDoc.find(u => u.status === "aktif");
+      return aktifDoc || listDoc[0];
     }
 
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
@@ -692,8 +629,11 @@
 
         if (snapStatus.exists()) {
           const statusData = snapStatus.data() || {};
-          if (statusData.status === "sedang_mengerjakan" || statusData.status === "terlempar") {
-            alert("Sesi Anda terdeteksi aktif atau terkunci karena keluar sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
+          if (statusData.status === "terlempar") {
+            alert("Sesi Anda terkunci karena keluar dari ujian sebelumnya! Silakan lapor ke Pengawas/Guru untuk mereset sesi Anda.");
+            return;
+          } else if (statusData.status === "sedang_mengerjakan") {
+            alert("Sesi Anda terdeteksi aktif! Silakan lapor ke Pengawas/Guru untuk pemulihan sesi.");
             return;
           } else if (statusData.status === "selesai") {
             hapusProgresLokal(foundUjian.id, nisnKey);
@@ -778,10 +718,15 @@
 
       const progresTersimpan = muatProgresLokal(ujianAktif.id, siswaAktif.nisn);
       if (progresTersimpan && progresTersimpan.daftarSoalAcak.length === ujianAktif.soal.length) {
-        daftarSoalAcak = progresTersimpan.daftarSoalAcak.map((s) => ({
-          ...s,
-          gambarUrl: bersihkanGambarDirectLink(s.gambarUrl)
-        }));
+        const kunciMap = new Map(ujianAktif.soal.map((asli, idx) => [asli.id || `SOAL_${idx}`, asli]));
+        daftarSoalAcak = progresTersimpan.daftarSoalAcak.map((s) => {
+          const asli = kunciMap.get(s.id) || {};
+          return {
+            ...asli,
+            ...s,
+            gambarUrl: bersihkanGambarDirectLink(s.gambarUrl || asli.gambarUrl)
+          };
+        });
         jawabanSiswa = progresTersimpan.jawabanSiswa || {};
         soalRagu = progresTersimpan.soalRagu || {};
         indeksSoalAktif = Math.min(Math.max(0, progresTersimpan.indeksSoalAktif || 0), daftarSoalAcak.length - 1);
@@ -890,7 +835,7 @@
       }
     };
 
-    async function tampilkanSoalKe(index) {
+    function tampilkanSoalKe(index) {
       if (index < 0 || index >= daftarSoalAcak.length) return;
       indeksSoalAktif = index;
       simpanProgresLokal();
@@ -922,14 +867,16 @@
       const linkGambarBersih = bersihkanGambarDirectLink(s.gambarUrl);
       if (linkGambarBersih) {
         wadahGambar.classList.remove("d-none");
-        wadahGambar.innerHTML = `<div class="small text-muted py-2"><span class="spinner-border spinner-border-sm me-1"></span>Memuat gambar...</div>`;
-        const urlTerkompresi = await kompresGambarSoal(linkGambarBersih, 800, 0.75);
-        if (indeksSoalAktif === index) {
-          wadahGambar.innerHTML = `
-            <img src="${escapeAttr(urlTerkompresi)}" class="img-fluid rounded border shadow-sm" style="max-height: 280px;" alt="Gambar Soal"
-              onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-warning small\\'>Gagal memuat gambar soal.</div>';">
-          `;
-        }
+        wadahGambar.innerHTML = "";
+        const imgEl = document.createElement("img");
+        imgEl.src = linkGambarBersih;
+        imgEl.className = "img-fluid rounded border shadow-sm";
+        imgEl.style.maxHeight = "280px";
+        imgEl.alt = "Gambar Soal";
+        imgEl.addEventListener("error", () => {
+          wadahGambar.innerHTML = `<div class="alert alert-warning small mb-0">Gagal memuat gambar soal.</div>`;
+        }, { once: true });
+        wadahGambar.appendChild(imgEl);
       } else {
         wadahGambar.classList.add("d-none");
         wadahGambar.innerHTML = "";
