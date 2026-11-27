@@ -1467,6 +1467,54 @@ window.cetakKartuUjianSiswa = () => {
   }, 300);
 };
 
+async function muatSiswaFirestore(forceReload = false) {
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  const role = String(session.role || "").toLowerCase();
+  const isAdmin = role === "admin" || role === "superadmin" || role === "kepsek";
+  const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "guru");
+  const cacheKey = isAdmin ? "cbt_master_siswa_all" : `cbt_master_siswa_${guruKey}`;
+
+  if (!forceReload) {
+    const cached = readSessionCache(cacheKey);
+    if (Array.isArray(cached)) {
+      daftarSiswa = cached;
+      window.daftarSiswa = daftarSiswa;
+      if (typeof renderStats === "function") renderStats();
+      if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
+      return daftarSiswa;
+    }
+  }
+
+  let hasilSiswa = [];
+
+  if (isAdmin) {
+    const snap = await getDocs(collection(firestoreDb, "siswa"));
+    hasilSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+  } else {
+    const kelasDiampu = Array.isArray(session.kelasDiampu)
+      ? session.kelasDiampu.map(k => String(k).trim()).filter(Boolean)
+      : [];
+
+    if (kelasDiampu.length > 0) {
+      for (let i = 0; i < kelasDiampu.length; i += 10) {
+        const chunkKelas = kelasDiampu.slice(i, i + 10);
+        const qSiswa = query(collection(firestoreDb, "siswa"), where("kelas", "in", chunkKelas));
+        const snap = await getDocs(qSiswa);
+        snap.forEach(d => hasilSiswa.push({ id: d.id, ...(d.data() || {}) }));
+      }
+    }
+  }
+
+  daftarSiswa = hasilSiswa;
+  window.daftarSiswa = daftarSiswa;
+  writeSessionCache(cacheKey, daftarSiswa);
+
+  if (typeof renderStats === "function") renderStats();
+  if (typeof window.filterDataSiswa === "function") window.filterDataSiswa();
+
+  return daftarSiswa;
+}
+
 function importSiswaExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
