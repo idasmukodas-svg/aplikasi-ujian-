@@ -3066,7 +3066,7 @@ window.loadDaftarUjianMonitoring = () => {
   }
 };
 
-window.loadDataMonitoring = () => {
+window.loadDataMonitoring = async (forceReload = false) => {
   if (typeof unsubMonitoring === "function") {
     unsubMonitoring();
     unsubMonitoring = null;
@@ -3075,18 +3075,18 @@ window.loadDataMonitoring = () => {
   nisnTerpilihMonitoring.clear();
   dataMonitoringPeserta = [];
 
-  const ujianId = document.getElementById("selectUjianMonitoring")?.value || "";
+  const ujianId = String(document.getElementById("selectUjianMonitoring")?.value || "").trim();
   const tbody = document.getElementById("tabelMonitoringBody");
 
   if (!ujianId) {
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu lalu klik Refresh.</td></tr>`;
     }
     sinkronkanTombolMassalMonitoring();
-    return;
+    return [];
   }
 
-  const session = window.userSession || userSession || {};
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
   const isGuru = session && session.role === "guru";
   const ujianTerpilih = (window.daftarUjian || []).find(u => u.id === ujianId);
   const detailGuru = isGuru ? normalisasiDetailAmpuan(session) : {};
@@ -3097,54 +3097,79 @@ window.loadDataMonitoring = () => {
     ? detailGuru[mapelUjianKey]
     : getKelasDiampuGuru(session);
 
-  const qMonitoring = query(collection(firestoreDb, "status_peserta"), where("ujianId", "==", ujianId));
+  const cacheKey = `cbt_monitoring_${sanitizeFirestoreId(ujianId)}`;
+  let rawPeserta = null;
 
-  unsubMonitoring = onSnapshot(qMonitoring, (snapshot) => {
-    if (snapshot.empty) {
-      dataMonitoringPeserta = [];
-      if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
-      }
-      sinkronkanTombolMassalMonitoring();
-      return;
+  if (!forceReload) {
+    rawPeserta = readSessionCache(cacheKey);
+  }
+
+  if (!Array.isArray(rawPeserta)) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">Memuat data monitoring...</td></tr>`;
     }
 
-    const listPeserta = [];
-    snapshot.forEach((docSnap) => {
-      const s = docSnap.data() || {};
-      const nisn = String(s.nisn || docSnap.id.split("__")[1] || "").trim();
-
-      if (isGuru && kelasAmpuanMapelIni.length > 0) {
-        const kelasPeserta = (s.kelas || "").trim().toLowerCase();
-        const boleh = kelasAmpuanMapelIni.some(k => String(k).trim().toLowerCase() === kelasPeserta);
-        if (!boleh) return;
-      }
-
-      listPeserta.push({
-        ...s,
-        nisn
+    try {
+      const qMonitoring = query(collection(firestoreDb, "status_peserta"), where("ujianId", "==", ujianId));
+      const snapshot = await getDocs(qMonitoring);
+      rawPeserta = [];
+      snapshot.forEach((docSnap) => {
+        const s = docSnap.data() || {};
+        const nisn = String(s.nisn || docSnap.id.split("__")[1] || "").trim();
+        rawPeserta.push({
+          ...s,
+          nisn
+        });
       });
-    });
-
-    const nisnAktifSet = new Set(listPeserta.map(p => p.nisn));
-    Array.from(nisnTerpilihMonitoring).forEach(n => {
-      if (!nisnAktifSet.has(n)) nisnTerpilihMonitoring.delete(n);
-    });
-
-    dataMonitoringPeserta = listPeserta;
-
-    if (dataMonitoringPeserta.length === 0) {
+      writeSessionCache(cacheKey, rawPeserta);
+    } catch (err) {
+      console.error("Query monitoring Firestore error:", err);
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa dari kelas ampu Anda yang mengerjakan ujian ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">Gagal memuat data monitoring.</td></tr>`;
       }
       sinkronkanTombolMassalMonitoring();
-      return;
+      return [];
     }
+  }
 
-    window.filterTabelMonitoring();
-  }, (err) => {
-    console.error("Listener monitoring Firestore error:", err);
+  if (rawPeserta.length === 0) {
+    dataMonitoringPeserta = [];
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa yang login/mengerjakan ujian ini.</td></tr>`;
+    }
+    sinkronkanTombolMassalMonitoring();
+    return [];
+  }
+
+  const listPeserta = rawPeserta.filter((s) => {
+    if (isGuru && kelasAmpuanMapelIni.length > 0) {
+      const kelasPeserta = String(s.kelas || "").trim().toLowerCase();
+      return kelasAmpuanMapelIni.some(k => String(k).trim().toLowerCase() === kelasPeserta);
+    }
+    return true;
   });
+
+  const nisnAktifSet = new Set(listPeserta.map(p => p.nisn));
+  Array.from(nisnTerpilihMonitoring).forEach(n => {
+    if (!nisnAktifSet.has(n)) nisnTerpilihMonitoring.delete(n);
+  });
+
+  dataMonitoringPeserta = listPeserta;
+
+  if (dataMonitoringPeserta.length === 0) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Belum ada siswa dari kelas ampu Anda yang mengerjakan ujian ini.</td></tr>`;
+    }
+    sinkronkanTombolMassalMonitoring();
+    return [];
+  }
+
+  window.filterTabelMonitoring();
+  return dataMonitoringPeserta;
+};
+
+window.refreshMonitoringManual = async () => {
+  return await window.loadDataMonitoring(true);
 };
 
 window.hapusHasilUjian = async (resultId) => {
