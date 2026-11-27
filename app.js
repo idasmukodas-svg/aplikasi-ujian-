@@ -3181,11 +3181,12 @@ window.loadDaftarUjianMonitoring = () => {
 
   const prevVal = selectUjian.value;
   const sumberUjian = Array.isArray(window.daftarUjian) ? window.daftarUjian : [];
-  const validIds = new Set(
-    sumberUjian
-      .filter(u => u && u.id && (u.judul || u.mapel))
-      .map(u => u.id)
+  const ujianAktifSaja = sumberUjian.filter(
+    u => u && u.id && (u.judul || u.mapel) && String(u.status || "").toLowerCase() === "aktif"
   );
+  window.daftarUjianMonitoringAktif = ujianAktifSaja;
+
+  const validIds = new Set(ujianAktifSaja.map(u => u.id));
 
   window.filterOpsiUjianMonitoring();
 
@@ -3201,7 +3202,7 @@ window.loadDaftarUjianMonitoring = () => {
     dataMonitoringPeserta = [];
     const tbody = document.getElementById("tabelMonitoringBody");
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian terlebih dahulu di atas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Silakan pilih jadwal ujian aktif terlebih dahulu di atas.</td></tr>`;
     }
     sinkronkanTombolMassalMonitoring();
   }
