@@ -357,6 +357,10 @@
       return `cbt_smantar_bank_${sanitizeFsId(ujianId)}_fs`;
     }
 
+    function getStorageKeyUjianToken(tokenInput) {
+      return `cbt_smantar_ujian_token_${sanitizeFsId(tokenInput)}`;
+    }
+
     function bersihkanSoalUntukStorage(listSoal) {
       if (!Array.isArray(listSoal)) return [];
       return listSoal.map((s) => {
@@ -389,7 +393,7 @@
           return parsed.soal.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
         }
 
-        if (Array.isArray(parsed) && parsed.length > 0 && expectedVersi === null) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((s) => ({ ...s, gambarUrl: bersihkanGambarDirectLink(s.gambarUrl) }));
         }
       } catch (err) {
@@ -556,21 +560,50 @@
 
     async function cariDataSiswaFirestore(nisnInput) {
       const cleanId = sanitizeFsId(nisnInput);
+      try {
+        const cachedRaw = sessionStorage.getItem(`cbt_smantar_siswa_${cleanId}`);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (parsed && parsed.id === cleanId) return parsed;
+        }
+      } catch (_) {}
+
       const directSnap = await getDoc(doc(firestoreDb, "siswa", cleanId));
       if (directSnap.exists()) {
-        return { id: directSnap.id, ...directSnap.data() };
+        const dataSiswa = { id: directSnap.id, ...directSnap.data() };
+        try {
+          sessionStorage.setItem(`cbt_smantar_siswa_${cleanId}`, JSON.stringify(dataSiswa));
+        } catch (_) {}
+        return dataSiswa;
       }
       return null;
     }
 
     async function cariDataUjianFirestore(tokenInput) {
+      const cacheKey = getStorageKeyUjianToken(tokenInput);
+      try {
+        const cachedRaw = sessionStorage.getItem(cacheKey);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (parsed && parsed.data && (Date.now() - parsed.cachedAt < 15 * 60 * 1000)) {
+            return parsed.data;
+          }
+        }
+      } catch (_) {}
+
       const qUjian = query(collection(firestoreDb, "ujian"), where("token", "==", tokenInput));
       const snapUjian = await getDocs(qUjian);
       if (snapUjian.empty) return null;
 
       const listDoc = snapUjian.docs.map(d => ({ id: d.id, ...d.data() }));
-      const aktifDoc = listDoc.find(u => u.status === "aktif");
-      return aktifDoc || listDoc[0];
+      const hasilUjian = listDoc.find(u => u.status === "aktif") || listDoc[0];
+
+      if (hasilUjian && hasilUjian.status === "aktif") {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ cachedAt: Date.now(), data: hasilUjian }));
+        } catch (_) {}
+      }
+      return hasilUjian;
     }
 
     document.getElementById("formLoginSiswa").addEventListener("submit", async (e) => {
@@ -608,6 +641,7 @@
         }
 
         if (foundUjian.status !== "aktif") {
+          try { sessionStorage.removeItem(getStorageKeyUjianToken(tokenInput)); } catch (_) {}
           alert("Maaf, ujian ini sedang dinonaktifkan oleh Guru/Admin!");
           return;
         }
@@ -789,6 +823,13 @@
         console.warn("Listener status peserta terputus:", err);
       });
     }
+
+    window.addEventListener("pagehide", () => {
+      if (typeof unsubStatusPeserta === "function") {
+        unsubStatusPeserta();
+        unsubStatusPeserta = null;
+      }
+    });
 
     function apakahSoalTerjawab(soal) {
       const jwb = jawabanSiswa[soal.id];
