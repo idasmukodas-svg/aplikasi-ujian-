@@ -709,15 +709,26 @@ async function muatUjianFirestore(forceReload = false) {
 }
 
 async function muatPenggunaFirestore(forceReload = false) {
+  const session = window.userSession || (typeof userSession !== "undefined" ? userSession : {}) || {};
+  const isAdmin = typeof isUserAdmin === "function"
+    ? isUserAdmin(session)
+    : ["admin", "superadmin", "kepsek"].includes(String(session.role || "").toLowerCase().trim());
+
+  if (!isAdmin) {
+    daftarPengguna = [];
+    window.daftarPengguna = [];
+    return [];
+  }
+
   const cacheKey = "cbt_master_guru";
   if (!forceReload) {
     const cached = readSessionCache(cacheKey);
     if (Array.isArray(cached)) {
       daftarPengguna = cached;
       window.daftarPengguna = daftarPengguna;
-      window.filterDataGuru();
-      updateGuruDropdown();
-      return;
+      if (typeof window.filterDataGuru === "function") window.filterDataGuru();
+      if (typeof updateGuruDropdown === "function") updateGuruDropdown();
+      return daftarPengguna;
     }
   }
 
@@ -726,8 +737,9 @@ async function muatPenggunaFirestore(forceReload = false) {
   daftarPengguna = snap.docs.map(d => ({ uid: d.id, ...(d.data() || {}) })).filter(Boolean);
   window.daftarPengguna = daftarPengguna;
   writeSessionCache(cacheKey, daftarPengguna);
-  window.filterDataGuru();
-  updateGuruDropdown();
+  if (typeof window.filterDataGuru === "function") window.filterDataGuru();
+  if (typeof updateGuruDropdown === "function") updateGuruDropdown();
+  return daftarPengguna;
 }
 
 async function muatMapelFirestore(forceReload = false) {
@@ -770,6 +782,9 @@ async function muatMapelFirestore(forceReload = false) {
       });
     }
   }
+
+  return mapelArray;
+}
 
   const containerMappingTambah = document.getElementById("containerMappingMapelKelasTambah");
   if (containerMappingTambah && typeof renderMappingMapelKelas === "function") {
