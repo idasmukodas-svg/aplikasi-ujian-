@@ -597,8 +597,33 @@ async function muatUjianFirestore(forceReload = false) {
 
   if (!Array.isArray(rawList)) {
     const ujianRef = collection(firestoreDb, "ujian");
-    const snap = await getDocs(ujianRef);
-    rawList = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+
+    if (isAdmin) {
+      const snap = await getDocs(ujianRef);
+      rawList = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+    } else {
+      const detail = normalisasiDetailAmpuan(session);
+      const mapelKeys = Object.keys(detail).map(m => m.trim()).filter(Boolean);
+      const fallbackMapel = Array.isArray(session.mapelDiampu) && session.mapelDiampu.length > 0
+        ? session.mapelDiampu.map(m => String(m).trim()).filter(Boolean)
+        : (session.mapel ? [String(session.mapel).trim()] : []);
+
+      const mapelFilterList = Array.from(new Set(mapelKeys.length > 0 ? mapelKeys : fallbackMapel));
+
+      if (mapelFilterList.length === 0) {
+        rawList = [];
+      } else {
+        const docMap = new Map();
+        for (let i = 0; i < mapelFilterList.length; i += 10) {
+          const chunkMapel = mapelFilterList.slice(i, i + 10);
+          const qUjian = query(ujianRef, where("mapel", "in", chunkMapel));
+          const snap = await getDocs(qUjian);
+          snap.forEach(d => docMap.set(d.id, { id: d.id, ...(d.data() || {}) }));
+        }
+        rawList = Array.from(docMap.values());
+      }
+    }
+
     writeSessionCache(cacheKey, rawList);
   }
 
