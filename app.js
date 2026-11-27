@@ -186,6 +186,7 @@ async function ambilSoalFirestore(kodeUjian = "ujian_1") {
 async function simpanSoalFirestore(kodeUjian = "ujian_1", listSoal = [], metaTambahan = {}) {
   const cleanId = sanitizeFirestoreId(kodeUjian);
   const normalizedSoal = normalisasiArraySoal(listSoal);
+  const cacheKey = `cbt_soal_${cleanId}`;
 
   const metaBersih = {};
   if (metaTambahan && typeof metaTambahan === "object") {
@@ -218,6 +219,16 @@ async function simpanSoalFirestore(kodeUjian = "ujian_1", listSoal = [], metaTam
       updatedAt: serverTimestamp()
     }).catch(() => {})
   ]);
+
+  writeSessionCache(cacheKey, normalizedSoal);
+
+  if (Array.isArray(window.daftarUjian)) {
+    const ujianTarget = window.daftarUjian.find(item => item.id === cleanId || sanitizeFirestoreId(item.id) === cleanId);
+    if (ujianTarget) ujianTarget.soal = normalizedSoal;
+  }
+
+  return normalizedSoal;
+}
 
   writeSessionCache(`cbt_soal_${cleanId}`, normalizedSoal);
   return normalizedSoal;
@@ -1900,25 +1911,29 @@ window.openModalSoal = async (idUjian) => {
   window.currentEditGambarLama = "";
 
   const formSoal = document.getElementById("formTambahSoal");
-  if (formSoal) formSoal.reset();
-  document.getElementById("previewGambarContainer")?.classList.add("d-none");
+if (formSoal) formSoal.reset();
+document.getElementById("previewGambarContainer")?.classList.add("d-none");
 
-  const judulSoalEl = document.getElementById("judulUjianSoal");
-  if (judulSoalEl) {
-    judulSoalEl.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${escapeHtml(u.mapel || "")} - ${escapeHtml(u.judul || "")}`;
-  }
+const judulSoalEl = document.getElementById("judulUjianSoal");
+if (judulSoalEl) {
+  judulSoalEl.innerHTML = `<i class="bi bi-gear-fill me-2"></i>Kelola Soal: ${escapeHtml(u.mapel || "")} - ${escapeHtml(u.judul || "")}`;
+}
 
-  let daftarSoalTampil = u.soal || [];
+let daftarSoalTampil = Array.isArray(u.soal) ? u.soal : [];
+const paksaAmbilUlang = daftarSoalTampil.length === 0;
+
+if (paksaAmbilUlang) {
   try {
     const soalFs = await ambilSoalFirestore(idUjian);
-    if (soalFs.length > 0 || daftarSoalTampil.length === 0) {
+    if (Array.isArray(soalFs)) {
       daftarSoalTampil = soalFs;
       u.soal = soalFs;
     }
   } catch (err) {
     console.warn("Gagal membaca soal Firestore:", err);
   }
-
+}
+   
   window.renderDaftarSoalInteraktif(daftarSoalTampil);
 
   const modalKelola = document.getElementById("modalKelolaSoal");
