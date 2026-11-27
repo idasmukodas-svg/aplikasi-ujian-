@@ -230,10 +230,6 @@ async function simpanSoalFirestore(kodeUjian = "ujian_1", listSoal = [], metaTam
   return normalizedSoal;
 }
 
-  writeSessionCache(`cbt_soal_${cleanId}`, normalizedSoal);
-  return normalizedSoal;
-}
-
 async function simpanJawabanFirestore(kodeUjian, nisn, jawabanObj = {}, meta = {}) {
   const cleanUjian = sanitizeFirestoreId(kodeUjian || "ujian_1");
   const cleanNisn = sanitizeFirestoreId(nisn);
