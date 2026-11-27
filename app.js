@@ -549,73 +549,42 @@ async function muatKelasFirestore(forceReload = false) {
 }
 
 async function muatUjianFirestore(forceReload = false) {
+  const session = window.userSession || userSession || {};
+  const guruKey = sanitizeFirestoreId(session.uid || session.email || session.id || "default");
+  const isAdmin = session.role === "admin" || session.role === "superadmin";
+  const cacheKey = isAdmin ? "cbt_master_ujian_all" : `cbt_master_ujian_${guruKey}`;
+
   let rawList = null;
   if (!forceReload) {
-    rawList = readSessionCache("cbt_master_ujian");
-  }
-  if (!Array.isArray(rawList)) {
-    const snap = await getDocs(collection(firestoreDb, "ujian"));
-    rawList = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-    writeSessionCache("cbt_master_ujian", rawList);
+    rawList = readSessionCache(cacheKey);
   }
 
-  const session = window.userSession || userSession || {};
+  if (!Array.isArray(rawList)) {
+    const ujianRef = collection(firestoreDb, "ujian");
+    const qUjian = isAdmin
+      ? ujianRef
+      : query(ujianRef, where("guruEmail", "==", session.email || "")); // sesuaikan nama field pemilik ujian jika berbeda
+
+    const snap = await getDocs(qUjian);
+    rawList = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+    writeSessionCache(cacheKey, rawList);
+  }
+
   daftarUjian = rawList.filter(u => apakahUjianSesuaiHakGuru(u, session));
   window.daftarUjian = daftarUjian;
 
   renderStats();
   window.filterDataUjian();
   window.updateFilterUjianDropdown();
-  window.loadDaftarUjianMonitoring();
+  if (typeof window.loadDaftarUjianMonitoring === "function") {
+    window.loadDaftarUjianMonitoring();
+  }
 }
 
-async function muatSiswaFirestore(forceReload = false) {
-  const session = window.userSession || userSession || {};
-  const isAdmin = !session || session.role === "admin";
-  const cacheKey = isAdmin ? "cbt_master_siswa_all" : `cbt_master_siswa_${sanitizeFirestoreId(session.uid || session.email || "guru")}`;
-
+  async function muatPenggunaFirestore(forceReload = false) {
+  const cacheKey = "cbt_master_guru";
   if (!forceReload) {
     const cached = readSessionCache(cacheKey);
-    if (Array.isArray(cached)) {
-      daftarSiswa = cached;
-      window.daftarSiswa = daftarSiswa;
-      renderStats();
-      window.filterDataSiswa();
-      return;
-    }
-  }
-
-  if (isAdmin) {
-    const snap = await getDocs(collection(firestoreDb, "siswa"));
-    daftarSiswa = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-  } else {
-    const kelasDiampu = Array.isArray(session.kelasDiampu)
-      ? session.kelasDiampu.map(k => String(k).trim()).filter(Boolean)
-      : [];
-
-    if (kelasDiampu.length === 0) {
-      daftarSiswa = [];
-    } else {
-      const hasilSiswa = [];
-      for (let i = 0; i < kelasDiampu.length; i += 10) {
-        const chunkKelas = kelasDiampu.slice(i, i + 10);
-        const qSiswa = query(collection(firestoreDb, "siswa"), where("kelas", "in", chunkKelas));
-        const snap = await getDocs(qSiswa);
-        snap.forEach(d => hasilSiswa.push({ id: d.id, ...(d.data() || {}) }));
-      }
-      daftarSiswa = hasilSiswa;
-    }
-  }
-
-  window.daftarSiswa = daftarSiswa;
-  writeSessionCache(cacheKey, daftarSiswa);
-  renderStats();
-  window.filterDataSiswa();
-}
-
-async function muatPenggunaFirestore(forceReload = false) {
-  if (!forceReload) {
-    const cached = readSessionCache("cbt_master_pengguna");
     if (Array.isArray(cached)) {
       daftarPengguna = cached;
       window.daftarPengguna = daftarPengguna;
@@ -625,10 +594,11 @@ async function muatPenggunaFirestore(forceReload = false) {
     }
   }
 
-  const snap = await getDocs(collection(firestoreDb, "pengguna"));
+  const qGuru = query(collection(firestoreDb, "pengguna"), where("role", "==", "guru"));
+  const snap = await getDocs(qGuru);
   daftarPengguna = snap.docs.map(d => ({ uid: d.id, ...(d.data() || {}) })).filter(Boolean);
   window.daftarPengguna = daftarPengguna;
-  writeSessionCache("cbt_master_pengguna", daftarPengguna);
+  writeSessionCache(cacheKey, daftarPengguna);
   window.filterDataGuru();
   updateGuruDropdown();
 }
@@ -650,6 +620,13 @@ async function muatMapelFirestore(forceReload = false) {
       .sort((a, b) => a.nama.localeCompare(b.nama));
     writeSessionCache("cbt_master_mapel", mapelArray);
   }
+
+  window.daftarMapel = mapelArray;
+  if (typeof window.updateFilterMapelDropdown === "function") {
+    window.updateFilterMapelDropdown();
+  }
+  return mapelArray;
+}
 
   window.daftarMapelMaster = mapelArray;
 
