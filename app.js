@@ -3531,3 +3531,330 @@ window.updateFilterUjianDropdown = function() {
   });
   selectUjian.value = currVal;
 };
+/* ===================================================
+   MODUL BACKUP & RESTORE JSON (ALL COLLECTIONS + PER MENU)
+   =================================================== */
+const BACKUP_KOLEKSI_LIST = [
+  "siswa",
+  "guru",
+  "ujian",
+  "soal",
+  "status_peserta",
+  "jawaban_siswa"
+];
+
+function _tentukanDocIdBackup(koleksi, item) {
+  if (item && typeof item._docId === "string" && item._docId.trim()) {
+    return sanitizeFirestoreId(item._docId);
+  }
+  if (item && typeof item.id === "string" && item.id.trim()) {
+    return sanitizeFirestoreId(item.id);
+  }
+  if (item && typeof item.uid === "string" && item.uid.trim()) {
+    return sanitizeFirestoreId(item.uid);
+  }
+
+  switch (koleksi) {
+    case "siswa":
+      return sanitizeFirestoreId(item?.nisn);
+    case "guru":
+      return sanitizeFirestoreId(item?.uid || item?.email || item?.nama);
+    case "ujian":
+      return sanitizeFirestoreId(item?.ujianId || item?.kodeUjian || item?.judul);
+    case "soal":
+      return sanitizeFirestoreId(item?.ujianId || item?.kodeUjian || item?.idUjian);
+    case "status_peserta":
+      return getStatusPesertaDocId(item?.ujianId || item?.kodeUjian || "", item?.nisn || "");
+    case "jawaban_siswa":
+      return `${sanitizeFirestoreId(item?.nisn || "")}_${sanitizeFirestoreId(item?.ujianId || item?.kodeUjian || "")}`;
+    default:
+      return sanitizeFirestoreId(`${koleksi}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
+  }
+}
+
+function _bersihkanFieldBackup(item) {
+  const salinan = { ...(item || {}) };
+  delete salinan._docId;
+  delete salinan.id;
+  if (salinan.importedAt && typeof salinan.importedAt === "object" && typeof salinan.importedAt.toDate === "function") {
+    salinan.importedAt = salinan.importedAt.toDate().toISOString();
+  }
+  if (salinan.updatedAt && typeof salinan.updatedAt === "object" && typeof salinan.updatedAt.toDate === "function") {
+    salinan.updatedAt = salinan.updatedAt.toDate().toISOString();
+  }
+  return JSON.parse(JSON.stringify(salinan));
+}
+
+function _unduhJsonFile(namaFile, payloadObj) {
+  const jsonText = JSON.stringify(payloadObj, null, 2);
+  const blob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = namaFile.endsWith(".json") ? namaFile : `${namaFile}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+}
+
+function _bacaJsonFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("Tidak ada file yang dipilih."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(String(ev.target?.result || ""));
+        resolve(parsed);
+      } catch (err) {
+        reject(new Error(`File JSON tidak valid: ${err.message}`));
+      }
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file JSON."));
+    reader.readAsText(file, "utf-8");
+  });
+}
+
+async function _ambilRecordsKoleksiBackup(koleksi) {
+  if (koleksi === "guru") {
+    const qGuru = query(collection(firestoreDb, "pengguna"), where("role", "==", "guru"));
+    const snapGuru = await getDocs(qGuru);
+    return snapGuru.docs.map((d) => ({
+      id: d.id,
+      _docId: d.id,
+      ...(d.data() || {})
+    }));
+  }
+
+  const snap = await getDocs(collection(firestoreDb, koleksi));
+  return snap.docs.map((d) => ({
+    id: d.id,
+    _docId: d.id,
+    ...(d.data() || {})
+  }));
+}
+
+async function _tulisRecordsKoleksiBackup(koleksi, records) {
+  if (!Array.isArray(records)) {
+    throw new Error(`Format data untuk "${koleksi}" harus berupa array.`);
+  }
+
+  const targetFsCollection = koleksi === "guru" ? "pengguna" : koleksi;
+  let totalTulis = 0;
+  const BATCH_LIMIT = 400;
+
+  for (let i = 0; i < records.length; i += BATCH_LIMIT) {
+    const chunk = records.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(firestoreDb);
+
+    for (const rawItem of chunk) {
+      if (!rawItem || typeof rawItem !== "object") continue;
+      const docId = _tentukanDocIdBackup(koleksi, rawItem);
+      const bersih = _bersihkanFieldBackup(rawItem);
+      if (koleksi === "guru" && !bersih.role) {
+        bersih.role = "guru";
+      }
+      if (koleksi === "soal" && Array.isArray(bersih.daftarSoal)) {
+        bersih.daftarSoal = normalisasiArraySoal(bersih.daftarSoal);
+        bersih.totalSoal = bersih.daftarSoal.length;
+      }
+
+      const ref = doc(firestoreDb, targetFsCollection, docId);
+      batch.set(
+        ref,
+        {
+          ...bersih,
+          importedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+      totalTulis++;
+    }
+
+    if (totalTulis > 0) {
+      await batch.commit();
+    }
+  }
+
+  return totalTulis;
+}
+
+async function _sinkronkanSetelahImport(koleksiOrAll) {
+  clearMasterCache();
+  lastLoadedRekapUjianId = null;
+
+  if (koleksiOrAll === "ALL" || koleksiOrAll === "siswa") {
+    const kelasAktif = document.getElementById("filterKelasSiswa")?.value.trim() || "";
+    if (kelasAktif) {
+      await muatSiswaFirestore(kelasAktif, true);
+    } else if (typeof window.filterDataSiswa === "function") {
+      await window.filterDataSiswa(true);
+    }
+  }
+
+  if (koleksiOrAll === "ALL" || koleksiOrAll === "guru") {
+    await muatPenggunaFirestore(true);
+  }
+
+  if (koleksiOrAll === "ALL" || koleksiOrAll === "ujian" || koleksiOrAll === "soal") {
+    await muatUjianFirestore(true);
+  }
+
+  if (koleksiOrAll === "ALL" || koleksiOrAll === "jawaban_siswa") {
+    const ujianFilter = document.getElementById("selectFilterUjian")?.value || "";
+    if (ujianFilter) {
+      await muatHasilUjianSekali(ujianFilter, true);
+    }
+  }
+
+  if (koleksiOrAll === "ALL" || koleksiOrAll === "status_peserta") {
+    const ujianMon = document.getElementById("selectUjianMonitoring")?.value || "";
+    if (ujianMon && typeof window.loadDataMonitoring === "function") {
+      await window.loadDataMonitoring(true);
+    }
+  }
+}
+
+window.exportKoleksiJson = async function (koleksi) {
+  const namaKoleksi = String(koleksi || "").trim().toLowerCase();
+  if (!BACKUP_KOLEKSI_LIST.includes(namaKoleksi)) {
+    alert(`Koleksi "${namaKoleksi}" tidak dikenali.`);
+    return null;
+  }
+
+  try {
+    const records = await _ambilRecordsKoleksiBackup(namaKoleksi);
+    const tanggal = new Date().toISOString().slice(0, 10);
+    const namaFile = `backup_${namaKoleksi}_${tanggal}.json`;
+    _unduhJsonFile(namaFile, {
+      app: "CBT-SMAN-1-TARAJU",
+      version: 1,
+      koleksi: namaKoleksi,
+      exportedAt: new Date().toISOString(),
+      total: records.length,
+      data: records
+    });
+    alert(`Berhasil mengunduh backup ${namaKoleksi} (${records.length} data).`);
+    return { koleksi: namaKoleksi, total: records.length, namaFile };
+  } catch (err) {
+    console.error(`Gagal export ${namaKoleksi}:`, err);
+    alert(`Gagal mengunduh backup ${namaKoleksi}: ${err.message}`);
+    return null;
+  }
+};
+
+window.importKoleksiJsonFile = async function (koleksi, file) {
+  const namaKoleksi = String(koleksi || "").trim().toLowerCase();
+  if (!BACKUP_KOLEKSI_LIST.includes(namaKoleksi)) {
+    alert(`Koleksi "${namaKoleksi}" tidak dikenali.`);
+    return null;
+  }
+
+  try {
+    const parsed = await _bacaJsonFile(file);
+    let records = [];
+    if (Array.isArray(parsed)) {
+      records = parsed;
+    } else if (parsed && Array.isArray(parsed.data)) {
+      records = parsed.data;
+    } else if (parsed && parsed.collections && Array.isArray(parsed.collections[namaKoleksi])) {
+      records = parsed.collections[namaKoleksi];
+    } else {
+      throw new Error("Struktur isi JSON tidak sesuai untuk koleksi ini.");
+    }
+
+    const jumlah = await _tulisRecordsKoleksiBackup(namaKoleksi, records);
+    await _sinkronkanSetelahImport(namaKoleksi);
+    alert(`Berhasil mengimpor ${jumlah} data ke koleksi "${namaKoleksi}".`);
+    return { koleksi: namaKoleksi, jumlah };
+  } catch (err) {
+    console.error(`Gagal import ${namaKoleksi}:`, err);
+    alert(`Gagal mengimpor ${namaKoleksi}: ${err.message}`);
+    return null;
+  }
+};
+
+window.exportSemuaKoleksiJson = async function () {
+  try {
+    const tanggal = new Date().toISOString().slice(0, 10);
+    const collectionsObj = {};
+    const ringkasan = {};
+
+    for (const koleksi of BACKUP_KOLEKSI_LIST) {
+      const records = await _ambilRecordsKoleksiBackup(koleksi);
+      collectionsObj[koleksi] = records;
+      ringkasan[koleksi] = records.length;
+    }
+
+    const namaFile = `backup_full_cbt_${tanggal}.json`;
+    _unduhJsonFile(namaFile, {
+      app: "CBT-SMAN-1-TARAJU",
+      version: 1,
+      backupType: "FULL_DATABASE",
+      exportedAt: new Date().toISOString(),
+      ringkasan,
+      collections: collectionsObj
+    });
+
+    alert("Berhasil mengunduh file backup lengkap seluruh menu CBT.");
+    return { namaFile, ringkasan };
+  } catch (err) {
+    console.error("Gagal export semua koleksi:", err);
+    alert(`Gagal mengunduh backup lengkap: ${err.message}`);
+    return null;
+  }
+};
+
+window.importSemuaKoleksiJsonFile = async function (file) {
+  try {
+    const parsed = await _bacaJsonFile(file);
+    const sumber = parsed?.collections || parsed;
+    if (!sumber || typeof sumber !== "object") {
+      throw new Error("Format file backup lengkap tidak valid.");
+    }
+
+    const urutanAman = ["siswa", "guru", "ujian", "soal", "status_peserta", "jawaban_siswa"];
+    const hasil = {};
+
+    for (const koleksi of urutanAman) {
+      if (Array.isArray(sumber[koleksi])) {
+        hasil[koleksi] = await _tulisRecordsKoleksiBackup(koleksi, sumber[koleksi]);
+      }
+    }
+
+    await _sinkronkanSetelahImport("ALL");
+    alert("Berhasil memulihkan (import) seluruh data backup ke Firestore.");
+    return hasil;
+  } catch (err) {
+    console.error("Gagal import semua koleksi:", err);
+    alert(`Gagal mengimpor backup lengkap: ${err.message}`);
+    return null;
+  }
+};
+
+window.picuImportJsonMenu = function (koleksiTarget) {
+  const target = String(koleksiTarget || "ALL").trim();
+  const inputFile = document.createElement("input");
+  inputFile.type = "file";
+  inputFile.accept = ".json,application/json";
+  inputFile.style.display = "none";
+
+  inputFile.addEventListener("change", async () => {
+    const file = inputFile.files && inputFile.files[0];
+    inputFile.remove();
+    if (!file) return;
+
+    if (target.toUpperCase() === "ALL") {
+      await window.importSemuaKoleksiJsonFile(file);
+    } else {
+      await window.importKoleksiJsonFile(target, file);
+    }
+  });
+
+  document.body.appendChild(inputFile);
+  inputFile.click();
+};
